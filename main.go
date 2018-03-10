@@ -1,4 +1,4 @@
-package main
+package ldap_group_management
 
 import (
 	"net/url"
@@ -38,7 +38,7 @@ type UserInfoLDAPSource struct {
 }
 
 type AppConfigFile struct {
-	Base       baseConfig         `yaml:base"`
+	Base       baseConfig         `yaml:"base"`
 	SourceLDAP UserInfoLDAPSource `yaml:"source_config"`
 	TargetLDAP UserInfoLDAPSource `yaml:"target_config"`
 }
@@ -55,11 +55,10 @@ var Attributes = []string{"sAMAccountName"}
 
 
 const pagingsize =2147483647
-//const pagingsize1 = 1000
 
 
 var (
-	configFilename = flag.String("config", "testfiles/config.yml", "The filename of the configuration")
+	configFilename = flag.String("config", "config.yml", "The filename of the configuration")
 	//debug          = flag.Bool("debug", false, "enable debugging output")
 	//authSource     *authhandler.SimpleOIDCAuth
 )
@@ -284,8 +283,19 @@ func userinfo(conn *ldap.Conn,userdn string)([]string,error) {
 	return final, nil
 }
 
-
-
+//function to get all the groups in cpe ldap and put it in array
+func getallGroupsinCPELdap(conn *ldap.Conn,groupdn string)([]string,error){
+	var final []string
+	searchrequest := ldap.NewSearchRequest(groupdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false, "(&(objectClass=posixGroup)(objectClass=groupofNames)(objectClass=top))", nil, nil)
+	result, err := conn.Search(searchrequest)
+	if err !=nil{
+		return nil,err
+	}
+	for _,entry:=range result.Entries{
+		final=append(final,entry.GetAttributeValue("cn"))
+	}
+	return final,nil
+}
 
 
 // GetGroupsOfUser returns the all groups of a user.
@@ -399,11 +409,11 @@ func main() {
 		panic(err)
 	}
 
-	userinfo1:=userDN(state.Config.SourceLDAP.UserSearchBaseDNs,"username") //username as per in LDAP
+	userinfo1:=userDN(state.Config.SourceLDAP.UserSearchBaseDNs,"puneeth_reddypodduto") //username as per in LDAP
 	fmt.Println(userinfo1)
 	userinfo2,err:=userinfo(cpeconn,userinfo1)
 
-	usergroups,err:=GetGroupsOfUser(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs,"username") //username as per in LDAP
+	usergroups,err:=GetGroupsOfUser(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs,"puneeth_reddypodduto") //username as per in LDAP
 
 
 	if err != nil{
@@ -412,7 +422,7 @@ func main() {
 
 	//fmt.Println(groupinfo)
 
-	groupinfo,err:=GetUsersofaGroup(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs,"groupname",)//groupname as per in ldap
+	groupinfo,err:=GetUsersofaGroup(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs,"cpe_users",)//groupname as per in ldap
 	if err != nil{
 		panic(err)
 	}
@@ -436,6 +446,17 @@ func main() {
 	}
 	fmt.Println(finalresult)
 	fmt.Println(len(finalresult))
+
+	str,err:=getallGroupsinCPELdap(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs)
+
+	if err!=nil{
+		panic(err)
+	}
+	fmt.Println(str)
+	fmt.Println(len(str))
+
+
+
 	//fmt.Println(result[0])
 	//fmt.Println(result[1])
 	//fmt.Println(result)
