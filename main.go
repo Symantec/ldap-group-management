@@ -409,11 +409,11 @@ func main() {
 		panic(err)
 	}
 
-	userinfo1:=userDN(state.Config.SourceLDAP.UserSearchBaseDNs,"puneeth_reddypodduto") //username as per in LDAP
+	userinfo1:=userDN(state.Config.SourceLDAP.UserSearchBaseDNs,"username") //username as per in LDAP
 	fmt.Println(userinfo1)
 	userinfo2,err:=userinfo(cpeconn,userinfo1)
 
-	usergroups,err:=GetGroupsOfUser(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs,"puneeth_reddypodduto") //username as per in LDAP
+	usergroups,err:=GetGroupsOfUser(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs,"username") //username as per in LDAP
 
 
 	if err != nil{
@@ -422,7 +422,7 @@ func main() {
 
 	//fmt.Println(groupinfo)
 
-	groupinfo,err:=GetUsersofaGroup(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs,"cpe_users",)//groupname as per in ldap
+	groupinfo,err:=GetUsersofaGroup(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs,"groupname",)//groupname as per in ldap
 	if err != nil{
 		panic(err)
 	}
