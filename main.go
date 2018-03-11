@@ -1,4 +1,4 @@
-package ldap_group_management
+package main
 
 import (
 	"net/url"
@@ -14,8 +14,12 @@ import (
 	"gopkg.in/yaml.v2"
 	"os"
 	"io/ioutil"
+	//"fmt"
 	"github.com/Symantec/keymaster/lib/authutil"
-	"fmt"
+	"github.com/gorilla/mux"
+	"net/http"
+	"encoding/json"
+	"sort"
 )
 
 
@@ -45,16 +49,36 @@ type AppConfigFile struct {
 
 type RuntimeState struct {
 	Config       AppConfigFile
-	//htmlTemplate *template.Template
+	ADldap       *ldap.Conn
+	CPEldap      *ldap.Conn
+
 }
+type GetGroups struct{
+	AllGroups []string `json:"allgroups"`
+
+}
+type GetUsers struct{
+	Users []string `json:"Users"`
+}
+
+type GetUserGroups struct{
+	UserName string `json:"Username"`
+	UserGroups []string `json:"usergroups"`
+}
+
+type GetGroupUsers struct{
+	GroupName string `json:"groupname"`
+	Groupusers []string `json:"Groupusers"`
+
+}
+
+
 
 const ldapTimeoutSecs = 3
 
 
-var Attributes = []string{"sAMAccountName"}
-
-
-const pagingsize =2147483647
+//maximum possible paging size number
+const maximum_pagingsize =2147483647
 
 
 var (
@@ -132,7 +156,7 @@ func getLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ld
 }
 
 //establishing the connection.
-func getLDAPConnection1(u url.URL) (*ldap.Conn, string, error) {
+func getLDAPConnection1(u url.URL, timeoutSecs uint) (*ldap.Conn, string, error) {
 
 	if u.Scheme != "ldaps" {
 		err := errors.New("Invalid ldap scheme (we only support ldaps)")
@@ -154,6 +178,7 @@ func getLDAPConnection1(u url.URL) (*ldap.Conn, string, error) {
 	//timeout := time.Duration(time.Duration(timeoutSecs) * time.Second)
 	start := time.Now()
 
+	//tlsConn, err := tls.DialWithDialer(&net.Dialer{Timeout: timeout}, "tcp", hostnamePort,&tls.Config{InsecureSkipVerify:true,ServerName:server})
 	conn,err :=  ldap.DialTLS("tcp",hostnamePort,&tls.Config{InsecureSkipVerify:true,ServerName:server})
 	if err != nil {
 		errorTime := time.Since(start).Seconds() * 1000
@@ -169,12 +194,12 @@ func getLDAPConnection1(u url.URL) (*ldap.Conn, string, error) {
 
 
 //Function which returns the array of disabled accounts from Active Directory AD.
-func disabledaccounts(conn *ldap.Conn, UserSearchBaseDNs string, UserSearchFilter string, Attributes []string)([]string,error){
-	var final []string
+func (state *RuntimeState) DisabledAccountsinAD(UserSearchBaseDNs string, UserSearchFilter string, Attributes []string)([]string,error){
+	var disabled_accounts []string
 
 	searchrequest := ldap.NewSearchRequest(UserSearchBaseDNs,ldap.ScopeWholeSubtree,ldap.NeverDerefAliases, 0,0,false,UserSearchFilter,Attributes,nil)
 
-	result, err:= conn.SearchWithPaging(searchrequest,pagingsize)
+	result, err:= state.ADldap.SearchWithPaging(searchrequest,maximum_pagingsize)
 	if err !=nil{
 		return nil,err
 	}
@@ -183,21 +208,21 @@ func disabledaccounts(conn *ldap.Conn, UserSearchBaseDNs string, UserSearchFilte
 	}
 	for _,entry := range result.Entries{
 		cname := entry.GetAttributeValue("sAMAccountName")
-		final=append(final,strings.ToLower(cname))
+		disabled_accounts=append(disabled_accounts,strings.ToLower(cname))
 	}
-	return final,nil
+	return disabled_accounts,nil
 }
 
 
 
 //function which compares the users disabled accounts in AD with CPE LDAP and adds the attribute nsaccountLock in CPE ldap for the disbaled USer.
-func disableinCPELDAP(conn *ldap.Conn,userdn string,result []string)(error){
+func (state *RuntimeState) CompareDisabledaccounts(userdn string,result []string)(error){
 	for _,entry:=range result{
 		entry=userDN(userdn,entry)
 
 		modify := ldap.NewModifyRequest(entry)
 		modify.Replace("nsaccountLock",[]string{"True"})
-		err:=conn.Modify(modify)
+		err:=state.CPEldap.Modify(modify)
 		if err !=nil{
 			return err
 		}
@@ -208,45 +233,39 @@ func disableinCPELDAP(conn *ldap.Conn,userdn string,result []string)(error){
 
 
 
-
 //Get all ldap users and put that in map
-func getallusers(conn *ldap.Conn, UserSearchBaseDNs string, UserSearchFilter string, hello []string) (map[string]string,error){
-	final := make(map[string]string)
+func (state *RuntimeState) GetallUsers(UserSearchBaseDNs string, UserSearchFilter string, hello []string) (map[string]string,error){
+	AllUsersinLdap := make(map[string]string)
 
 	searchrequest := ldap.NewSearchRequest(UserSearchBaseDNs,ldap.ScopeWholeSubtree,ldap.NeverDerefAliases, 0,0,false,UserSearchFilter,hello,nil)
-	result, err := conn.Search(searchrequest)
+	result, err := state.CPEldap.Search(searchrequest)
 	if err !=nil{
 		return nil,err
 	}
-	fmt.Println(len(result.Entries))
+
 	if len(result.Entries)==0{
 		log.Println("No records found")
 	}
-	//fmt.Printf("%+v",result.Entries)
-	//fmt.Println(result.Entries[0].GetAttributeValue("uid"))
 	for _,entry := range result.Entries{
-		//if entry.GetAttributeValue("uid")
 		uid := entry.GetAttributeValue("uid")
-		final[uid]=uid
-
-
+		AllUsersinLdap[uid]=uid
 	}
-	fmt.Println(final)
-	return final,nil
+
+	return AllUsersinLdap,nil
 }
 
 
 //find out which accounts need to be locked in cpe ldap(i.e. which accounts needs attribute nsaccountLock=True
-func LockAccountsinCPELdap(finalLdap map[string]string,finalAD []string ) ([]string,error){
-	var result []string
+func FindLockAccountsinCPELdap(finalLdap map[string]string,finalAD []string ) ([]string,error){
+	var lock_accounts []string
 	for _,entry:=range finalAD{
 		if entry, ok := finalLdap[entry]; ok{
 
-			result=append(result,entry)
+			lock_accounts=append(lock_accounts,entry)
 		}
 
 	}
-	return result,nil
+	return lock_accounts,nil
 }
 
 
@@ -269,37 +288,37 @@ func GroupDN(groupdn string,groupname string)(string){
 
 
 //function to get details of a user from cpe ldap.(should make some changes)
-func userinfo(conn *ldap.Conn,userdn string)([]string,error) {
-	var final []string
+func (state *RuntimeState) UserInfo(userdn string)([]string,error) {
+	var user_info []string
 	searchrequest := ldap.NewSearchRequest(userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false, "((objectClass=*))", nil, nil)
-	result, err := conn.Search(searchrequest)
+	result, err := state.CPEldap.Search(searchrequest)
 	if err != nil {
 		return nil, err
 	}
 	for _, entry := range result.Entries {
-		final = entry.GetAttributeValues("objectClass")
+		user_info = entry.GetAttributeValues("objectClass")
 		//println(entry.GetAttributeValue(entry.Attributes[5].Name))
 	}
-	return final, nil
+	return user_info, nil
 }
 
 //function to get all the groups in cpe ldap and put it in array
-func getallGroupsinCPELdap(conn *ldap.Conn,groupdn string)([]string,error){
-	var final []string
+func (state *RuntimeState) GetAllGroupsinCPELdap(groupdn string)([]string,error){
+	var all_groups []string
 	searchrequest := ldap.NewSearchRequest(groupdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false, "(&(objectClass=posixGroup)(objectClass=groupofNames)(objectClass=top))", nil, nil)
-	result, err := conn.Search(searchrequest)
+	result, err := state.CPEldap.Search(searchrequest)
 	if err !=nil{
 		return nil,err
 	}
 	for _,entry:=range result.Entries{
-		final=append(final,entry.GetAttributeValue("cn"))
+		all_groups=append(all_groups,entry.GetAttributeValue("cn"))
 	}
-	return final,nil
+	return all_groups,nil
 }
 
 
 // GetGroupsOfUser returns the all groups of a user.
-func GetGroupsOfUser(conn *ldap.Conn,groupdn string,username string) ([]string, error) {
+func (state *RuntimeState) GetGroupsOfUser(groupdn string,username string) ([]string, error) {
 	//Base:=userDN(username)
 	Base:=groupdn
 	searchRequest := ldap.NewSearchRequest(
@@ -309,7 +328,7 @@ func GetGroupsOfUser(conn *ldap.Conn,groupdn string,username string) ([]string, 
 		[]string{"cn"},//memberOf (if searching other way around using usersdn instead of groupdn)
 		nil,
 	)
-	sr, err := conn.Search(searchRequest)
+	sr, err := state.CPEldap.Search(searchRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +341,7 @@ func GetGroupsOfUser(conn *ldap.Conn,groupdn string,username string) ([]string, 
 
 
 //returns all the users of a group
-func GetUsersofaGroup(conn *ldap.Conn,groupdn string,groupname string) ([][]string, error) {
+func (state *RuntimeState) GetUsersofaGroup(groupdn string,groupname string) ([][]string, error) {
 	Base:=GroupDN(groupdn,groupname)
 
 	searchRequest := ldap.NewSearchRequest(
@@ -332,7 +351,7 @@ func GetUsersofaGroup(conn *ldap.Conn,groupdn string,groupname string) ([][]stri
 		[]string{"memberUid"},
 		nil,
 	)
-	sr, err := conn.Search(searchRequest)
+	sr, err := state.CPEldap.Search(searchRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +366,103 @@ func GetUsersofaGroup(conn *ldap.Conn,groupdn string,groupname string) ([][]stri
 
 
 
-func main() {
+//All handlers and API endpoints starts from here.
+
+//Display all groups in CPE LDAP
+func (state *RuntimeState) GetAllGroups(w http.ResponseWriter, r *http.Request) {
+	var AllGroupsinCPE GetGroups
+
+	Allgroups,err:=state.GetAllGroupsinCPELdap(state.Config.SourceLDAP.GroupSearchBaseDNs)
+
+	if err!=nil{
+		log.Panic(err)
+	}
+	sort.Strings(Allgroups)
+	AllGroupsinCPE.AllGroups=Allgroups
+	json.NewEncoder(w).Encode(AllGroupsinCPE)
+
+}
+
+//Display all users in CPE LDAP
+func (state *RuntimeState) GetAllUsers(w http.ResponseWriter, r *http.Request) {
+	var AllUsersinCPE GetUsers
+
+	AllUsers,err:=state.GetallUsers(state.Config.SourceLDAP.UserSearchBaseDNs,state.Config.SourceLDAP.UserSearchFilter,[]string{"uid"})
+
+	if err!=nil{
+		log.Println(err)
+	}
+
+	for k := range AllUsers {
+		AllUsersinCPE.Users = append(AllUsersinCPE.Users, k)
+	}
+
+	json.NewEncoder(w).Encode(AllUsersinCPE)
+}
+
+
+//Displays all Groups of a User.
+func (state *RuntimeState) GetUserAllGroups(w http.ResponseWriter, r *http.Request){
+	params := mux.Vars(r)
+	var user_groups GetUserGroups
+
+	_ = json.NewDecoder(r.Body).Decode(&user_groups)
+	user_groups.UserName = params["username"] //username is "cn" Attribute of a User
+	UsersAllgroups,err:=state.GetGroupsOfUser(state.Config.SourceLDAP.GroupSearchBaseDNs,user_groups.UserName)
+	sort.Strings(UsersAllgroups)
+	user_groups.UserGroups=UsersAllgroups
+
+	if err!=nil{
+		log.Println(err)
+	}
+
+	json.NewEncoder(w).Encode(user_groups)
+}
+
+
+//Displays All Users in a Group
+func (state *RuntimeState) GetUsersinGroup(w http.ResponseWriter, r *http.Request){
+	params := mux.Vars(r)
+	var group_users GetGroupUsers
+
+	_ = json.NewDecoder(r.Body).Decode(&group_users)
+	group_users.GroupName = params["groupname"] //username is "cn" Attribute of a User
+	AllUsersinGroup,err:=state.GetUsersofaGroup(state.Config.SourceLDAP.GroupSearchBaseDNs,group_users.GroupName)
+	sort.Strings(AllUsersinGroup[0])
+	group_users.Groupusers=AllUsersinGroup[0]
+
+	if err!=nil{
+		log.Println(err)
+	}
+
+	json.NewEncoder(w).Encode(group_users)
+}
+
+
+func (state *RuntimeState) CreateGroup(w http.ResponseWriter, r *http.Request) {
+
+
+
+}
+
+
+func (state *RuntimeState) DeleteGroup(w http.ResponseWriter, r *http.Request) {
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+func main(){
 	flag.Parse()
 
 	state, err := loadConfig(*configFilename)
@@ -356,15 +471,14 @@ func main() {
 	}
 
 	//Parsing AD URL, establishing connection and binding user.
-	ldapADurl,err:= authutil.ParseLDAPURL(state.Config.TargetLDAP.LDAPTargetURLs)
+	LdapAdUrl,err:= authutil.ParseLDAPURL(state.Config.TargetLDAP.LDAPTargetURLs)
 
-	//conn,_,err:= getLDAPConnection(*ldapurl,ldapTimeoutSecs,nil)
-	conn,_,err:=getLDAPConnection1(*ldapADurl)
+	state.ADldap,_,err= getLDAPConnection1(*LdapAdUrl,ldapTimeoutSecs)
 	if err != nil {
 		panic(err)
 	}
 
-	err=conn.Bind(state.Config.TargetLDAP.BindUsername,state.Config.TargetLDAP.BindPassword)
+	err=state.ADldap.Bind(state.Config.TargetLDAP.BindUsername,state.Config.TargetLDAP.BindPassword)
 
 	if err!=nil{
 		panic(err)
@@ -372,92 +486,28 @@ func main() {
 
 
 	//Parsing CPE LDAP, establishing connection and binding user.
-	cpeldapurl,err:= authutil.ParseLDAPURL(state.Config.SourceLDAP.LDAPTargetURLs)
+	CpeLdapUrl,err:= authutil.ParseLDAPURL(state.Config.SourceLDAP.LDAPTargetURLs)
 
-
-	//conn,_,err:= getLDAPConnection(*ldapurl,ldapTimeoutSecs,nil)
-	cpeconn,_,err:=getLDAPConnection1(*cpeldapurl)
+	state.CPEldap,_,err=getLDAPConnection1(*CpeLdapUrl,ldapTimeoutSecs)
 	if err != nil {
 		panic(err)
 	}
 
-	err=cpeconn.Bind(state.Config.SourceLDAP.BindUsername,state.Config.SourceLDAP.BindPassword)
-	if err!=nil{
-		panic(err)
-	}
-
-
-	//result will have all the disabled accounts in AD
-	result,err:=disabledaccounts(conn,state.Config.TargetLDAP.UserSearchBaseDNs,state.Config.TargetLDAP.UserSearchFilter,Attributes)
-
-	if err != nil{
-		panic(err)
-	}
-
-	//result1 will have all the users in cpe ldap
-	result1,err:=getallusers(cpeconn,state.Config.SourceLDAP.UserSearchBaseDNs,state.Config.SourceLDAP.UserSearchFilter,[]string{"uid"})
-
-	if err != nil{
-		panic(err)
-	}
-
-
-	//finalresult will have all the accounts that needed to be locked in cpe ldap
-	finalresult,err:=LockAccountsinCPELdap(result1,result)
-
-	if err != nil{
-		panic(err)
-	}
-
-	userinfo1:=userDN(state.Config.SourceLDAP.UserSearchBaseDNs,"puneeth_reddypodduto") //username as per in LDAP
-	fmt.Println(userinfo1)
-	userinfo2,err:=userinfo(cpeconn,userinfo1)
-
-	usergroups,err:=GetGroupsOfUser(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs,"puneeth_reddypodduto") //username as per in LDAP
-
-
-	if err != nil{
-		panic(err)
-	}
-
-	//fmt.Println(groupinfo)
-
-	groupinfo,err:=GetUsersofaGroup(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs,"cpe_users",)//groupname as per in ldap
-	if err != nil{
-		panic(err)
-	}
-
-
-	fmt.Println(groupinfo)
-	fmt.Println(userinfo2)
-
-	fmt.Println(usergroups)
-
-	//fmt.Println(result1)
-	//fmt.Println(len(result1))
-	//for item := range finalresult{
-	//	fmt.Println(finalresult[item])
-	//}
-
-	//disables all the users in finalresult(i.e, adds accountLock attritube to them)
-	err=disableinCPELDAP(cpeconn,state.Config.SourceLDAP.UserSearchBaseDNs,finalresult)
-	if err!=nil{
-		panic(err)
-	}
-	fmt.Println(finalresult)
-	fmt.Println(len(finalresult))
-
-	str,err:=getallGroupsinCPELdap(cpeconn,state.Config.SourceLDAP.GroupSearchBaseDNs)
+	err=state.CPEldap.Bind(state.Config.SourceLDAP.BindUsername,state.Config.SourceLDAP.BindPassword)
 
 	if err!=nil{
 		panic(err)
 	}
-	fmt.Println(str)
-	fmt.Println(len(str))
 
+	router := mux.NewRouter()
 
+	router.HandleFunc("/allgroups",state.GetAllGroups ).Methods("GET")
+	router.HandleFunc("/allusers", state.GetAllUsers).Methods("GET")
+	router.HandleFunc("/create_group",state.CreateGroup ).Methods("POST")
+    router.HandleFunc("/user_groups/{username}",state.GetUserAllGroups).Methods("GET")
+    router.HandleFunc("/group_users/{groupname}",state.GetUsersinGroup).Methods("GET")
 
-	//fmt.Println(result[0])
-	//fmt.Println(result[1])
-	//fmt.Println(result)
+    router.HandleFunc("/Delete_group",state.DeleteGroup ).Methods("DELETE")
+	log.Fatal(http.ListenAndServe(":11000", router))
+
 }
