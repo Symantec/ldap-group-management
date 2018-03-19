@@ -1,0 +1,94 @@
+{{ define "index" }}
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Ldap Group Management</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/new.css">
+    <link rel="stylesheet" href="css/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script src="js/alert.js"></script>
+    <script src="js/page.js"></script>
+
+    <style>
+        html,body,h1,h2,h3,h4,h5 {font-family: "Raleway", sans-serif}
+
+    </style>
+    <style type="text/css" media="screen">
+        @import url("/css/new.css");
+       /* @import url("/css/font-awesome.min.css");*/
+        @import url("/templates/images");
+       /* @import url("/templates/css/css");*/
+    </style>
+
+</head>
+
+<body class="w3-light-grey" onload="pagination({{.Groups}})">
+<!-- Top container -->
+<div class="w3-bar w3-top w3-new-blue w3-large" style="z-index: 4">
+   <button class="w3-bar-item w3-button w3-hide-large w3-hover-none w3-hover-text-light-grey" onclick="w3_open();"><i class="fa fa-bars"></i> &nbsp;Menu</button>
+    <div>
+        <img src="./images/CPEdarkBG.svg" alt="CPE Logo" style="height: 28px">
+        <span class="w3-bar-item w3-right w3-text-new-white"><strong><b>LDAP GROUP MANAGEMENT</b></strong></span>
+    </div>
+</div>
+
+{{template "sidebar" .}}
+
+<!-- Overlay effect when opening sidebar on small screens -->
+<div class="w3-overlay w3-hide-large w3-animate-opacity" onclick="w3_close()" style="cursor:pointer" title="close side menu" id="myOverlay"></div>
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+
+    {{template "content" .}}
+
+
+
+    <!-- Footer -->
+    <footer class="w3-container w3-padding-16 w3-light-grey w3-bottom">
+        <hr>
+        <p>Copyright 2018 Symantec Corporation. | <a href="https://confluence.ges.symantec.com" target="_blank">Documentation</a></p>
+    </footer>
+
+    <!-- End page content -->
+</div>
+
+
+
+<script>
+    // Get the Sidebar
+    var mySidebar = document.getElementById("mySidebar");
+
+    // Get the DIV with overlay effect
+    var overlayBg = document.getElementById("myOverlay");
+
+    // Toggle between showing and hiding the sidebar, and add overlay effect
+    function w3_open() {
+        if (mySidebar.style.display === 'block') {
+            mySidebar.style.display = 'none';
+            overlayBg.style.display = "none";
+        } else {
+            mySidebar.style.display = 'block';
+            overlayBg.style.display = "block";
+        }
+    }
+
+    // Close the sidebar with the close button
+    function w3_close() {
+        mySidebar.style.display = "block";
+        overlayBg.style.display = "none";
+    }
+
+</script>
+
+
+</body>
+
+</html>
+
+{{ end }}
