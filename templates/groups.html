@@ -3,7 +3,7 @@
 
 <!-- Header -->
 <header class="w3-container" style="padding-top:12px">
-    <h5><b><i class="fa fa-group"></i>Ldap Groups</b><button class="w3-button w3-right w3-text-new-white w3-new-blue">Request Access</button></h5>
+    <h5><b><i class="fa fa-group"></i>Ldap Groups</b><button class="w3-button w3-right w3-text-new-white w3-new-blue" onclick="alert({{.Groups}})">Request Access</button></h5>
 </header>
 
 <div class="w3-panel">
@@ -16,4 +16,5 @@
         </div>
     </div>
 </div>
+
 {{ end }}

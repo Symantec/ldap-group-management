@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"sort"
 	"fmt"
+	"database/sql"
+	_"github.com/mattn/go-sqlite3"
 )
 
 
@@ -41,7 +43,9 @@ type UserInfoLDAPSource struct {
 	UserSearchFilter   string `yaml:"user_search_filter"`
 	GroupSearchBaseDNs string `yaml:"group_search_base_dns"`
 	GroupSearchFilter  string `yaml:"group_search_filter"`
+	Admins 			   string `yaml:"super_admins"`
 }
+
 
 type AppConfigFile struct {
 	Base       baseConfig         `yaml:"base"`
@@ -54,6 +58,8 @@ type RuntimeState struct {
 	Config      AppConfigFile
 	source_ldap *ldap.Conn
 	target_ldap *ldap.Conn
+	dbType string
+	db *sql.DB
 }
 
 type GetGroups struct{
@@ -83,6 +89,15 @@ type Response struct{
 }
 
 
+
+type group_info struct {
+	groupname string
+	description string
+	memberUid []string
+	member []string
+	cn string
+}
+
 const ldapTimeoutSecs = 10
 
 //maximum possible paging size number
@@ -93,11 +108,100 @@ var nsaccount_lock = []string{"True"}
 
 var (
 	configFilename = flag.String("config", "config.yml", "The filename of the configuration")
-	tpl *template.Template
+	//tpl *template.Template
 	//debug          = flag.Bool("debug", false, "enable debugging output")
 	authSource     *authhandler.SimpleOIDCAuth
 )
 
+//Initialsing database
+func initDB(state *RuntimeState) (err error) {
+
+	state.dbType = "sqlite3"
+	state.db, err = sql.Open("sqlite3", "./ldap-group-management.db")
+	if err != nil {
+		return err
+	}
+	if true {
+		sqlStmt := `create table if not exists pending_requests2 (username text not null, groupname text not null, time_stamp int not null);`
+		_, err = state.db.Exec(sqlStmt)
+		if err != nil {
+			log.Printf("init sqlite3 err: %s: %q\n", err, sqlStmt)
+			return err
+		}
+	}
+
+	return nil
+}
+
+
+
+//insert a request into DB
+func (state *RuntimeState) insertInDB(username string,groupname []string) error {
+	stmtText := "insert into pending_requests2(username, groupname, time_stamp) values (?,?,?)"
+		stmt, err := state.db.Prepare(stmtText)
+		if err != nil {
+			log.Print("Error Preparing statement")
+			log.Fatal(err)
+		}
+		defer stmt.Close()
+	for entry:=range groupname{
+		_, err = stmt.Exec(username,groupname[entry],time.Now().Unix())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+//delete the request after approved or declined
+func (state *RuntimeState) deleteEntryInDB(username string,groupname string) error{
+
+	stmtText :="delete from pending_requests2 where username= ? and groupname= ?;"
+	stmt, err := state.db.Prepare(stmtText)
+	if err != nil {
+		log.Print("Error Preparing statement")
+		log.Fatal(err)
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(username,groupname)
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+
+//Search for a particular request made by a user (or) a group.
+func (state *RuntimeState) findrequestsofUserinDB(username string) ([]string,bool,error) {
+	stmtText:="select groupname from pending_requests1 where username=?;"
+	stmt,err:=state.db.Prepare(stmtText)
+	if err != nil {
+		log.Print("Error Preparing statement")
+		log.Fatal(err)
+	}
+	defer stmt.Close()
+	var groupname []string
+	rows,err := stmt.Query(username)
+	if err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			log.Printf("err='%s'", err)
+			return nil,false,nil
+		} else {
+			log.Printf("Problem with db ='%s'", err)
+			return nil,false, err
+		}
+	}
+	var i=0
+	for rows.Next(){
+		var group_Name string
+		err=rows.Scan(&group_Name)
+		groupname[i]=group_Name
+		i=i+1
+	}
+
+	return groupname,true, nil
+
+}
 
 //parses the config file
 func loadConfig(configFilename string) (RuntimeState, error) {
@@ -122,6 +226,10 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	if err != nil {
 		err = errors.New("Cannot parse config file")
 		log.Printf("Source=%s", source)
+		return state, err
+	}
+	err = initDB(&state)
+	if err != nil {
 		return state, err
 	}
 	return state, err
@@ -189,9 +297,9 @@ func (state *RuntimeState) DisabledAccountsinSourceLDAP(UserSearchBaseDNs string
 
 
 //function which compares the users disabled accounts in Source LDAP and Target LDAP and adds the attribute nsaccountLock in TARGET LDAP for the disbaled USer.
-func (state *RuntimeState) CompareDisabledaccounts(userdn string, result []string) error {
+func (state *RuntimeState) CompareDisabledaccounts(result []string) error {
 	for _, entry := range result {
-		entry = Create_UserDN(userdn, entry)
+		entry = state.Create_UserDN(entry)
 
 		modify := ldap.NewModifyRequest(entry)
 		modify.Replace("nsaccountLock", nsaccount_lock)
@@ -245,9 +353,9 @@ func FindLockAccountsinTargetLdap(TargetLDAP_Users map[string]string, LockedAcco
 
 
 //To build a user base DN using uid only for Target LDAP.
-func Create_UserDN(usersdn string, username string) string {
+func (state *RuntimeState) Create_UserDN(username string) string {
 	//uid := username
-	result := "uid=" + username + "," + usersdn
+	result := "uid=" + username + "," +state.Config.TargetLDAP.UserSearchBaseDNs
 
 	return string(result)
 
@@ -256,13 +364,146 @@ func Create_UserDN(usersdn string, username string) string {
 
 
 //To build a GroupDN for a particular group in Target ldap
-func Create_GroupDN(groupdn string, groupname string) string {
-	result := "cn=" + groupname + "," + groupdn
+func (state *RuntimeState) Create_GroupDN(groupname string) string {
+	result := "cn=" + groupname + "," + state.Config.TargetLDAP.GroupSearchBaseDNs
 
 	return string(result)
 
 }
 
+//Creating a Group
+func (state *RuntimeState) create_Group(groupinfo group_info) error{
+	entry:=state.Create_GroupDN(groupinfo.groupname)
+	group:=ldap.NewAddRequest(entry)
+	group.Attribute("objectClass",[]string{"posixGroup","top","groupOfNames"})
+	group.Attribute("cn",[]string{groupinfo.groupname})
+	group.Attribute("description",[]string{groupinfo.description})
+	group.Attribute("member",groupinfo.member)
+	group.Attribute("memberUid",groupinfo.memberUid)
+	group.Attribute("gidNumber",gidnumber())
+	err:=state.target_ldap.Add(group)
+	if err!=nil{
+		return err
+	}
+	return nil
+}
+
+// POST
+// Create a group handler
+func (state *RuntimeState) createGroup_handler(w http.ResponseWriter,r *http.Request){
+	userInfo, err := authhandler.GetRemoteUserInfo(r)
+	if err != nil {
+		panic(err)
+	}
+	if userInfo == nil {
+		panic("null userinfo!")
+	}
+	//vals:=r.URL.Query()
+	if(state.userisAdminOrNot(*userInfo.Username)) {
+		err := r.ParseForm()
+		if err != nil {
+			panic("Cannot parse form")
+		}
+		var groupinfo group_info
+		groupinfo.groupname = r.PostFormValue("groupname")
+		groupinfo.description = r.PostFormValue("description")
+		members := r.PostFormValue("member")
+		for _, member := range strings.Split(members, ",") {
+			groupinfo.memberUid = append(groupinfo.memberUid, member)
+			groupinfo.member = append(groupinfo.member, state.Create_UserDN(member))
+		}
+		err = state.create_Group(groupinfo)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		http.NotFoundHandler()
+	}
+}
+
+
+//function for gid number
+func gidnumber()([]string){
+	//var i=20000
+	return nil
+}
+
+//Delete groups handler
+func (state *RuntimeState) deleteGroup_handler(w http.ResponseWriter,r *http.Request){
+	userInfo, err := authhandler.GetRemoteUserInfo(r)
+	if err != nil {
+		panic(err)
+	}
+	if userInfo == nil {
+		panic("null userinfo!")
+	}
+	//vals:=r.URL.Query()
+	if(state.userisAdminOrNot(*userInfo.Username)) {
+		err := r.ParseForm()
+		if err != nil {
+			panic("Cannot parse form")
+		}
+		var groupnames []string
+		groups := r.PostFormValue("groupnames")
+		for _, eachGroup := range strings.Split(groups, ",") {
+			groupnames = append(groupnames, eachGroup)
+		}
+		err = state.delete_Group(groupnames)
+		if err != nil {
+			panic(err)
+		}
+	} else{
+		http.NotFoundHandler()
+	}
+}
+
+//deleting a Group from target ldap.
+func (state *RuntimeState) delete_Group(groupnames []string) error{
+	for _,entry:=range groupnames {
+		group_dn:=state.Create_GroupDN(entry)
+
+		delete := ldap.NewDelRequest(group_dn,nil)
+		err:=state.target_ldap.Del(delete)
+		if(err!=nil){
+			return err
+		}
+
+	}
+	return nil
+}
+
+
+//Adding an attritube called 'description' to a dn in Target Ldap
+func (state *RuntimeState) addAtributeDescription(groupname string)error{
+
+	entry:=state.Create_GroupDN(groupname)
+	modify := ldap.NewModifyRequest(entry)
+	modify.Delete("description", []string{"self-managed"})
+
+	//modify.Add("description", []string{"created by me"})
+	err := state.target_ldap.Modify(modify)
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+
+//Deleting the attribute in a dn in Target Ldap.
+func (state *RuntimeState) deleteDescription(result []string) error {
+	for _, entry := range result {
+		entry = state.Create_GroupDN(entry)
+
+		modify := ldap.NewModifyRequest(entry)
+
+		modify.Delete("description", []string{"created by Midpoint"})
+		err := state.target_ldap.Modify(modify)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 
 //function to get details of a user from Target ldap.(should make some changes)
@@ -283,7 +524,7 @@ func (state *RuntimeState) UserInfo(User_dn string) ([]string, error) {
 
 
 //function to get all the groups in Target ldap and put it in array
-func (state *RuntimeState) Get_allGroups(Group_dn string) ([]string, error) {
+func (state *RuntimeState) get_allGroups(Group_dn string) ([]string, error) {
 	var All_Groups []string
 	searchrequest := ldap.NewSearchRequest(Group_dn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false, "(&(objectClass=posixGroup)(objectClass=groupofNames)(objectClass=top))", []string{"cn"}, nil)
 	result, err := state.target_ldap.Search(searchrequest)
@@ -299,7 +540,7 @@ func (state *RuntimeState) Get_allGroups(Group_dn string) ([]string, error) {
 
 
 // GetGroupsOfUser returns the all groups of a user.
-func (state *RuntimeState) GetGroupsOfUser(groupdn string, username string) ([]string, error) {
+func (state *RuntimeState) getGroupsOfUser(groupdn string, username string) ([]string, error) {
 	Base := groupdn
 	searchRequest := ldap.NewSearchRequest(
 		Base,
@@ -322,8 +563,8 @@ func (state *RuntimeState) GetGroupsOfUser(groupdn string, username string) ([]s
 
 
 //returns all the users of a group
-func (state *RuntimeState) GetUsersofaGroup(groupdn string, groupname string) ([][]string, error) {
-	Base := Create_GroupDN(groupdn, groupname)
+func (state *RuntimeState) getUsersofaGroup(groupname string) ([][]string, error) {
+	Base := state.Create_GroupDN(groupname)
 
 	searchRequest := ldap.NewSearchRequest(
 		Base,
@@ -360,17 +601,37 @@ func parseTemplateFiles(filenames ...string) (t *template.Template) {
 
 
 
-func generateHTML(writer http.ResponseWriter, data interface{}, filenames ...string) {
+func generateHTML(w http.ResponseWriter, data interface{}, filenames ...string) {
 	var files []string
 	for _, file := range filenames {
 		files = append(files, fmt.Sprintf("templates/%s.html", file))
 	}
 
 	templates := template.Must(template.ParseFiles(files...))
-	templates.ExecuteTemplate(writer, "index", data)
+	templates.ExecuteTemplate(w, "index", data)
 }
 
+//parse super admins of Target Ldap
+func (state *RuntimeState) parseSuperAdmins()([]string){
+	var superAdminsInfo []string
+	for _, admin := range strings.Split(state.Config.TargetLDAP.Admins, ",") {
+		fmt.Print(admin)
+		superAdminsInfo = append(superAdminsInfo,admin)
+	}
+	return superAdminsInfo
+}
 
+//if user is super admin or not
+func (state *RuntimeState) userisAdminOrNot(username string)(bool){
+	superAdmins:=state.parseSuperAdmins()
+	fmt.Print(superAdmins)
+	for _,user:=range superAdmins{
+		if user==username{
+			return true
+		}
+	}
+	return false
+}
 
 //All handlers and API endpoints starts from here.
 
@@ -378,7 +639,7 @@ func generateHTML(writer http.ResponseWriter, data interface{}, filenames ...str
 func (state *RuntimeState) GetallGroups_Handler(w http.ResponseWriter, r *http.Request) {
 	var AllGroups_TargetLdap GetGroups
 
-	Allgroups, err := state.Get_allGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
+	Allgroups, err := state.get_allGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
 
 	if err != nil {
 		log.Panic(err)
@@ -421,7 +682,7 @@ func (state *RuntimeState) GetGroupsofUser_Handler(w http.ResponseWriter, r *htt
 		var user_groups GetUserGroups
 
 		user_groups.UserName = params[0] //username is "cn" Attribute of a User
-		UsersAllgroups, err := state.GetGroupsOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, user_groups.UserName)
+		UsersAllgroups, err := state.getGroupsOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, user_groups.UserName)
 		sort.Strings(UsersAllgroups)
 		user_groups.UserGroups = UsersAllgroups
 
@@ -445,7 +706,7 @@ func (state *RuntimeState) GetUsersinGroup_Handler(w http.ResponseWriter, r *htt
 		var group_users GetGroupUsers
 
 		group_users.GroupName = params[0] //username is "cn" Attribute of a User
-		AllUsersinGroup, err := state.GetUsersofaGroup(state.Config.TargetLDAP.GroupSearchBaseDNs, group_users.GroupName)
+		AllUsersinGroup, err := state.getUsersofaGroup(group_users.GroupName)
 		sort.Strings(AllUsersinGroup[0])
 		group_users.Groupusers = AllUsersinGroup[0]
 
@@ -459,38 +720,29 @@ func (state *RuntimeState) GetUsersinGroup_Handler(w http.ResponseWriter, r *htt
 }
 
 
-
-
-func (state *RuntimeState) CreateGroup(w http.ResponseWriter, r *http.Request) {
-
-}
-
-
-func (state *RuntimeState) DeleteGroup(w http.ResponseWriter, r *http.Request) {
-
-}
-
-
-
 //Main page with all LDAP groups displayed
-func  (state *RuntimeState) Index_Handler(w http.ResponseWriter, r *http.Request){
-
-	Allgroups,err:= state.Get_allGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
+func  (state *RuntimeState) Index_Handler(w http.ResponseWriter, r *http.Request) {
+	userInfo, err := authhandler.GetRemoteUserInfo(r)
+	if err != nil {
+		panic(err)
+	}
+	if userInfo == nil {
+		panic("null userinfo!")
+	}
+	Allgroups, err := state.get_allGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
 
 	if err != nil {
 		log.Panic(err)
 	}
 	sort.Strings(Allgroups)
-
+	response := Response{*userInfo.Username, Allgroups, nil}
 	//response.UserName=*userInfo.Username
-	response:=Response{"",Allgroups,nil}
-	fmt.Println(response.Groups)
+	if (state.userisAdminOrNot(*userInfo.Username)) {
+		generateHTML(w,response,"index","admins_sidebar","groups")
 
-	generateHTML(w,response,"index","sidebar","groups")
-	//tpl=parseTemplateFiles("index","sidebar","groups")
-
-
-	//tpl.Execute(w,response)
+	} else {
+		generateHTML(w, response, "index", "sidebar","groups")
+	}
 }
 
 //Group page.
@@ -503,23 +755,6 @@ func (state *RuntimeState) Group_Handler(w http.ResponseWriter, r *http.Request)
 
 //User Groups page
 func (state *RuntimeState) MyGroups_Handler(w http.ResponseWriter,r *http.Request){
-	vals := r.URL.Query()
-	user_groups,err:=state.GetGroupsOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs,vals.Get("username"))
-	if(err!=nil){
-		log.Println(err)
-	}
-	sort.Strings(user_groups)
-	response:=Response{vals.Get("username"),user_groups,nil}
-	generateHTML(w,response,"index","sidebar","my_groups")
-
-}
-
-//User's Pending Actions
-func (state *RuntimeState) Pending_Actions(w http.ResponseWriter,r *http.Request){
-
-}
-
-func (state *RuntimeState) userinfo_handler(w http.ResponseWriter, r *http.Request) {
 	userInfo, err := authhandler.GetRemoteUserInfo(r)
 	if err != nil {
 		panic(err)
@@ -527,7 +762,56 @@ func (state *RuntimeState) userinfo_handler(w http.ResponseWriter, r *http.Reque
 	if userInfo == nil {
 		panic("null userinfo!")
 	}
-	fmt.Fprintf(w, "Hi there, %s loves %s!", *userInfo.Username, r.URL.Path[1:])
+	vals := r.URL.Query()
+	user_groups,err:=state.getGroupsOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs,vals.Get("username"))
+	if(err!=nil){
+		log.Println(err)
+	}
+	sort.Strings(user_groups)
+	response:=Response{vals.Get("username"),user_groups,nil}
+	if(state.userisAdminOrNot(*userInfo.Username)) {
+		generateHTML(w, response, "index", "admins_sidebar", "my_groups")
+	} else{
+		generateHTML(w,response,"index","sidebar","my_groups")
+	}
+}
+
+//User's Pending Actions
+func (state *RuntimeState) Pending_Actions(w http.ResponseWriter,r *http.Request){
+
+}
+
+
+
+func (state *RuntimeState) creategroup_WebpageHandler(w http.ResponseWriter, r *http.Request){
+	userInfo, err := authhandler.GetRemoteUserInfo(r)
+	if err != nil {
+		panic(err)
+	}
+	if userInfo == nil {
+		panic("null userinfo!")
+	}
+	if state.userisAdminOrNot(*userInfo.Username){
+		generateHTML(w,nil,"index","admins_sidebar","create_group")
+	} else {
+	http.NotFoundHandler()
+	}
+}
+
+
+func (state *RuntimeState) deletegroup_WebpageHandler(w http.ResponseWriter, r *http.Request){
+	userInfo, err := authhandler.GetRemoteUserInfo(r)
+	if err != nil {
+		panic(err)
+	}
+	if userInfo == nil {
+		panic("null userinfo!")
+	}
+	if state.userisAdminOrNot(*userInfo.Username){
+		generateHTML(w,nil,"index","admins_sidebar","delete_group")
+	} else {
+		http.NotFoundHandler()
+	}
 }
 
 
@@ -583,22 +867,26 @@ func main() {
 		panic(err)
 	}
 
-	router := http.NewServeMux()
+	http.HandleFunc("/allgroups", state.GetallGroups_Handler)
+	http.HandleFunc("/allusers", state.GetallUsers_Handler)
+	http.HandleFunc("/user_groups/", state.GetGroupsofUser_Handler)
+	http.HandleFunc("/group_users/", state.GetUsersinGroup_Handler)
 
-	router.HandleFunc("/allgroups", state.GetallGroups_Handler)
-	router.HandleFunc("/allusers", state.GetallUsers_Handler)
-	router.HandleFunc("/create_group", state.CreateGroup)
-	router.HandleFunc("/user_groups/", state.GetGroupsofUser_Handler)
-	router.HandleFunc("/group_users/", state.GetUsersinGroup_Handler)
-	router.HandleFunc("/Delete_group", state.DeleteGroup)
 
-	router.Handle("/index.html", simpleOidcAuth.Handler(http.HandlerFunc(state.Index_Handler)))
-	router.HandleFunc("/group/",state.Group_Handler)
-	router.HandleFunc("/mygroups/",state.MyGroups_Handler)
-	router.HandleFunc("/pending-actions/",state.Pending_Actions)
+	http.Handle("/create_group", simpleOidcAuth.Handler(http.HandlerFunc(state.creategroup_WebpageHandler)))
+	http.Handle("/delete_group", simpleOidcAuth.Handler(http.HandlerFunc(state.deletegroup_WebpageHandler)))
+	http.Handle("/create_group/",simpleOidcAuth.Handler(http.HandlerFunc(state.createGroup_handler)))
+	http.Handle("/delete_group/",simpleOidcAuth.Handler(http.HandlerFunc(state.deleteGroup_handler)))
+
+
+	http.Handle("/index.html", simpleOidcAuth.Handler(http.HandlerFunc(state.Index_Handler)))
+	http.HandleFunc("/group/",state.Group_Handler)
+	http.Handle("/mygroups/",simpleOidcAuth.Handler(http.HandlerFunc(state.MyGroups_Handler)))
+	http.Handle("/pending-actions/",simpleOidcAuth.Handler(http.HandlerFunc(state.Pending_Actions)))
 	fs:=http.FileServer(http.Dir("templates"))
-	router.Handle("/css/",fs)
-	router.Handle("/js/",fs)
-	router.Handle("/images/",fs)
-	log.Fatal(http.ListenAndServeTLS(":11000", state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename, router))
+	http.Handle("/css/",fs)
+	http.Handle("/js/",fs)
+	http.Handle("/images/",fs)
+	log.Fatal(http.ListenAndServeTLS(":11000", state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename, nil))
+
 }

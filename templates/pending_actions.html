@@ -1,0 +1,19 @@
+{{ define "pending actions"}}
+
+<header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-cog fa-fw"></i>My Pending Requests</b><button class="w3-button w3-right w3-text-new-white w3-new-blue" onclick="alert({{.Groups}})">Cancel Requests</button></h5>
+</header>
+
+<div class="w3-panel">
+    <table class="w3-table w3-striped w3-white" id="display">
+
+    </table>
+    <div class="w3-center">
+        <div class="pagination w3-center w3-border w3-round" id="paging">
+
+        </div>
+    </div>
+</div>
+
+
+{{end}}
