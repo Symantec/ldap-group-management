@@ -1,14 +1,12 @@
-{{ define "content"}}
+{{define "content"}}
 
-
-<!-- Header -->
 <header class="w3-container" style="padding-top:12px">
-    <h5><b><i class="fa fa-group"></i>Ldap Groups</b>
+    <h5><b><i class="fa fa-group"></i>My Pending Group Requests</b>
     </h5>
 </header>
 
 <div class="w3-panel">
-    <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn" data-toggle="modal" data-target="#myModal">Request Access</button>
+    <button class="w3-button w3-right w3-text-new-white w3-red" id="length_btn" data-toggle="modal" data-target="#myModal">Delete Requests</button>
     <div class="modal fade" id="myModal" role="dialog">
         <div class="modal-dialog">
 
@@ -19,10 +17,10 @@
                     <h4 class="modal-title">Action Required</h4>
                 </div>
                 <div class="modal-body">
-                    <p>Are you sure you want to request access for these <span id="add_here"></span> selected groups?</p>
+                    <p>Are you sure you want to delete <span id="add_here"></span> selected requests?</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" id="btn_requestaccess" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" id="btn_deleterequest" data-dismiss="modal">Confirm</button>
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                 </div>
             </div>
@@ -30,11 +28,10 @@
         </div>
     </div>
 
+
     <table class="w3-table w3-striped w3-white" id="display">
 
     </table>
 
-
 </div>
-
 {{ end }}

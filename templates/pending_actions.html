@@ -1,19 +1,58 @@
-{{ define "pending actions"}}
+{{define "content"}}
 
 <header class="w3-container" style="padding-top:12px">
-    <h5><b><i class="fa fa-cog fa-fw"></i>My Pending Requests</b><button class="w3-button w3-right w3-text-new-white w3-new-blue" onclick="alert({{.Groups}})">Cancel Requests</button></h5>
+    <h5><b><i class="fa fa-group"></i>My Pending Actions</b>
+    </h5>
 </header>
 
 <div class="w3-panel">
-    <table class="w3-table w3-striped w3-white" id="display">
+    <button class="w3-button w3-right w3-text-new-white w3-red"  id="length_btn1" data-toggle="modal" data-target="#myModal">Reject Requests</button>
+    <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn2" data-toggle="modal" data-target="#myModal1">Approve Requests</button>
+    <div class="modal fade" id="myModal" role="dialog">
+        <div class="modal-dialog">
 
-    </table>
-    <div class="w3-center">
-        <div class="pagination w3-center w3-border w3-round" id="paging">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to reject <span id="add_here1"></span> selected requests?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" id="btn_reject" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
 
         </div>
     </div>
+    <div class="modal fade" id="myModal1" role="dialog">
+        <div class="modal-dialog">
+
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to approve the <span id="add_here2"></span> selected requests?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" id="btn_approve" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <table class="w3-table w3-striped w3-white" id="pending_actions">
+
+    </table>
+
 </div>
-
-
-{{end}}
+{{ end }}

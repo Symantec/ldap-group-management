@@ -3,13 +3,10 @@
 <nav class="w3-sidebar w3-collapse w3-white w3-animate-left" style="z-index:3;width:300px;" id="mySidebar"><br>
     <div class="w3-container w3-row">
         <div class="w3-col s4">
-            <img src="http://localhost:11000/images/avatar2.png" class="w3-circle w3-margin-right" style="width:46px">
+            <img src="https://v-groupmanager-dev-001.us-west-2.aws.symcpe.net:443/images/avatar2.png" class="w3-circle w3-margin-right" style="width:46px">
         </div>
         <div class="w3-col s8 w3-bar">
             <span>Welcome, <strong>{{.UserName}}</strong></span><br>
-           <!-- <a href="" class="w3-bar-item w3-button"><i class="fa fa-envelope"></i></a>-->
-            <a href="/mygroups/?username={{.UserName}}" class="w3-bar-item w3-button"><i class="fa fa-user"></i></a>
-            <a href="/pending-actions/?username={{.UserName}}" class="w3-bar-item w3-button"><i class="fa fa-cog"></i></a>
         </div>
     </div>
     <hr>
@@ -21,7 +18,7 @@
         <a href="/index.html" class="w3-bar-item w3-button w3-padding w3-blue"><i class="fa fa-users fa-fw"></i>&nbsp; Home</a>
         <a href="/mygroups/?username={{.UserName}}" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; My Groups</a>
         <a href="/pending-actions/?username={{.UserName}}" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Actions</a>
-        <a href="/pending-requests/?username={{.UserName}}" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Requests</a>
+        <a href="/pending-requests" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Requests</a>
         <br><br>
     </div>
 </nav>
