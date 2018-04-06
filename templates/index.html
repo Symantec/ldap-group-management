@@ -15,14 +15,14 @@
     </style>
     <style type="text/css" media="screen">
         @import url("/css/new.css");
-        @import url("/css/font-awesome.min.css");
-        @import url("/css/jquery.dataTables.min.css");
-        @import url("/css/bootstrap.min.css");
+        @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css");
+        @import url("https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css");
+        @import url("https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css");
         @import url("/images");
         @import url("/fonts/fontawesome-webfont.woff2");
-        @import url("/css/dataTables.bootstrap4.min.css");
-       /* @import url("/templates/css/css");*/
+        @import url("https://cdn.datatables.net/1.10.16/css/dataTables.bootstrap4.min.css");
     </style>
+
 
     <script src="/js/jquery-3.3.1.js"></script>
     <script src="/js/jquery.dataTables.min.js"></script>
@@ -38,7 +38,7 @@
 <div class="w3-bar w3-top w3-new-blue w3-large" style="z-index: 4">
    <button class="w3-bar-item w3-button w3-hide-large w3-hover-none w3-hover-text-light-grey" onclick="w3_open();"><i class="fa fa-bars"></i> &nbsp;Menu</button>
     <div>
-        <img src="https://v-groupmanager-dev-001.us-west-2.aws.symcpe.net:443/images/CPEdarkBG.svg" alt="CPE Logo" style="height: 28px">
+        <img src="/images/darkBG.svg" alt="CPE Logo" style="height: 28px">
         <span class="w3-bar-item w3-right w3-text-new-white"><strong><b>LDAP GROUP MANAGEMENT</b></strong></span>
     </div>
 </div>
@@ -240,7 +240,7 @@
             }
             console.log(request_groups.groups);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            window.location.href="https://v-groupmanager-dev-001.us-west-2.aws.symcpe.net:443/pending-actions";
+            window.location.reload();
         } );
     } );
 

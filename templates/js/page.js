@@ -56,7 +56,7 @@ function decrease(){
 function page(i){
     var a=i-1;
     var text2='<tbody>';
-    var href_link="http://localhost:11000/group/?groupname=";
+    var href_link="/group/?groupname=";
     if (12 * (a) + 12 <= arr.length){
         for (j = 12 * a; j <= (12 * a) + 12; j++) {
             var value=arr[j];

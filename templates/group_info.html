@@ -11,7 +11,7 @@
         <script>
             var xhttp = new XMLHttpRequest();
             method="GET";
-            url = "http://localhost:11000/allgroups";
+            url = "/allgroups";
             xhttp.open(method, url, false);
             xhttp.send(null);
             var response = JSON.parse(xhttp.responseText);
