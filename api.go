@@ -117,7 +117,6 @@ func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http
 		return
 
 	}
-
 	err=json.NewEncoder(w).Encode(group_users)
 	if err != nil {
 		log.Println(err)
