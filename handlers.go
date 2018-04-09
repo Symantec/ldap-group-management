@@ -10,18 +10,24 @@ import (
 )
 
 //Main page with all LDAP groups displayed
-func  (state *RuntimeState) Index_Handler(w http.ResponseWriter, r *http.Request) {
+func  (state *RuntimeState) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	Allgroups, err := state.get_allGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
 
 	if err != nil {
-		log.Panic(err)
+		log.Println(err)
+		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+		return
 	}
 	sort.Strings(Allgroups)
 	user := *userInfo.Username
@@ -37,7 +43,7 @@ func  (state *RuntimeState) Index_Handler(w http.ResponseWriter, r *http.Request
 
 
 //Group page.
-func (state *RuntimeState) Group_Handler(w http.ResponseWriter, r *http.Request){
+func (state *RuntimeState) GroupHandler(w http.ResponseWriter, r *http.Request){
 	vals := r.URL.Query()
 
 	generateHTML(w,vals.Get("groupname"),"index","sidebar","group_info")
@@ -46,18 +52,24 @@ func (state *RuntimeState) Group_Handler(w http.ResponseWriter, r *http.Request)
 
 
 //User Groups page
-func (state *RuntimeState) MyGroups_Handler(w http.ResponseWriter,r *http.Request){
+func (state *RuntimeState) MyGroupsHandler(w http.ResponseWriter,r *http.Request){
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	username := *userInfo.Username
 	user_groups,err:=state.getGroupsOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs,username)
 	if(err!=nil){
 		log.Println(err)
+		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+		return
 	}
 	sort.Strings(user_groups)
 	response:=Response{username,user_groups,nil,nil}
@@ -70,16 +82,25 @@ func (state *RuntimeState) MyGroups_Handler(w http.ResponseWriter,r *http.Reques
 
 
 //user's pending requests
-func (state *RuntimeState) pending_Requests(w http.ResponseWriter,r *http.Request) {
+func (state *RuntimeState) pendingRequests(w http.ResponseWriter,r *http.Request) {
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	username := *userInfo.Username
-	groupnames, _, _ := state.findrequestsofUserinDB(username)
+	groupnames,_,err := state.findrequestsofUserinDB(username)
+	if err!=nil{
+		log.Println(err)
+		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+		return
+	}
 	response := Response{UserName: username, Groups: groupnames, Users: nil,Pending_actions:nil}
 	if groupnames == nil {
 		if state.userisAdminOrNot(username) == true {
@@ -99,19 +120,25 @@ func (state *RuntimeState) pending_Requests(w http.ResponseWriter,r *http.Reques
 }
 
 
-func (state *RuntimeState) creategroup_WebpageHandler(w http.ResponseWriter, r *http.Request){
+func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *http.Request){
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	username := *userInfo.Username
 	Allgroups, err := state.get_allGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
 
 	if err != nil {
-		log.Panic(err)
+		log.Println(err)
+		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+		return
 	}
 	sort.Strings(Allgroups)
 	response:=Response{username,Allgroups,nil,nil}
@@ -123,13 +150,17 @@ func (state *RuntimeState) creategroup_WebpageHandler(w http.ResponseWriter, r *
 }
 
 
-func (state *RuntimeState) deletegroup_WebpageHandler(w http.ResponseWriter, r *http.Request){
+func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *http.Request){
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	username := *userInfo.Username
 	response:=Response{username,nil,nil,nil}
@@ -142,26 +173,33 @@ func (state *RuntimeState) deletegroup_WebpageHandler(w http.ResponseWriter, r *
 
 
 //requesting access by users to join in groups...
-func (state *RuntimeState) request_AccessHandler(w http.ResponseWriter,r *http.Request) {
+func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter,r *http.Request) {
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	username := *userInfo.Username
 	var out map[string][]string
 	err = json.NewDecoder(r.Body).Decode(&out)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+		return
 	}
 	log.Println(out)
-	fmt.Print(out["groups"])
+	//fmt.Print(out["groups"])
 	err = state.insertRequestInDB(username, out["groups"])
 	if err != nil {
-		http.Error(w, "oops! an error occured.", http.StatusInternalServerError)
 		log.Println(err)
+		http.Error(w, "oops! an error occured.", http.StatusInternalServerError)
+		return
 	}
 	if state.userisAdminOrNot(username) == true {
 		generateHTML(w, Response{UserName:username}, "index","admins_sidebar", "Accessrequestsent")
@@ -173,19 +211,25 @@ func (state *RuntimeState) request_AccessHandler(w http.ResponseWriter,r *http.R
 
 
 //delete access requests made by user
-func (state *RuntimeState) delete_requests(w http.ResponseWriter,r *http.Request) {
+func (state *RuntimeState) deleteRequests(w http.ResponseWriter,r *http.Request) {
 	userInfo, err :=authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	username := *userInfo.Username
 	var out map[string][]string
 	err = json.NewDecoder(r.Body).Decode(&out)
 	if err != nil {
-		panic(err)
+		log.Print(err)
+		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+		return
 	}
 	for _,entry := range out["groups"] {
 		err = state.deleteEntryInDB(username,entry)
@@ -196,19 +240,25 @@ func (state *RuntimeState) delete_requests(w http.ResponseWriter,r *http.Request
 }
 
 //Parses post info from create group button click.
-func (state *RuntimeState) Addmembers_toGroup(w http.ResponseWriter,r *http.Request){
+func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter,r *http.Request){
 	userInfo, err :=authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	username := *userInfo.Username
 	if state.userisAdminOrNot(username) {
 		err := r.ParseForm()
 		if err != nil {
-			panic("Cannot parse form")
+			log.Println("Cannot parse form")
+			http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+			return
 		}
 		var groupinfo group_info
 		groupinfo.groupname = r.PostFormValue("groupname")
@@ -219,7 +269,9 @@ func (state *RuntimeState) Addmembers_toGroup(w http.ResponseWriter,r *http.Requ
 		}
 		err = state.create_Group(groupinfo)
 		if err != nil {
-			panic(err)
+			log.Println(err)
+			http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+			return
 		}
 	} else {
 		http.NotFoundHandler()
@@ -228,19 +280,26 @@ func (state *RuntimeState) Addmembers_toGroup(w http.ResponseWriter,r *http.Requ
 }
 
 
-func (state *RuntimeState) exitfrom_group(w http.ResponseWriter,r *http.Request){
+func (state *RuntimeState) exitfromGroup(w http.ResponseWriter,r *http.Request){
 	userInfo, err :=authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	username := *userInfo.Username
 	var out map[string][]string
 	err = json.NewDecoder(r.Body).Decode(&out)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+		return
+
 	}
 	var groupinfo group_info
 	groupinfo.member=append(groupinfo.member,state.Create_UserDN(username))
@@ -257,25 +316,31 @@ func (state *RuntimeState) exitfrom_group(w http.ResponseWriter,r *http.Request)
 
 
 
-func (state *RuntimeState) Addmembers_webpagehandler(w http.ResponseWriter,r *http.Request){
+func (state *RuntimeState) Addmemberswebpagehandler(w http.ResponseWriter,r *http.Request){
 
 
 }
 
 
 //User's Pending Actions
-func (state *RuntimeState) pending_Actions(w http.ResponseWriter,r *http.Request){
+func (state *RuntimeState) pendingActions(w http.ResponseWriter,r *http.Request){
 	userInfo, err :=authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	username := *userInfo.Username
 	DB_entries,err:=state.getDB_entries()
 	if err!=nil{
-		panic(err)
+		log.Println(err)
+		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+		return
 	}
 	var description string
 	var response Response
@@ -283,7 +348,9 @@ func (state *RuntimeState) pending_Actions(w http.ResponseWriter,r *http.Request
 	for _,entry:=range DB_entries{
 		description,err=state.getDescription_value(entry[1])
 		if err!=nil{
-			panic(err)
+			log.Println(err)
+			http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+			return
 		}
 		if description=="self-managed"{
 			if state.isGroupMemberorNot(entry[1],username){
@@ -315,19 +382,25 @@ func (state *RuntimeState) pending_Actions(w http.ResponseWriter,r *http.Request
 
 
 //Approving
-func (state *RuntimeState) approve_handler(w http.ResponseWriter,r *http.Request) {
+func (state *RuntimeState) approveHandler(w http.ResponseWriter,r *http.Request) {
 	userInfo, err :=authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	username := *userInfo.Username
 	var out map[string][][]string
 	err = json.NewDecoder(r.Body).Decode(&out)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+		return
 	}
 	log.Println(out)
 	log.Println(out["groups"])
@@ -347,7 +420,7 @@ func (state *RuntimeState) approve_handler(w http.ResponseWriter,r *http.Request
 			groupinfo.member = append(groupinfo.member, state.Create_UserDN(entry[0]))
 			err := state.Addmembers_toexisting(groupinfo)
 			if err != nil {
-				panic(err)
+				log.Println(err)
 			}
 			err=state.deleteEntryInDB(entry[0],entry[1])
 			if err!=nil{
@@ -362,27 +435,33 @@ func (state *RuntimeState) approve_handler(w http.ResponseWriter,r *http.Request
 
 
 //Reject handler
-func (state *RuntimeState) reject_handler(w http.ResponseWriter,r *http.Request){
+func (state *RuntimeState) rejectHandler(w http.ResponseWriter,r *http.Request){
 	userInfo, err :=authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	username := *userInfo.Username
 	var out map[string][][]string
 	err=json.NewDecoder(r.Body).Decode(&out)
-	if err!=nil{
-		panic(err)
+	if err!=nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
-	log.Println(out)
-	fmt.Print(out["groups"])//[[username1,groupname1][username2,groupname2]]
+	//log.Println(out)
+	//fmt.Print(out["groups"])//[[username1,groupname1][username2,groupname2]]
 	for _,entry:=range out["groups"]{
 		fmt.Println(entry[0],entry[1])
 		err=state.deleteEntryInDB(entry[0], entry[1])
 		if err!=nil{
-			fmt.Println("I am the error")
+			//fmt.Println("I am the error")
 			log.Println(err)
 		}
 		//write logs code here
@@ -395,20 +474,26 @@ func (state *RuntimeState) reject_handler(w http.ResponseWriter,r *http.Request)
 
 // POST
 // Create a group handler --required
-func (state *RuntimeState) createGroup_handler(w http.ResponseWriter,r *http.Request){
+func (state *RuntimeState) createGrouphandler(w http.ResponseWriter,r *http.Request){
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	//vals:=r.URL.Query()
 	username:=*userInfo.Username
 	if state.userisAdminOrNot(username){
 		err := r.ParseForm()
 		if err != nil {
-			panic("Cannot parse form")
+			log.Println(err)
+			http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+			return
 		}
 		var groupinfo group_info
 		groupinfo.groupname = r.PostFormValue("groupname")
@@ -420,8 +505,9 @@ func (state *RuntimeState) createGroup_handler(w http.ResponseWriter,r *http.Req
 		}
 		err = state.create_Group(groupinfo)
 		if err != nil {
+			log.Println(err)
 			http.Error(w,"error occurred! May be group name exists or may be members are not available!",http.StatusInternalServerError)
-			log.Print(err)
+			return
 		}
 		if state.userisAdminOrNot(username) == true {
 			generateHTML(w, Response{UserName:username}, "index","admins_sidebar", "groupcreation_success")
@@ -437,13 +523,17 @@ func (state *RuntimeState) createGroup_handler(w http.ResponseWriter,r *http.Req
 
 
 //Delete groups handler --required
-func (state *RuntimeState) deleteGroup_handler(w http.ResponseWriter,r *http.Request){
+func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter,r *http.Request){
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
 	}
 	if userInfo == nil {
-		panic("null userinfo!")
+		log.Println("null userinfo!")
+		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return
 	}
 	//vals:=r.URL.Query()
 	username:=*userInfo.Username
@@ -459,12 +549,15 @@ func (state *RuntimeState) deleteGroup_handler(w http.ResponseWriter,r *http.Req
 		}
 		err = state.delete_Group(groupnames)
 		if err != nil {
+			log.Println(err)
 			http.Error(w,"error occurred! May be there is no such group!",http.StatusInternalServerError)
-			log.Print(err)
+			return
 		}
 		err=state.deleteEntryofGroupsInDB(groupnames)
-		if err!=nil{
-			panic(err)
+		if err!=nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
 		}
 		if state.userisAdminOrNot(username) == true {
 			generateHTML(w, Response{UserName:username}, "index","admins_sidebar", "groupdeletion_success")
