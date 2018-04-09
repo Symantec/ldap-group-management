@@ -256,7 +256,7 @@ func (state *RuntimeState) current_maximumGidNumber()(string,error){
 		}
 	}
 	fmt.Println(max)
-	return string(max+1),nil
+	return fmt.Sprint(max+1),nil
 }
 
 
