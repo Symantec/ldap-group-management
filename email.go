@@ -61,7 +61,7 @@ func (state *RuntimeState) success_request_email(requesteduser string,users_emai
 	// Send the email body.
 	wc, err := c.Data()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer wc.Close()
 	//get browser details
@@ -139,7 +139,7 @@ func (state *RuntimeState) approve_request_email(requesteduser string,otheruser 
 	// Send the email body.
 	wc, err := c.Data()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer wc.Close()
 	//get browser details
@@ -218,7 +218,7 @@ func (state *RuntimeState) reject_request_email(requesteduser string,otheruser s
 	// Send the email body.
 	wc, err := c.Data()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer wc.Close()
 	//get browser details
