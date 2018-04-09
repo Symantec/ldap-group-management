@@ -19,7 +19,7 @@ func (state *RuntimeState) GetallgroupsHandler(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return 
+		return
 	}
 	sort.Strings(Allgroups)
 	AllGroups_TargetLdap.AllGroups = Allgroups
