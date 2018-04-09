@@ -102,20 +102,16 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter,r *http.Request
 		return
 	}
 	response := Response{UserName: username, Groups: groupnames, Users: nil,Pending_actions:nil}
+	sidebarType:="sidebar"
+	if state.userisAdminOrNot(username){
+		sidebarType="admins_sidebar"
+	}
 	if groupnames == nil {
-		if state.userisAdminOrNot(username) == true {
-			generateHTML(w, response, "index", "admins_sidebar", "no_pending_requests")
+		generateHTML(w, response, "index", sidebarType, "no_pending_requests")
 
-		} else {
-			generateHTML(w, response, "index", "sidebar", "no_pending_requests")
-		}
 	} else {
-		if state.userisAdminOrNot(username) == true {
-			generateHTML(w, response, "index", "admins_sidebar", "pending_requests")
+		generateHTML(w, response, "index", sidebarType, "pending_requests")
 
-		} else {
-			generateHTML(w, response, "index", "sidebar", "pending_requests")
-		}
 	}
 }
 
@@ -140,13 +136,16 @@ func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *h
 		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
 		return
 	}
-	sort.Strings(Allgroups)
-	response:=Response{username,Allgroups,nil,nil}
-	if state.userisAdminOrNot(username){
-		generateHTML(w,response,"index","admins_sidebar","create_group")
-	} else {
-		http.NotFoundHandler()
+	if !state.userisAdminOrNot(username) {
+		http.Error(w,"you are not authorized",http.StatusUnauthorized)
+		return
 	}
+	sort.Strings(Allgroups)
+
+	response:=Response{username,Allgroups,nil,nil}
+
+	generateHTML(w,response,"index","admins_sidebar","create_group")
+
 }
 
 
@@ -163,12 +162,15 @@ func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *h
 		return
 	}
 	username := *userInfo.Username
-	response:=Response{username,nil,nil,nil}
-	if state.userisAdminOrNot(username){
-		generateHTML(w,response,"index","admins_sidebar","delete_group")
-	} else {
-		http.NotFoundHandler()
+
+	if !state.userisAdminOrNot(username) {
+		http.Error(w,"you are not authorized",http.StatusUnauthorized)
+		return
 	}
+	response:=Response{username,nil,nil,nil}
+
+	generateHTML(w,response,"index","admins_sidebar","delete_group")
+
 }
 
 
@@ -240,8 +242,8 @@ func (state *RuntimeState) deleteRequests(w http.ResponseWriter,r *http.Request)
 }
 
 //Parses post info from create group button click.
-func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter,r *http.Request){
-	userInfo, err :=authSource.GetRemoteUserInfo(r)
+func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter,r *http.Request) {
+	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -249,34 +251,33 @@ func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter,r *http.Reque
 	}
 	if userInfo == nil {
 		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		http.Error(w, "null userinfo", http.StatusInternalServerError)
 		return
 	}
 	username := *userInfo.Username
-	if state.userisAdminOrNot(username) {
-		err := r.ParseForm()
-		if err != nil {
-			log.Println("Cannot parse form")
-			http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
-			return
-		}
-		var groupinfo group_info
-		groupinfo.groupname = r.PostFormValue("groupname")
-		members := r.PostFormValue("members")
-		for _, member := range strings.Split(members, ",") {
-			groupinfo.memberUid = append(groupinfo.memberUid, member)
-			groupinfo.member = append(groupinfo.member, state.Create_UserDN(member))
-		}
-		err = state.create_Group(groupinfo)
-		if err != nil {
-			log.Println(err)
-			http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
-			return
-		}
-	} else {
-		http.NotFoundHandler()
+	if !state.userisAdminOrNot(username) {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 	}
 
+	err = r.ParseForm()
+	if err != nil {
+		log.Println("Cannot parse form")
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	var groupinfo group_info
+	groupinfo.groupname = r.PostFormValue("groupname")
+	members := r.PostFormValue("members")
+	for _, member := range strings.Split(members, ",") {
+		groupinfo.memberUid = append(groupinfo.memberUid, member)
+		groupinfo.member = append(groupinfo.member, state.Create_UserDN(member))
+	}
+	err = state.create_Group(groupinfo)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
 }
 
 
@@ -323,8 +324,8 @@ func (state *RuntimeState) Addmemberswebpagehandler(w http.ResponseWriter,r *htt
 
 
 //User's Pending Actions
-func (state *RuntimeState) pendingActions(w http.ResponseWriter,r *http.Request){
-	userInfo, err :=authSource.GetRemoteUserInfo(r)
+func (state *RuntimeState) pendingActions(w http.ResponseWriter,r *http.Request) {
+	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -332,51 +333,48 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter,r *http.Request)
 	}
 	if userInfo == nil {
 		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		http.Error(w, "null userinfo", http.StatusInternalServerError)
 		return
 	}
 	username := *userInfo.Username
-	DB_entries,err:=state.getDB_entries()
-	if err!=nil{
+	DB_entries, err := state.getDB_entries()
+	if err != nil {
 		log.Println(err)
-		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
 	var description string
 	var response Response
-	response.UserName=username
-	for _,entry:=range DB_entries{
-		description,err=state.getDescription_value(entry[1])
-		if err!=nil{
+	response.UserName = username
+	for _, entry := range DB_entries {
+		description, err = state.getDescription_value(entry[1])
+		if err != nil {
 			log.Println(err)
-			http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
-		if description=="self-managed"{
-			if state.isGroupMemberorNot(entry[1],username){
-				response.Pending_actions=append(response.Pending_actions,entry)
-			}else{
+		if description == "self-managed" {
+			if state.isGroupMemberorNot(entry[1], username) {
+				response.Pending_actions = append(response.Pending_actions, entry)
+			} else {
 				continue
 			}
-		} else if state.isGroupMemberorNot(description,username){
-			response.Pending_actions=append(response.Pending_actions,entry)
+		} else if state.isGroupMemberorNot(description, username) {
+			response.Pending_actions = append(response.Pending_actions, entry)
 		}
 		continue
 	}
-	if response.Pending_actions==nil{
-		if state.userisAdminOrNot(username) == true {
-			generateHTML(w, response, "index", "admins_sidebar", "no_pending_actions")
+	sidebarType := "sidebar"
+	if state.userisAdminOrNot(username) {
+		sidebarType = "admins_sidebar"
+	}
 
-		} else {
-			generateHTML(w, response, "index", "sidebar", "no_pending_actions")
-		}
+	if response.Pending_actions == nil {
+		generateHTML(w, response, "index", sidebarType, "no_pending_actions")
+
 	} else {
-		if state.userisAdminOrNot(username) == true {
-			generateHTML(w, response, "index", "admins_sidebar", "pending_actions")
+		generateHTML(w, response, "index", sidebarType, "pending_actions")
 
-		} else {
-			generateHTML(w, response, "index", "sidebar", "pending_actions")
-		}
 	}
 }
 
@@ -402,8 +400,8 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter,r *http.Request)
 		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
 		return
 	}
-	log.Println(out)
-	log.Println(out["groups"])
+	//log.Println(out)
+	//log.Println(out["groups"])
 	var user_pair = out["groups"]
 	for _, entry := range user_pair {
 		if state.isGroupMemberorNot(entry[1],entry[0]) {
@@ -464,7 +462,6 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter,r *http.Request){
 			//fmt.Println("I am the error")
 			log.Println(err)
 		}
-		//write logs code here
 	}
 	go state.send_reject_email(username,out["groups"],r.RemoteAddr,r.UserAgent())
 
@@ -488,36 +485,34 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter,r *http.Requ
 	}
 	//vals:=r.URL.Query()
 	username:=*userInfo.Username
-	if state.userisAdminOrNot(username){
-		err := r.ParseForm()
-		if err != nil {
-			log.Println(err)
-			http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
-			return
-		}
-		var groupinfo group_info
-		groupinfo.groupname = r.PostFormValue("groupname")
-		groupinfo.description = r.PostFormValue("description")
-		members := r.PostFormValue("members")
-		for _, member := range strings.Split(members, ",") {
-			groupinfo.memberUid = append(groupinfo.memberUid, member)
-			groupinfo.member = append(groupinfo.member, state.Create_UserDN(member))
-		}
-		err = state.create_Group(groupinfo)
-		if err != nil {
-			log.Println(err)
-			http.Error(w,"error occurred! May be group name exists or may be members are not available!",http.StatusInternalServerError)
-			return
-		}
-		if state.userisAdminOrNot(username) == true {
-			generateHTML(w, Response{UserName:username}, "index","admins_sidebar", "groupcreation_success")
-
-		} else {
-			generateHTML(w, Response{UserName:username}, "index","sidebar","groupcreation_success")
-		}
-	} else {
-		http.NotFoundHandler()
+	if !state.userisAdminOrNot(username){
+		http.Error(w,"you are not authorized ",http.StatusUnauthorized)
+		return
 	}
+	err = r.ParseForm()
+	if err != nil {
+		log.Println(err)
+		http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+		return
+	}
+	var groupinfo group_info
+	groupinfo.groupname = r.PostFormValue("groupname")
+	groupinfo.description = r.PostFormValue("description")
+	members := r.PostFormValue("members")
+
+	for _, member := range strings.Split(members, ",") {
+		groupinfo.memberUid = append(groupinfo.memberUid, member)
+		groupinfo.member = append(groupinfo.member, state.Create_UserDN(member))
+	}
+	err = state.create_Group(groupinfo)
+
+	if err != nil {
+		log.Println(err)
+		http.Error(w,"error occurred! May be group name exists or may be members are not available!",http.StatusInternalServerError)
+		return
+	}
+
+	generateHTML(w, Response{UserName:username}, "index","admins_sidebar", "groupcreation_success")
 }
 
 
@@ -537,36 +532,33 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter,r *http.Requ
 	}
 	//vals:=r.URL.Query()
 	username:=*userInfo.Username
-	if state.userisAdminOrNot(username) {
-		err := r.ParseForm()
-		if err != nil {
-			panic("Cannot parse form")
-		}
-		var groupnames []string
-		groups := r.PostFormValue("groupnames")
-		for _, eachGroup := range strings.Split(groups, ",") {
-			groupnames = append(groupnames, eachGroup)
-		}
-		err = state.delete_Group(groupnames)
-		if err != nil {
-			log.Println(err)
-			http.Error(w,"error occurred! May be there is no such group!",http.StatusInternalServerError)
-			return
-		}
-		err=state.deleteEntryofGroupsInDB(groupnames)
-		if err!=nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-		if state.userisAdminOrNot(username) == true {
-			generateHTML(w, Response{UserName:username}, "index","admins_sidebar", "groupdeletion_success")
 
-		} else {
-			generateHTML(w, Response{UserName:username}, "index","sidebar","groupdeletion_success")
-		}
-	} else{
-		http.NotFoundHandler()
+	if !state.userisAdminOrNot(username) {
+		http.Error(w,"you are not authorized",http.StatusUnauthorized)
 	}
+
+	err = r.ParseForm()
+	if err != nil {
+		panic("Cannot parse form")
+	}
+	var groupnames []string
+	groups := r.PostFormValue("groupnames")
+	for _, eachGroup := range strings.Split(groups, ",") {
+		groupnames = append(groupnames, eachGroup)
+	}
+	err = state.delete_Group(groupnames)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "error occurred! May be there is no such group!", http.StatusInternalServerError)
+		return
+	}
+	err=state.deleteEntryofGroupsInDB(groupnames)
+	if err!=nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	generateHTML(w, Response{UserName:username}, "index","admins_sidebar", "groupdeletion_success")
+
 }
 
