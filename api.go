@@ -23,8 +23,12 @@ func (state *RuntimeState) GetallgroupsHandler(w http.ResponseWriter, r *http.Re
 	}
 	sort.Strings(Allgroups)
 	AllGroups_TargetLdap.AllGroups = Allgroups
-	json.NewEncoder(w).Encode(AllGroups_TargetLdap)
-
+	err=json.NewEncoder(w).Encode(AllGroups_TargetLdap)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
 }
 
 
@@ -47,7 +51,12 @@ func (state *RuntimeState) GetallusersHandler(w http.ResponseWriter, r *http.Req
 		AllUsers_TargetLdap.Users = append(AllUsers_TargetLdap.Users, k)
 	}
 
-	json.NewEncoder(w).Encode(AllUsers_TargetLdap)
+	err=json.NewEncoder(w).Encode(AllUsers_TargetLdap)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
 }
 
 
@@ -76,7 +85,12 @@ func (state *RuntimeState) GetgroupsofuserHandler(w http.ResponseWriter, r *http
 	user_groups.UserGroups = UsersAllgroups
 
 
-	json.NewEncoder(w).Encode(user_groups)
+	err=json.NewEncoder(w).Encode(user_groups)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
 }
 
 
@@ -104,7 +118,12 @@ func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http
 
 	}
 
-	json.NewEncoder(w).Encode(group_users)
+	err=json.NewEncoder(w).Encode(group_users)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
 
 }
 
