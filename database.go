@@ -17,7 +17,7 @@ func initDB(state *RuntimeState) (err error) {
 		return err
 	}
 	if true {
-		sqlStmt := `create table if not exists pending_requests (username text not null, groupname text not null, time_stamp int not null);`
+		sqlStmt := `create table if not exists pending_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, username text not null, groupname text not null, time_stamp int not null);`
 		_, err = state.db.Exec(sqlStmt)
 		if err != nil {
 			log.Printf("init sqlite3 err: %s: %q\n", err, sqlStmt)
