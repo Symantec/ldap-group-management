@@ -11,29 +11,30 @@ import (
 ////Request Access email  start.....//////
 
 //for request access button
-func (state *RuntimeState) send_request_email(username string,groupnames []string,remoteAddr string,userAgent string)error{
+func (state *RuntimeState) SendRequestemail(username string,groupnames []string,
+	remoteAddr string,userAgent string)error{
 	for _,entry:=range groupnames{
-		description,err:=state.getDescription_value(entry)
+		description,err:=state.GetDescriptionvalue(entry)
 		if err!=nil{
 			log.Println(err)
 			return err
 		}
 		if description=="self-managed"{
-			users_email,err:=state.getEmailofUsersinGroup(entry)
+			users_email,err:=state.GetEmailofusersingroup(entry)
 			if err!=nil{
 				log.Println(err)
 				return err
 
 			}
-			state.success_request_email(username,users_email,entry,remoteAddr,userAgent)
+			state.SuccessRequestemail(username,users_email,entry,remoteAddr,userAgent)
 		}else{
-			users_email,err:=state.getEmailofUsersinGroup(entry)
+			users_email,err:=state.GetEmailofusersingroup(entry)
 			if err!=nil{
 				log.Println(err)
 				return err
 
 			}
-			state.success_request_email(username,users_email,entry,remoteAddr,userAgent)
+			state.SuccessRequestemail(username,users_email,entry,remoteAddr,userAgent)
 		}
 	}
 	return nil
@@ -45,7 +46,8 @@ const requestaccess_mailTemplateText = `Subject: Requesting access for group {{.
 User {{.RequestedUser}} has requested access for group {{.Groupname}} (from {{.RemoteAddr}} ({{.Browser}} {{.OS}} ))`
 
 //send email for requesting access to a group
-func (state *RuntimeState) success_request_email(requesteduser string,users_email []string,groupname string,remoteAddr string,userAgent string) error{
+func (state *RuntimeState) SuccessRequestemail(requesteduser string,users_email []string,
+	groupname string,remoteAddr string,userAgent string) error{
 	// Connect to the remote SMTP server.
 	c, err := smtp.Dial("smtp.example.net:25")
 	if err != nil {
@@ -96,8 +98,9 @@ const requestapprove_mailTemplateText = `Subject: Regarding access for group {{.
 User {{.OtherUser}} has Approved access to user {{.RequestedUser}} for group {{.Groupname}} (from {{.RemoteAddr}} ({{.Browser}} {{.OS}} ))`
 
 //send approve email
-func (state *RuntimeState) send_approve_email(username string,user_pair [][]string,remoteAddr string,userAgent string) error{
-	user_email,err:=state.getEmailofaUser(username)
+func (state *RuntimeState) sendApproveemail(username string,
+	user_pair [][]string,remoteAddr string,userAgent string) error{
+	user_email,err:=state.GetEmailofauser(username)
 	if err!=nil{
 		log.Println(err)
 		return err
@@ -106,13 +109,13 @@ func (state *RuntimeState) send_approve_email(username string,user_pair [][]stri
 		var target_address []string
 		target_address=append(target_address,user_email[0])
 		requesteduser:=entry[0]
-		otheruser_email,err:=state.getEmailofaUser(requesteduser)
+		otheruser_email,err:=state.GetEmailofauser(requesteduser)
 		if err!=nil{
 			log.Println(err)
 			return err
 		}
 		target_address=append(target_address,otheruser_email[0])
-		err=state.approve_request_email(requesteduser,username,target_address,entry[1],remoteAddr,userAgent)
+		err=state.approveRequestemail(requesteduser,username,target_address,entry[1],remoteAddr,userAgent)
 		if err!=nil{
 			log.Println(err)
 			return err
@@ -123,7 +126,8 @@ func (state *RuntimeState) send_approve_email(username string,user_pair [][]stri
 }
 
 //for approving requests in pending actions main email function
-func (state *RuntimeState) approve_request_email(requesteduser string,otheruser string,users_email []string,groupname string,remoteAddr string,userAgent string) error{
+func (state *RuntimeState) approveRequestemail(requesteduser string,otheruser string,users_email []string,
+	groupname string,remoteAddr string,userAgent string) error{
 	// Connect to the remote SMTP server.
 	c, err := smtp.Dial("smtp.example.net:25")
 	if err != nil {
@@ -175,8 +179,9 @@ const requestreject_mailTemplateText = `Subject: Regarding access for group {{.G
 User {{.OtherUser}} has Rejected access to user {{.RequestedUser}} for group {{.Groupname}} (from {{.RemoteAddr}} ({{.Browser}} {{.OS}} ))`
 
 //send reject email
-func (state *RuntimeState) send_reject_email(username string,user_pair [][]string,remoteAddr string,userAgent string) error{
-	user_email,err:=state.getEmailofaUser(username)
+func (state *RuntimeState) sendRejectemail(username string,user_pair [][]string,
+	remoteAddr string,userAgent string) error{
+	user_email,err:=state.GetEmailofauser(username)
 	if err!=nil{
 		log.Println(err)
 		return err
@@ -185,13 +190,13 @@ func (state *RuntimeState) send_reject_email(username string,user_pair [][]strin
 		var target_address []string
 		target_address=append(target_address,user_email[0])
 		requesteduser:=entry[0]
-		otheruser_email,err:=state.getEmailofaUser(requesteduser)
+		otheruser_email,err:=state.GetEmailofauser(requesteduser)
 		if err!=nil{
 			log.Println(err)
 			return err
 		}
 		target_address=append(target_address,otheruser_email[0])
-		err=state.reject_request_email(requesteduser,username,target_address,entry[1],remoteAddr,userAgent)
+		err=state.RejectRequestemail(requesteduser,username,target_address,entry[1],remoteAddr,userAgent)
 		if err!=nil{
 			log.Println(err)
 			return err
@@ -202,7 +207,8 @@ func (state *RuntimeState) send_reject_email(username string,user_pair [][]strin
 }
 
 
-func (state *RuntimeState) reject_request_email(requesteduser string,otheruser string,users_email []string,groupname string,remoteAddr string,userAgent string) error{
+func (state *RuntimeState) RejectRequestemail(requesteduser string,otheruser string,users_email []string,
+	groupname string,remoteAddr string,userAgent string) error{
 	// Connect to the remote SMTP server.
 	c, err := smtp.Dial("smtp.example.net:25")
 	if err != nil {

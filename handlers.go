@@ -427,7 +427,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter,r *http.Request)
 			}
 		}
 	}
-	go state.send_approve_email(username,out["groups"],r.RemoteAddr,r.UserAgent())
+	go state.sendApproveemail(username,out["groups"],r.RemoteAddr,r.UserAgent())
 	//generateHTML(w,username,"index","sidebar","Accessrequestsent")
 }
 
@@ -463,7 +463,7 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter,r *http.Request){
 			log.Println(err)
 		}
 	}
-	go state.send_reject_email(username,out["groups"],r.RemoteAddr,r.UserAgent())
+	go state.sendRejectemail(username,out["groups"],r.RemoteAddr,r.UserAgent())
 
 }
 
