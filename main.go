@@ -256,7 +256,7 @@ func main() {
 	http.Handle("/requestaccess",simpleOidcAuth.Handler(http.HandlerFunc(state.requestAccessHandler)))
 	http.Handle("/index.html", simpleOidcAuth.Handler(http.HandlerFunc(state.IndexHandler)))
 	http.Handle("/group/",simpleOidcAuth.Handler(http.HandlerFunc(state.GroupHandler)))
-	http.Handle("/mygroups/",simpleOidcAuth.Handler(http.HandlerFunc(state.MyGroupsHandler)))
+	http.Handle("/mygroups/",simpleOidcAuth.Handler(http.HandlerFunc(state.MygroupsHandler)))
 	http.Handle("/pending-actions",simpleOidcAuth.Handler(http.HandlerFunc(state.pendingActions)))
 	http.Handle("/pending-requests",simpleOidcAuth.Handler(http.HandlerFunc(state.pendingRequests)))
 	http.Handle("/deleterequests",simpleOidcAuth.Handler(http.HandlerFunc(state.deleteRequests)))
