@@ -49,13 +49,13 @@ User {{.RequestedUser}} has requested access for group {{.Groupname}} (from {{.R
 func (state *RuntimeState) SuccessRequestemail(requesteduser string,users_email []string,
 	groupname string,remoteAddr string,userAgent string) error{
 	// Connect to the remote SMTP server.
-	c, err := smtp.Dial("smtp.example.net:25")
+	c, err := smtp.Dial(state.Config.Base.SMTPserver)
 	if err != nil {
 		return err
 	}
 	defer c.Close()
 	// Set the sender and recipient.
-	c.Mail("ldap-group-manager-noreply@example.net")
+	c.Mail(state.Config.Base.SmtpSenderAddress)
 	for _, recipient := range users_email {
 		//c.Rcpt("recipient@example.net")
 		c.Rcpt(recipient)
@@ -129,13 +129,13 @@ func (state *RuntimeState) sendApproveemail(username string,
 func (state *RuntimeState) approveRequestemail(requesteduser string,otheruser string,users_email []string,
 	groupname string,remoteAddr string,userAgent string) error{
 	// Connect to the remote SMTP server.
-	c, err := smtp.Dial("smtp.example.net:25")
+	c, err := smtp.Dial(state.Config.Base.SMTPserver)
 	if err != nil {
 		return err
 	}
 	defer c.Close()
 	// Set the sender and recipient.
-	c.Mail("ldap-group-manager-noreply@example.net")
+	c.Mail(state.Config.Base.SmtpSenderAddress)
 	for _, recipient := range users_email {
 		//c.Rcpt("recipient@example.net")
 		c.Rcpt(recipient)
@@ -210,13 +210,13 @@ func (state *RuntimeState) sendRejectemail(username string,user_pair [][]string,
 func (state *RuntimeState) RejectRequestemail(requesteduser string,otheruser string,users_email []string,
 	groupname string,remoteAddr string,userAgent string) error{
 	// Connect to the remote SMTP server.
-	c, err := smtp.Dial("smtp.example.net:25")
+	c, err := smtp.Dial(state.Config.Base.SMTPserver)
 	if err != nil {
 		return err
 	}
 	defer c.Close()
 	// Set the sender and recipient.
-	c.Mail("ldap-group-manager-noreply@example.net")
+	c.Mail(state.Config.Base.SmtpSenderAddress)
 	for _, recipient := range users_email {
 		//c.Rcpt("recipient@example.net")
 		c.Rcpt(recipient)
