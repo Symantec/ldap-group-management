@@ -33,7 +33,7 @@ func initDB(state *RuntimeState) (err error) {
 //insert a request into DB
 func (state *RuntimeState) insertRequestInDB(username string,groupname []string) error {
 
-	stmtText := "insert into pending_requests(username, groupname, time_stamp) values (?,?,?)"
+	stmtText := "insert into pending_requests(username, groupname, time_stamp) values (?,?,?);"
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
 		log.Print("Error Preparing statement")
@@ -41,7 +41,7 @@ func (state *RuntimeState) insertRequestInDB(username string,groupname []string)
 	}
 	defer stmt.Close()
 	for _, entry := range groupname {
-		if state.entryExistsorNot(username, entry) || state.isGroupMemberorNot(entry,username){
+		if state.entryExistsorNot(username, entry) || state.IsgroupmemberorNot(entry,username){
 			continue
 		} else {
 
@@ -106,20 +106,19 @@ func (state *RuntimeState) findrequestsofUserinDB(username string) ([]string,boo
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			log.Printf("err='%s'", err)
-			defer rows.Close()
 			return nil,false,nil
 		} else {
 			log.Printf("Problem with db ='%s'", err)
-			defer rows.Close()
 			return nil,false, err
 		}
 	}
+	defer rows.Close()
+
 	for rows.Next(){
 		var group_Name string
 		err=rows.Scan(&group_Name)
 		groupname=append(groupname,group_Name)
 	}
-	defer rows.Close()
 
 	return groupname,true, nil
 
@@ -144,11 +143,10 @@ func (state *RuntimeState) entryExistsorNot(username string,groupname string)boo
 			return false
 		}
 	}
+	defer rows.Close()
 	if rows.Next() {
-		defer rows.Close()
 		return true
 	}
-	defer rows.Close()
 	return false
 }
 
@@ -167,14 +165,13 @@ func (state *RuntimeState) getDB_entries()([][]string,error){
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			log.Printf("err='%s'", err)
-			defer rows.Close()
 			return nil,err
 		} else {
 			log.Printf("Problem with db ='%s'", err)
-			defer rows.Close()
 			return nil,err
 		}
 	}
+	defer rows.Close()
 	var each_entry1 string
 	var each_entry2 string
 	for rows.Next(){
@@ -182,7 +179,6 @@ func (state *RuntimeState) getDB_entries()([][]string,error){
 		var each_entry =[]string{each_entry1,each_entry2}
 		entry=append(entry,each_entry)
 	}
-	defer rows.Close()
 	return entry,nil
 }
 
