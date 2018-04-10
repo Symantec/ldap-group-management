@@ -14,7 +14,7 @@ import (
 func (state *RuntimeState) GetallgroupsHandler(w http.ResponseWriter, r *http.Request) {
 	var AllGroups_TargetLdap GetGroups
 
-	Allgroups, err := state.get_allGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
+	Allgroups, err := state.getallGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
 
 	if err != nil {
 		log.Println(err)
@@ -74,7 +74,7 @@ func (state *RuntimeState) GetgroupsofuserHandler(w http.ResponseWriter, r *http
 	var user_groups GetUserGroups
 
 	user_groups.UserName = params[0] //username is "cn" Attribute of a User
-	UsersAllgroups, err := state.getGroupsOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, user_groups.UserName)
+	UsersAllgroups, err := state.GetgroupsofUser(state.Config.TargetLDAP.GroupSearchBaseDNs, user_groups.UserName)
 
 	if err != nil {
 		log.Println(err)
@@ -107,7 +107,7 @@ func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http
 	var group_users GetGroupUsers
 
 	group_users.GroupName = params[0] //username is "cn" Attribute of a User
-	AllUsersinGroup, err := state.getUsersofaGroup(group_users.GroupName)
+	AllUsersinGroup, err := state.GetusersofaGroup(group_users.GroupName)
 	sort.Strings(AllUsersinGroup[0])
 	group_users.Groupusers = AllUsersinGroup[0]
 
