@@ -1,0 +1,32 @@
+{{ define "content"}}
+
+
+<!-- Header -->
+<header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-group"></i>Create a Group</b></h5>
+</header>
+
+<div class="w3-panel">
+        <form method="POST" action="/create_group/?username={{.UserName}}">
+            <table class="w3-table w3-striped w3-white" id="creategroup">
+                <tr>
+                    <td>Group Name</td>
+                    <td><input name="groupname" type="text"/><br/></td>
+                </tr>
+                <tr>
+                    <td>description</td>
+                    <td><input list="datalist_groups" name="description" type="text"/>
+                        <datalist id="datalist_groups">
+                            <option value="self-managed">
+                        </datalist><br/></td>
+                </tr>
+                <tr>
+                    <td>Members</td>
+                    <td><textarea name="members" type="text" style="margin: 0px;height: 335px;width: 402px;"></textarea></td>
+                </tr>
+                <button class="w3-button w3-right w3-text-new-white w3-new-blue" type="submit" >Create Group</button>
+            </table>
+        </form>
+</div>
+
+{{ end }}
