@@ -29,6 +29,8 @@ type baseConfig struct {
 	TLSKeyFilename        string `yaml:"tls_key_filename"`
 	StorageURL            string `yaml:"storage_url"`
 	OpenIDCConfigFilename string `yaml:"openidc_config_filename"`
+	SMTPserver            string `yaml:"smtp_server"`
+	SmtpSenderAddress     string `yaml:"smtp_sender_address"`
 }
 
 type UserInfoLDAPSource struct {
