@@ -35,7 +35,7 @@ func (state *RuntimeState) GetallUsers(UserSearchBaseDNs string, UserSearchFilte
 
 
 //To build a user base DN using uid only for Target LDAP.
-func (state *RuntimeState) Create_UserDN(username string) string {
+func (state *RuntimeState) CreateuserDn(username string) string {
 	//uid := username
 	result := "uid=" + username + "," +state.Config.TargetLDAP.UserSearchBaseDNs
 
@@ -46,7 +46,7 @@ func (state *RuntimeState) Create_UserDN(username string) string {
 
 
 //To build a GroupDN for a particular group in Target ldap
-func (state *RuntimeState) Create_GroupDN(groupname string) string {
+func (state *RuntimeState) CreategroupDn(groupname string) string {
 	result := "cn=" + groupname + "," + state.Config.TargetLDAP.GroupSearchBaseDNs
 
 	return string(result)
@@ -54,9 +54,9 @@ func (state *RuntimeState) Create_GroupDN(groupname string) string {
 }
 
 //Creating a Group --required
-func (state *RuntimeState) create_Group(groupinfo group_info) error{
-	entry:=state.Create_GroupDN(groupinfo.groupname)
-	gidnum,err:=state.current_maximumGidNumber()
+func (state *RuntimeState) createGroup(groupinfo group_info) error{
+	entry:=state.CreategroupDn(groupinfo.groupname)
+	gidnum,err:=state.GetmaximumGidnumber()
 	if err!=nil{
 		panic(err)
 	}
@@ -75,12 +75,12 @@ func (state *RuntimeState) create_Group(groupinfo group_info) error{
 }
 
 //deleting a Group from target ldap. --required
-func (state *RuntimeState) delete_Group(groupnames []string) error{
+func (state *RuntimeState) deleteGroup(groupnames []string) error{
 	for _,entry:=range groupnames {
-		group_dn:=state.Create_GroupDN(entry)
+		groupdn:=state.CreategroupDn(entry)
 
-		del_req := ldap.NewDelRequest(group_dn,nil)
-		err:=state.target_ldap.Del(del_req)
+		DelReq := ldap.NewDelRequest(groupdn,nil)
+		err:=state.target_ldap.Del(DelReq)
 		if(err!=nil){
 			return err
 		}
@@ -91,9 +91,9 @@ func (state *RuntimeState) delete_Group(groupnames []string) error{
 
 
 //Adding an attritube called 'description' to a dn in Target Ldap --required
-func (state *RuntimeState) addAtributeDescription(groupname string)error{
+func (state *RuntimeState) AddAtributedescription(groupname string)error{
 
-	entry:=state.Create_GroupDN(groupname)
+	entry:=state.CreategroupDn(groupname)
 	modify := ldap.NewModifyRequest(entry)
 	modify.Delete("description", []string{"self-managed"})
 
@@ -109,7 +109,7 @@ func (state *RuntimeState) addAtributeDescription(groupname string)error{
 //Deleting the attribute in a dn in Target Ldap. --required
 func (state *RuntimeState) deleteDescription(result []string) error {
 	for _, entry := range result {
-		entry = state.Create_GroupDN(entry)
+		entry = state.CreategroupDn(entry)
 
 		modify := ldap.NewModifyRequest(entry)
 
@@ -142,7 +142,7 @@ func (state *RuntimeState) UserInfo(User_dn string) ([]string, error) {
 
 
 //function to get all the groups in Target ldap and put it in array --required
-func (state *RuntimeState) get_allGroups(Group_dn string) ([]string, error) {
+func (state *RuntimeState) getallGroups(Group_dn string) ([]string, error) {
 	var All_Groups []string
 	searchrequest := ldap.NewSearchRequest(Group_dn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, "(|(objectClass=posixGroup)(objectClass=groupofNames))", []string{"cn"}, nil)
@@ -159,7 +159,7 @@ func (state *RuntimeState) get_allGroups(Group_dn string) ([]string, error) {
 
 
 // GetGroupsOfUser returns the all groups of a user. --required
-func (state *RuntimeState) getGroupsOfUser(groupdn string, username string) ([]string, error) {
+func (state *RuntimeState) GetgroupsofUser(groupdn string, username string) ([]string, error) {
 	Base := groupdn
 	searchRequest := ldap.NewSearchRequest(
 		Base,
@@ -182,8 +182,8 @@ func (state *RuntimeState) getGroupsOfUser(groupdn string, username string) ([]s
 
 
 //returns all the users of a group --required
-func (state *RuntimeState) getUsersofaGroup(groupname string) ([][]string, error) {
-	Base := state.Create_GroupDN(groupname)
+func (state *RuntimeState) GetusersofaGroup(groupname string) ([][]string, error) {
+	Base := state.CreategroupDn(groupname)
 
 	searchRequest := ldap.NewSearchRequest(
 		Base,
@@ -208,7 +208,7 @@ func (state *RuntimeState) getUsersofaGroup(groupname string) ([][]string, error
 
 
 //parse super admins of Target Ldap
-func (state *RuntimeState) parseSuperAdmins()([]string){
+func (state *RuntimeState) ParseSuperadmins()([]string){
 	var superAdminsInfo []string
 	for _, admin := range strings.Split(state.Config.TargetLDAP.Admins, ",") {
 		fmt.Print(admin)
@@ -218,8 +218,8 @@ func (state *RuntimeState) parseSuperAdmins()([]string){
 }
 
 //if user is super admin or not
-func (state *RuntimeState) userisAdminOrNot(username string)(bool){
-	superAdmins:=state.parseSuperAdmins()
+func (state *RuntimeState) UserisadminOrNot(username string)(bool){
+	superAdmins:=state.ParseSuperadmins()
 	fmt.Print(superAdmins)
 	for _,user:=range superAdmins{
 		if user==username{
@@ -232,7 +232,7 @@ func (state *RuntimeState) userisAdminOrNot(username string)(bool){
 
 
 //it helps to findout the current maximum gid number in ldap.
-func (state *RuntimeState) current_maximumGidNumber()(string,error){
+func (state *RuntimeState) GetmaximumGidnumber()(string,error){
 	searchRequest := ldap.NewSearchRequest(
 		state.Config.TargetLDAP.GroupSearchBaseDNs,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
@@ -261,8 +261,8 @@ func (state *RuntimeState) current_maximumGidNumber()(string,error){
 
 
 //adding members to existing group
-func (state *RuntimeState) Addmembers_toexisting(groupinfo group_info)error{
-	entry:=state.Create_GroupDN(groupinfo.groupname)
+func (state *RuntimeState) AddmemberstoExisting(groupinfo group_info)error{
+	entry:=state.CreategroupDn(groupinfo.groupname)
 	modify := ldap.NewModifyRequest(entry)
 	modify.Add("memberUid", groupinfo.memberUid)
 	modify.Add("member",groupinfo.member)
@@ -274,8 +274,8 @@ func (state *RuntimeState) Addmembers_toexisting(groupinfo group_info)error{
 }
 
 //remove members from existing group
-func (state *RuntimeState) Deletemembers_fromgroup(groupinfo group_info)error{
-	entry:=state.Create_GroupDN(groupinfo.groupname)
+func (state *RuntimeState) DeletemembersfromGroup(groupinfo group_info)error{
+	entry:=state.CreategroupDn(groupinfo.groupname)
 	modify:=ldap.NewModifyRequest(entry)
 	modify.Delete("memberUid",groupinfo.memberUid)
 	modify.Delete("member",groupinfo.member)
@@ -288,9 +288,9 @@ func (state *RuntimeState) Deletemembers_fromgroup(groupinfo group_info)error{
 
 
 //if user is already a member of group or not
-func (state *RuntimeState) isGroupMemberorNot(groupname string,username string)bool{
+func (state *RuntimeState) IsgroupmemberorNot(groupname string,username string)bool{
 
-	AllUsersinGroup, err := state.getUsersofaGroup(groupname)
+	AllUsersinGroup, err := state.GetusersofaGroup(groupname)
 	if err!=nil{
 		panic(err)
 	}
@@ -303,8 +303,8 @@ func (state *RuntimeState) isGroupMemberorNot(groupname string,username string)b
 }
 
 //get description of a group
-func (state *RuntimeState) getDescription_value(groupname string)(string,error){
-	Base := state.Create_GroupDN(groupname)
+func (state *RuntimeState) GetDescriptionvalue(groupname string)(string,error){
+	Base := state.CreategroupDn(groupname)
 
 	searchRequest := ldap.NewSearchRequest(
 		Base,
@@ -325,9 +325,9 @@ func (state *RuntimeState) getDescription_value(groupname string)(string,error){
 }
 
 //get email of a user
-func (state *RuntimeState) getEmailofaUser(username string)([]string,error){
+func (state *RuntimeState) GetEmailofauser(username string)([]string,error){
 	var user_email []string
-	User_dn := state.Create_UserDN(username)
+	User_dn := state.CreateuserDn(username)
 	searchrequest := ldap.NewSearchRequest(User_dn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, "((objectClass=*))", []string{"mail"}, nil)
 	result, err := state.target_ldap.Search(searchrequest)
@@ -340,14 +340,15 @@ func (state *RuntimeState) getEmailofaUser(username string)([]string,error){
 }
 
 //get email of all users in the given group
-func (state *RuntimeState) getEmailofUsersinGroup(groupname string)([]string,error){
-	group_users,err:=state.getUsersofaGroup(groupname)
+func (state *RuntimeState) GetEmailofusersingroup(groupname string)([]string,error){
+
+	group_users,err:=state.GetusersofaGroup(groupname)
 	if err!=nil{
 		log.Println(err)
 	}
 	var user_email []string
 	for _,entry:=range group_users[0]{
-		value,err:=state.getEmailofaUser(entry)
+		value,err:=state.GetEmailofauser(entry)
 		if err != nil {
 			return nil, err
 		}
