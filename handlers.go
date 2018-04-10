@@ -9,19 +9,30 @@ import (
 	"encoding/json"
 )
 
-//Main page with all LDAP groups displayed
-func  (state *RuntimeState) IndexHandler(w http.ResponseWriter, r *http.Request) {
+
+func GetRemoteUserName(w http.ResponseWriter,r *http.Request)(string,error) {
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
+		return "",err
 	}
 	if userInfo == nil {
 		log.Println("null userinfo!")
 		http.Error(w,"null userinfo",http.StatusInternalServerError)
+		return "",err
+	}
+	return *userInfo.Username,nil
+}
+
+
+//Main page with all LDAP groups displayed
+func  (state *RuntimeState) IndexHandler(w http.ResponseWriter, r *http.Request) {
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
+
 	Allgroups, err := state.getallGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
 
 	if err != nil {
@@ -30,10 +41,9 @@ func  (state *RuntimeState) IndexHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	sort.Strings(Allgroups)
-	user := *userInfo.Username
-	response := Response{user, Allgroups, nil,nil}
+	response := Response{username, Allgroups, nil,nil}
 	//response.UserName=*userInfo.Username
-	if state.UserisadminOrNot(user)==true {
+	if state.UserisadminOrNot(username)==true {
 		generateHTML(w,response,"index","admins_sidebar","groups")
 
 	} else {
@@ -53,18 +63,10 @@ func (state *RuntimeState) GroupHandler(w http.ResponseWriter, r *http.Request){
 
 //User Groups page
 func (state *RuntimeState) MygroupsHandler(w http.ResponseWriter,r *http.Request){
-	userInfo, err := authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
-		return
-	}
-	username := *userInfo.Username
 	user_groups,err:=state.GetgroupsofUser(state.Config.TargetLDAP.GroupSearchBaseDNs,username)
 	if(err!=nil){
 		log.Println(err)
@@ -83,18 +85,10 @@ func (state *RuntimeState) MygroupsHandler(w http.ResponseWriter,r *http.Request
 
 //user's pending requests
 func (state *RuntimeState) pendingRequests(w http.ResponseWriter,r *http.Request) {
-	userInfo, err := authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
-		return
-	}
-	username := *userInfo.Username
 	groupnames,_,err := state.findrequestsofUserinDB(username)
 	if err!=nil{
 		log.Println(err)
@@ -117,18 +111,10 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter,r *http.Request
 
 
 func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *http.Request){
-	userInfo, err := authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
-		return
-	}
-	username := *userInfo.Username
 	Allgroups, err := state.getallGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
 
 	if err != nil {
@@ -150,19 +136,10 @@ func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *h
 
 
 func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *http.Request){
-	userInfo, err := authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
-		return
-	}
-	username := *userInfo.Username
-
 	if !state.UserisadminOrNot(username) {
 		http.Error(w,"you are not authorized",http.StatusUnauthorized)
 		return
@@ -176,18 +153,10 @@ func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *h
 
 //requesting access by users to join in groups...
 func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter,r *http.Request) {
-	userInfo, err := authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
-		return
-	}
-	username := *userInfo.Username
 	var out map[string][]string
 	err = json.NewDecoder(r.Body).Decode(&out)
 	if err != nil {
@@ -214,18 +183,10 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter,r *http.Re
 
 //delete access requests made by user
 func (state *RuntimeState) deleteRequests(w http.ResponseWriter,r *http.Request) {
-	userInfo, err :=authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
-		return
-	}
-	username := *userInfo.Username
 	var out map[string][]string
 	err = json.NewDecoder(r.Body).Decode(&out)
 	if err != nil {
@@ -243,18 +204,10 @@ func (state *RuntimeState) deleteRequests(w http.ResponseWriter,r *http.Request)
 
 //Parses post info from create group button click.
 func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter,r *http.Request) {
-	userInfo, err := authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w, "null userinfo", http.StatusInternalServerError)
-		return
-	}
-	username := *userInfo.Username
 	if !state.UserisadminOrNot(username) {
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 	}
@@ -282,18 +235,10 @@ func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter,r *http.Reque
 
 
 func (state *RuntimeState) exitfromGroup(w http.ResponseWriter,r *http.Request){
-	userInfo, err :=authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
-		return
-	}
-	username := *userInfo.Username
 	var out map[string][]string
 	err = json.NewDecoder(r.Body).Decode(&out)
 	if err != nil {
@@ -325,18 +270,10 @@ func (state *RuntimeState) Addmemberswebpagehandler(w http.ResponseWriter,r *htt
 
 //User's Pending Actions
 func (state *RuntimeState) pendingActions(w http.ResponseWriter,r *http.Request) {
-	userInfo, err := authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w, "null userinfo", http.StatusInternalServerError)
-		return
-	}
-	username := *userInfo.Username
 	DB_entries, err := state.getDB_entries()
 	if err != nil {
 		log.Println(err)
@@ -381,18 +318,10 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter,r *http.Request)
 
 //Approving
 func (state *RuntimeState) approveHandler(w http.ResponseWriter,r *http.Request) {
-	userInfo, err :=authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
-		return
-	}
-	username := *userInfo.Username
 	var out map[string][][]string
 	err = json.NewDecoder(r.Body).Decode(&out)
 	if err != nil {
@@ -434,18 +363,10 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter,r *http.Request)
 
 //Reject handler
 func (state *RuntimeState) rejectHandler(w http.ResponseWriter,r *http.Request){
-	userInfo, err :=authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
-		return
-	}
-	username := *userInfo.Username
 	var out map[string][][]string
 	err=json.NewDecoder(r.Body).Decode(&out)
 	if err!=nil {
@@ -472,19 +393,10 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter,r *http.Request){
 // POST
 // Create a group handler --required
 func (state *RuntimeState) createGrouphandler(w http.ResponseWriter,r *http.Request){
-	userInfo, err := authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
-		return
-	}
-	//vals:=r.URL.Query()
-	username:=*userInfo.Username
 	if !state.UserisadminOrNot(username){
 		http.Error(w,"you are not authorized ",http.StatusUnauthorized)
 		return
@@ -519,20 +431,10 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter,r *http.Requ
 
 //Delete groups handler --required
 func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter,r *http.Request){
-	userInfo, err := authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	username,err:=GetRemoteUserName(w,r)
+	if err!=nil{
 		return
 	}
-	if userInfo == nil {
-		log.Println("null userinfo!")
-		http.Error(w,"null userinfo",http.StatusInternalServerError)
-		return
-	}
-	//vals:=r.URL.Query()
-	username:=*userInfo.Username
-
 	if !state.UserisadminOrNot(username) {
 		http.Error(w,"you are not authorized",http.StatusUnauthorized)
 	}
