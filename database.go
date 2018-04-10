@@ -2,10 +2,9 @@ package main
 
 import (
 	"database/sql"
+	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"time"
-	_"github.com/mattn/go-sqlite3"
-
 )
 
 //Initialsing database
@@ -28,10 +27,8 @@ func initDB(state *RuntimeState) (err error) {
 	return nil
 }
 
-
-
 //insert a request into DB
-func (state *RuntimeState) insertRequestInDB(username string,groupname []string) error {
+func (state *RuntimeState) insertRequestInDB(username string, groupname []string) error {
 
 	stmtText := "insert into pending_requests(username, groupname, time_stamp) values (?,?,?);"
 	stmt, err := state.db.Prepare(stmtText)
@@ -41,7 +38,7 @@ func (state *RuntimeState) insertRequestInDB(username string,groupname []string)
 	}
 	defer stmt.Close()
 	for _, entry := range groupname {
-		if state.entryExistsorNot(username, entry) || state.IsgroupmemberorNot(entry,username){
+		if state.entryExistsorNot(username, entry) || state.IsgroupmemberorNot(entry, username) {
 			continue
 		} else {
 
@@ -55,16 +52,16 @@ func (state *RuntimeState) insertRequestInDB(username string,groupname []string)
 }
 
 //delete the request after approved or declined
-func (state *RuntimeState) deleteEntryInDB(username string,groupname string) error{
+func (state *RuntimeState) deleteEntryInDB(username string, groupname string) error {
 
-	stmtText :="delete from pending_requests where username= ? and groupname= ?;"
+	stmtText := "delete from pending_requests where username= ? and groupname= ?;"
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
 		log.Print("Error Preparing statement")
 		log.Fatal(err)
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec(username,groupname)
+	_, err = stmt.Exec(username, groupname)
 	if err != nil {
 		return err
 	}
@@ -93,47 +90,47 @@ func (state *RuntimeState) deleteEntryofGroupsInDB(groupnames []string) error {
 }
 
 //Search for a particular request made by a user (or) a group. (for my_pending_actions)
-func (state *RuntimeState) findrequestsofUserinDB(username string) ([]string,bool,error) {
-	stmtText:="select groupname from pending_requests where username=?;"
-	stmt,err:=state.db.Prepare(stmtText)
+func (state *RuntimeState) findrequestsofUserinDB(username string) ([]string, bool, error) {
+	stmtText := "select groupname from pending_requests where username=?;"
+	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
 		log.Print("Error Preparing statement")
 		log.Fatal(err)
 	}
 	defer stmt.Close()
 	var groupname []string
-	rows,err := stmt.Query(username)
+	rows, err := stmt.Query(username)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			log.Printf("err='%s'", err)
-			return nil,false,nil
+			return nil, false, nil
 		} else {
 			log.Printf("Problem with db ='%s'", err)
-			return nil,false, err
+			return nil, false, err
 		}
 	}
 	defer rows.Close()
 
-	for rows.Next(){
-		var group_Name string
-		err=rows.Scan(&group_Name)
-		groupname=append(groupname,group_Name)
+	for rows.Next() {
+		var groupName string
+		err = rows.Scan(&groupName)
+		groupname = append(groupname, groupName)
 	}
 
-	return groupname,true, nil
+	return groupname, true, nil
 
 }
 
 //looks in the DB if the entry already exists or not
-func (state *RuntimeState) entryExistsorNot(username string,groupname string)bool{
-	stmt_Text:="select * from pending_requests where username=? and groupname=?;"
-	stmt,err:=state.db.Prepare(stmt_Text)
+func (state *RuntimeState) entryExistsorNot(username string, groupname string) bool {
+	stmtText := "select * from pending_requests where username=? and groupname=?;"
+	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
 		log.Print("Error Preparing statement")
 		log.Fatal(err)
 	}
 	defer stmt.Close()
-	rows,err:=stmt.Query(username,groupname)
+	rows, err := stmt.Query(username, groupname)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			log.Printf("err='%s'", err)
@@ -150,36 +147,33 @@ func (state *RuntimeState) entryExistsorNot(username string,groupname string)boo
 	return false
 }
 
-
 //(username,groupname) get whole db entries.
-func (state *RuntimeState) getDB_entries()([][]string,error){
-	stmtText:="select username,groupname from pending_requests;"
-	stmt,err:=state.db.Prepare(stmtText)
+func (state *RuntimeState) getDBentries() ([][]string, error) {
+	stmtText := "select username,groupname from pending_requests;"
+	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
 		log.Print("Error Preparing statement")
 		log.Fatal(err)
 	}
 	defer stmt.Close()
 	var entry [][]string
-	rows,err:=stmt.Query()
+	rows, err := stmt.Query()
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			log.Printf("err='%s'", err)
-			return nil,err
+			return nil, err
 		} else {
 			log.Printf("Problem with db ='%s'", err)
-			return nil,err
+			return nil, err
 		}
 	}
 	defer rows.Close()
-	var each_entry1 string
-	var each_entry2 string
-	for rows.Next(){
-		err=rows.Scan(&each_entry1,&each_entry2)
-		var each_entry =[]string{each_entry1,each_entry2}
-		entry=append(entry,each_entry)
+	var eachEntry1 string
+	var eachEntry2 string
+	for rows.Next() {
+		err = rows.Scan(&eachEntry1, &eachEntry2)
+		var eachentry = []string{eachEntry1, eachEntry2}
+		entry = append(entry, eachentry)
 	}
-	return entry,nil
+	return entry, nil
 }
-
-

@@ -1,20 +1,20 @@
 package main
 
 import (
+	"gopkg.in/ldap.v2"
 	"log"
 	"strings"
-	"gopkg.in/ldap.v2"
 )
 
 //Function which returns the array of disabled accounts from Source LDAP.--required
 func (state *RuntimeState) DisabledAccountsinSourceLDAP(UserSearchBaseDNs string,
 	UserSearchFilter string, Attributes []string) ([]string, error) {
-	var disabled_accounts []string
+	var disabledAccounts []string
 
 	searchrequest := ldap.NewSearchRequest(UserSearchBaseDNs, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, UserSearchFilter, Attributes, nil)
 
-	result, err := state.source_ldap.SearchWithPaging(searchrequest, maximum_pagingsize)
+	result, err := state.sourceLdap.SearchWithPaging(searchrequest, maximumPagingsize)
 	if err != nil {
 		return nil, err
 	}
@@ -23,12 +23,10 @@ func (state *RuntimeState) DisabledAccountsinSourceLDAP(UserSearchBaseDNs string
 	}
 	for _, entry := range result.Entries {
 		cname := entry.GetAttributeValue("sAMAccountName")
-		disabled_accounts = append(disabled_accounts, strings.ToLower(cname))
+		disabledAccounts = append(disabledAccounts, strings.ToLower(cname))
 	}
-	return disabled_accounts, nil
+	return disabledAccounts, nil
 }
-
-
 
 //function which compares the users disabled accounts in Source LDAP and Target LDAP and adds the attribute nsaccountLock in TARGET LDAP for the disbaled USer.
 //---required
@@ -37,8 +35,8 @@ func (state *RuntimeState) CompareDisabledaccounts(result []string) error {
 		entry = state.CreateuserDn(entry)
 
 		modify := ldap.NewModifyRequest(entry)
-		modify.Replace("nsaccountLock", nsaccount_lock)
-		err := state.target_ldap.Modify(modify)
+		modify.Replace("nsaccountLock", nsaccountLock)
+		err := state.targetLdap.Modify(modify)
 		if err != nil {
 			return err
 		}
@@ -47,21 +45,17 @@ func (state *RuntimeState) CompareDisabledaccounts(result []string) error {
 
 }
 
-
-
 //find out which accounts need to be locked in Target ldap(i.e. which accounts needs attribute nsaccountLock=True) --required
-func FindLockAccountsinTargetLdap(TargetLDAP_Users map[string]string,
-	LockedAccounts_SourceLDAP []string) ([]string, error) {
+func FindLockAccountsinTargetLdap(TargetLDAPUsers map[string]string,
+	LockedAccountsSourceLDAP []string) ([]string, error) {
 
-	var lock_accounts []string
-	for _, entry := range LockedAccounts_SourceLDAP {
-		if entry, ok := TargetLDAP_Users[entry]; ok {
+	var lockAccounts []string
+	for _, entry := range LockedAccountsSourceLDAP {
+		if entry, ok := TargetLDAPUsers[entry]; ok {
 
-			lock_accounts = append(lock_accounts, entry)
+			lockAccounts = append(lockAccounts, entry)
 		}
 
 	}
-	return lock_accounts, nil
+	return lockAccounts, nil
 }
-
-

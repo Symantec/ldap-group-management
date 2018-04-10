@@ -1,18 +1,18 @@
 package main
 
 import (
-	"net/http"
-	"log"
-	"sort"
 	"encoding/json"
 	"fmt"
+	"log"
+	"net/http"
+	"sort"
 )
 
 //All handlers and API endpoints starts from here.
 
 //Display all groups in Target LDAP --required
 func (state *RuntimeState) GetallgroupsHandler(w http.ResponseWriter, r *http.Request) {
-	var AllGroups_TargetLdap GetGroups
+	var AllGroupsTargetLdap GetGroups
 
 	Allgroups, err := state.getallGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
 
@@ -22,8 +22,8 @@ func (state *RuntimeState) GetallgroupsHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	sort.Strings(Allgroups)
-	AllGroups_TargetLdap.AllGroups = Allgroups
-	err=json.NewEncoder(w).Encode(AllGroups_TargetLdap)
+	AllGroupsTargetLdap.AllGroups = Allgroups
+	err = json.NewEncoder(w).Encode(AllGroupsTargetLdap)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -31,12 +31,9 @@ func (state *RuntimeState) GetallgroupsHandler(w http.ResponseWriter, r *http.Re
 	}
 }
 
-
-
-
 //Display all users in Target LDAP --required
 func (state *RuntimeState) GetallusersHandler(w http.ResponseWriter, r *http.Request) {
-	var AllUsers_TargetLdap GetUsers
+	var AllUsersTargetLdap GetUsers
 
 	AllUsers, err := state.GetallUsers(state.Config.TargetLDAP.UserSearchBaseDNs, state.Config.TargetLDAP.UserSearchFilter, []string{"uid"})
 
@@ -48,19 +45,16 @@ func (state *RuntimeState) GetallusersHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	for k := range AllUsers {
-		AllUsers_TargetLdap.Users = append(AllUsers_TargetLdap.Users, k)
+		AllUsersTargetLdap.Users = append(AllUsersTargetLdap.Users, k)
 	}
 
-	err=json.NewEncoder(w).Encode(AllUsers_TargetLdap)
+	err = json.NewEncoder(w).Encode(AllUsersTargetLdap)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
 }
-
-
-
 
 //Displays all Groups of a User. --required
 func (state *RuntimeState) GetgroupsofuserHandler(w http.ResponseWriter, r *http.Request) {
@@ -68,13 +62,13 @@ func (state *RuntimeState) GetgroupsofuserHandler(w http.ResponseWriter, r *http
 	params, ok := q["username"]
 	if !ok {
 		log.Print("couldn't parse the URL")
-		http.Error(w,"couldn't parse the URL",http.StatusInternalServerError)
+		http.Error(w, "couldn't parse the URL", http.StatusInternalServerError)
 		return
 	}
-	var user_groups GetUserGroups
+	var userGroups GetUserGroups
 
-	user_groups.UserName = params[0] //username is "cn" Attribute of a User
-	UsersAllgroups, err := state.GetgroupsofUser(state.Config.TargetLDAP.GroupSearchBaseDNs, user_groups.UserName)
+	userGroups.UserName = params[0] //username is "cn" Attribute of a User
+	UsersAllgroups, err := state.GetgroupsofUser(state.Config.TargetLDAP.GroupSearchBaseDNs, userGroups.UserName)
 
 	if err != nil {
 		log.Println(err)
@@ -82,18 +76,15 @@ func (state *RuntimeState) GetgroupsofuserHandler(w http.ResponseWriter, r *http
 		return
 	}
 	sort.Strings(UsersAllgroups)
-	user_groups.UserGroups = UsersAllgroups
+	userGroups.UserGroups = UsersAllgroups
 
-
-	err=json.NewEncoder(w).Encode(user_groups)
+	err = json.NewEncoder(w).Encode(userGroups)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
 }
-
-
 
 //Displays All Users in a Group --required
 func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http.Request) {
@@ -101,15 +92,15 @@ func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http
 	params, ok := q["groupname"]
 	if !ok {
 		log.Print("couldn't parse the URL")
-		http.Error(w,"couldn't parse the URL",http.StatusInternalServerError)
+		http.Error(w, "couldn't parse the URL", http.StatusInternalServerError)
 		return
 	}
-	var group_users GetGroupUsers
+	var groupUsers GetGroupUsers
 
-	group_users.GroupName = params[0] //username is "cn" Attribute of a User
-	AllUsersinGroup, err := state.GetusersofaGroup(group_users.GroupName)
+	groupUsers.GroupName = params[0] //username is "cn" Attribute of a User
+	AllUsersinGroup, err := state.GetusersofaGroup(groupUsers.GroupName)
 	sort.Strings(AllUsersinGroup[0])
-	group_users.Groupusers = AllUsersinGroup[0]
+	groupUsers.Groupusers = AllUsersinGroup[0]
 
 	if err != nil {
 		log.Println(err)
@@ -117,7 +108,7 @@ func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http
 		return
 
 	}
-	err=json.NewEncoder(w).Encode(group_users)
+	err = json.NewEncoder(w).Encode(groupUsers)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -125,4 +116,3 @@ func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http
 	}
 
 }
-

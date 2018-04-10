@@ -3,25 +3,23 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"database/sql"
 	"errors"
 	"flag"
+	"github.com/Symantec/keymaster/lib/authutil"
+	"github.com/cviecco/go-simple-oidc-auth/authhandler"
+	_ "github.com/mattn/go-sqlite3"
 	"gopkg.in/ldap.v2"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
-	"github.com/Symantec/keymaster/lib/authutil"
-	"github.com/cviecco/go-simple-oidc-auth/authhandler"
-	"net/http"
-	"database/sql"
-	_"github.com/mattn/go-sqlite3"
 )
-
-
 
 type baseConfig struct {
 	HttpAddress           string `yaml:"http_address"`
@@ -41,9 +39,8 @@ type UserInfoLDAPSource struct {
 	UserSearchFilter   string `yaml:"user_search_filter"`
 	GroupSearchBaseDNs string `yaml:"group_search_base_dns"`
 	GroupSearchFilter  string `yaml:"group_search_filter"`
-	Admins 			   string `yaml:"super_admins"`
+	Admins             string `yaml:"super_admins"`
 }
-
 
 type AppConfigFile struct {
 	Base       baseConfig         `yaml:"base"`
@@ -51,64 +48,59 @@ type AppConfigFile struct {
 	TargetLDAP UserInfoLDAPSource `yaml:"target_config"`
 }
 
-
 type RuntimeState struct {
-	Config      AppConfigFile
-	source_ldap *ldap.Conn
-	target_ldap *ldap.Conn
-	dbType string
-	db *sql.DB
+	Config     AppConfigFile
+	sourceLdap *ldap.Conn
+	targetLdap *ldap.Conn
+	dbType     string
+	db         *sql.DB
 }
 
-type GetGroups struct{
+type GetGroups struct {
 	AllGroups []string `json:"allgroups"`
-
 }
 
-type GetUsers struct{
+type GetUsers struct {
 	Users []string `json:"Users"`
 }
 
-type GetUserGroups struct{
-	UserName string `json:"Username"`
+type GetUserGroups struct {
+	UserName   string   `json:"Username"`
 	UserGroups []string `json:"usergroups"`
 }
 
-type GetGroupUsers struct{
-	GroupName string `json:"groupname"`
+type GetGroupUsers struct {
+	GroupName  string   `json:"groupname"`
 	Groupusers []string `json:"Groupusers"`
-
 }
 
-type Response struct{
-	UserName string
-	Groups []string
-	Users []string
-	Pending_actions [][]string
+type Response struct {
+	UserName       string
+	Groups         []string
+	Users          []string
+	PendingActions [][]string
 }
 
-
-type group_info struct {
-	groupname string
+type groupInfo struct {
+	groupname   string
 	description string
-	memberUid []string
-	member []string
-	cn string
+	memberUid   []string
+	member      []string
+	cn          string
 }
 
 const ldapTimeoutSecs = 10
 
 //maximum possible paging size number
-const maximum_pagingsize = 2147483647
+const maximumPagingsize = 2147483647
 
-
-var nsaccount_lock = []string{"True"}
+var nsaccountLock = []string{"True"}
 
 var (
 	configFilename = flag.String("config", "config.yml", "The filename of the configuration")
 	//tpl *template.Template
 	//debug          = flag.Bool("debug", false, "enable debugging output")
-	authSource     *authhandler.SimpleOIDCAuth
+	authSource *authhandler.SimpleOIDCAuth
 )
 
 //parses the config file
@@ -143,8 +135,6 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	return state, err
 }
 
-
-
 //Establishing connection
 func GetLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ldap.Conn, string, error) {
 
@@ -167,7 +157,7 @@ func GetLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ld
 	start := time.Now()
 
 	tlsConn, err := tls.DialWithDialer(&net.Dialer{Timeout: timeout}, "tcp",
-	hostnamePort, &tls.Config{ServerName: server, RootCAs: rootCAs})
+		hostnamePort, &tls.Config{ServerName: server, RootCAs: rootCAs})
 
 	if err != nil {
 		log.Printf("rooCAs=%+v,  serverName=%s, hostnameport=%s, tlsConn=%+v", rootCAs, server, hostnamePort, tlsConn)
@@ -181,16 +171,13 @@ func GetLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ld
 	return conn, server, nil
 }
 
-
-
-
 type mailAttributes struct {
-	RequestedUser  string
-	OtherUser      string
-	Groupname      string
-	RemoteAddr     string
-	Browser        string
-	OS             string
+	RequestedUser string
+	OtherUser     string
+	Groupname     string
+	RemoteAddr    string
+	Browser       string
+	OS            string
 }
 
 func main() {
@@ -209,36 +196,35 @@ func main() {
 	}
 	authSource = simpleOidcAuth
 
-
 	//Parsing Source LDAP URL, establishing connection and binding user.
-	Source_LdapUrl, err := authutil.ParseLDAPURL(state.Config.SourceLDAP.LDAPTargetURLs)
+	SourceLdapUrl, err := authutil.ParseLDAPURL(state.Config.SourceLDAP.LDAPTargetURLs)
 
-	state.source_ldap, _, err = GetLDAPConnection(*Source_LdapUrl, ldapTimeoutSecs, nil)
+	state.sourceLdap, _, err = GetLDAPConnection(*SourceLdapUrl, ldapTimeoutSecs, nil)
 	if err != nil {
 		panic(err)
 	}
 
 	timeout := time.Duration(time.Duration(ldapTimeoutSecs) * time.Second)
-	state.source_ldap.SetTimeout(timeout)
-	state.source_ldap.Start()
+	state.sourceLdap.SetTimeout(timeout)
+	state.sourceLdap.Start()
 
-	err = state.source_ldap.Bind(state.Config.SourceLDAP.BindUsername, state.Config.SourceLDAP.BindPassword)
+	err = state.sourceLdap.Bind(state.Config.SourceLDAP.BindUsername, state.Config.SourceLDAP.BindPassword)
 
 	if err != nil {
 		panic(err)
 	}
 
 	//Parsing Target LDAP, establishing connection and binding user.
-	Target_LdapUrl, err := authutil.ParseLDAPURL(state.Config.TargetLDAP.LDAPTargetURLs)
+	TargetLdapUrl, err := authutil.ParseLDAPURL(state.Config.TargetLDAP.LDAPTargetURLs)
 
-	state.target_ldap, _, err = GetLDAPConnection(*Target_LdapUrl, ldapTimeoutSecs, nil)
+	state.targetLdap, _, err = GetLDAPConnection(*TargetLdapUrl, ldapTimeoutSecs, nil)
 	if err != nil {
 		panic(err)
 	}
-	state.target_ldap.SetTimeout(timeout)
-	state.target_ldap.Start()
+	state.targetLdap.SetTimeout(timeout)
+	state.targetLdap.Start()
 
-	err = state.target_ldap.Bind(state.Config.TargetLDAP.BindUsername, state.Config.TargetLDAP.BindPassword)
+	err = state.targetLdap.Bind(state.Config.TargetLDAP.BindUsername, state.Config.TargetLDAP.BindPassword)
 
 	if err != nil {
 		panic(err)
@@ -249,32 +235,26 @@ func main() {
 	http.HandleFunc("/user_groups/", state.GetgroupsofuserHandler)
 	http.HandleFunc("/group_users/", state.GetusersingroupHandler)
 
-
 	http.Handle("/create_group", simpleOidcAuth.Handler(http.HandlerFunc(state.creategroupWebpageHandler)))
 	http.Handle("/delete_group", simpleOidcAuth.Handler(http.HandlerFunc(state.deletegroupWebpageHandler)))
-	http.Handle("/create_group/",simpleOidcAuth.Handler(http.HandlerFunc(state.createGrouphandler)))
-	http.Handle("/delete_group/",simpleOidcAuth.Handler(http.HandlerFunc(state.deleteGrouphandler)))
+	http.Handle("/create_group/", simpleOidcAuth.Handler(http.HandlerFunc(state.createGrouphandler)))
+	http.Handle("/delete_group/", simpleOidcAuth.Handler(http.HandlerFunc(state.deleteGrouphandler)))
 
-	http.Handle("/requestaccess",simpleOidcAuth.Handler(http.HandlerFunc(state.requestAccessHandler)))
+	http.Handle("/requestaccess", simpleOidcAuth.Handler(http.HandlerFunc(state.requestAccessHandler)))
 	http.Handle("/index.html", simpleOidcAuth.Handler(http.HandlerFunc(state.IndexHandler)))
-	http.Handle("/group/",simpleOidcAuth.Handler(http.HandlerFunc(state.GroupHandler)))
-	http.Handle("/mygroups/",simpleOidcAuth.Handler(http.HandlerFunc(state.MygroupsHandler)))
-	http.Handle("/pending-actions",simpleOidcAuth.Handler(http.HandlerFunc(state.pendingActions)))
-	http.Handle("/pending-requests",simpleOidcAuth.Handler(http.HandlerFunc(state.pendingRequests)))
-	http.Handle("/deleterequests",simpleOidcAuth.Handler(http.HandlerFunc(state.deleteRequests)))
-	http.Handle("/exitgroup",simpleOidcAuth.Handler(http.HandlerFunc(state.exitfromGroup)))
+	http.Handle("/mygroups/", simpleOidcAuth.Handler(http.HandlerFunc(state.MygroupsHandler)))
+	http.Handle("/pending-actions", simpleOidcAuth.Handler(http.HandlerFunc(state.pendingActions)))
+	http.Handle("/pending-requests", simpleOidcAuth.Handler(http.HandlerFunc(state.pendingRequests)))
+	http.Handle("/deleterequests", simpleOidcAuth.Handler(http.HandlerFunc(state.deleteRequests)))
+	http.Handle("/exitgroup", simpleOidcAuth.Handler(http.HandlerFunc(state.exitfromGroup)))
 
-	http.Handle("/approve-request",simpleOidcAuth.Handler(http.HandlerFunc(state.approveHandler)))
-	http.Handle("/reject-request",simpleOidcAuth.Handler(http.HandlerFunc(state.rejectHandler)))
+	http.Handle("/approve-request", simpleOidcAuth.Handler(http.HandlerFunc(state.approveHandler)))
+	http.Handle("/reject-request", simpleOidcAuth.Handler(http.HandlerFunc(state.rejectHandler)))
 
-	http.HandleFunc("/addmembers",state.Addmemberswebpagehandler)
-	http.HandleFunc("/addmembers/",state.AddmemberstoGroup)
+	http.HandleFunc("/addmembers/", state.AddmemberstoGroup)
 
-	fs:=http.FileServer(http.Dir("templates"))
-	http.Handle("/css/",fs)
-	http.Handle("/js/",fs)
-	http.Handle("/images/",fs)
-	http.Handle("/fonts/",fs)
-	log.Fatal(http.ListenAndServeTLS(state.Config.Base.HttpAddress,state.Config.Base.TLSCertFilename,state.Config.Base.TLSKeyFilename, nil))
+	fs := http.FileServer(http.Dir("templates"))
+	http.Handle("/css/", fs)
+	http.Handle("/images/", fs)
+	log.Fatal(http.ListenAndServeTLS(state.Config.Base.HttpAddress, state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename, nil))
 }
-
