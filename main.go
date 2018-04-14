@@ -214,22 +214,6 @@ func main() {
 		panic(err)
 	}
 
-	//Parsing Target LDAP, establishing connection and binding user.
-	TargetLdapUrl, err := authutil.ParseLDAPURL(state.Config.TargetLDAP.LDAPTargetURLs)
-
-	state.targetLdap, _, err = GetLDAPConnection(*TargetLdapUrl, ldapTimeoutSecs, nil)
-	if err != nil {
-		panic(err)
-	}
-	state.targetLdap.SetTimeout(timeout)
-	state.targetLdap.Start()
-
-	err = state.targetLdap.Bind(state.Config.TargetLDAP.BindUsername, state.Config.TargetLDAP.BindPassword)
-
-	if err != nil {
-		panic(err)
-	}
-
 	http.HandleFunc("/allgroups", state.GetallgroupsHandler)
 	http.HandleFunc("/allusers", state.GetallusersHandler)
 	http.HandleFunc("/user_groups/", state.GetgroupsofuserHandler)
