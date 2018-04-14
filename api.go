@@ -13,9 +13,13 @@ import (
 //Display all groups in Target LDAP --required
 func (state *RuntimeState) GetallgroupsHandler(w http.ResponseWriter, r *http.Request) {
 	var AllGroupsTargetLdap GetGroups
-
+	var err error
+	state.targetLdap,err=state.GetTargetLDAPConnection()
+	if err!=nil{
+		http.Error(w,"cannot connect to LDAP server",http.StatusInternalServerError)
+	}
 	Allgroups, err := state.getallGroups(state.Config.TargetLDAP.GroupSearchBaseDNs)
-
+	defer state.targetLdap.Close()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -34,9 +38,13 @@ func (state *RuntimeState) GetallgroupsHandler(w http.ResponseWriter, r *http.Re
 //Display all users in Target LDAP --required
 func (state *RuntimeState) GetallusersHandler(w http.ResponseWriter, r *http.Request) {
 	var AllUsersTargetLdap GetUsers
-
+	var err error
+	state.targetLdap,err=state.GetTargetLDAPConnection()
+	if err!=nil{
+		http.Error(w,"cannot connect to LDAP server",http.StatusInternalServerError)
+	}
 	AllUsers, err := state.GetallUsers(state.Config.TargetLDAP.UserSearchBaseDNs, state.Config.TargetLDAP.UserSearchFilter, []string{"uid"})
-
+	defer state.targetLdap.Close()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -66,10 +74,14 @@ func (state *RuntimeState) GetgroupsofuserHandler(w http.ResponseWriter, r *http
 		return
 	}
 	var userGroups GetUserGroups
-
+	var err error
+	state.targetLdap,err=state.GetTargetLDAPConnection()
+	if err!=nil{
+		http.Error(w,"cannot connect to LDAP server",http.StatusInternalServerError)
+	}
 	userGroups.UserName = params[0] //username is "cn" Attribute of a User
 	UsersAllgroups, err := state.GetgroupsofUser(state.Config.TargetLDAP.GroupSearchBaseDNs, userGroups.UserName)
-
+	defer state.targetLdap.Close()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -96,17 +108,20 @@ func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http
 		return
 	}
 	var groupUsers GetGroupUsers
-
+	var err error
+	state.targetLdap,err=state.GetTargetLDAPConnection()
+	if err!=nil{
+		http.Error(w,"cannot connect to LDAP server",http.StatusInternalServerError)
+	}
 	groupUsers.GroupName = params[0] //username is "cn" Attribute of a User
 	AllUsersinGroup, err := state.GetusersofaGroup(groupUsers.GroupName)
 	sort.Strings(AllUsersinGroup[0])
 	groupUsers.Groupusers = AllUsersinGroup[0]
-
+	defer state.targetLdap.Close()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
-
 	}
 	err = json.NewEncoder(w).Encode(groupUsers)
 	if err != nil {
