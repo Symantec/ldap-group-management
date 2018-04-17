@@ -5,21 +5,22 @@ import (
 	"log"
 	"net/smtp"
 	texttemplate "text/template"
+	"gopkg.in/ldap.v2"
 )
 
 ////Request Access email  start.....//////
 
 //for request access button
 func (state *RuntimeState) SendRequestemail(username string, groupnames []string,
-	remoteAddr string, userAgent string) error {
+	remoteAddr string, userAgent string,TargetLDAPConn *ldap.Conn) error {
 	for _, entry := range groupnames {
-		description, err := state.GetDescriptionvalue(entry)
+		description, err := state.GetDescriptionvalue(entry,TargetLDAPConn)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
 		if description == "self-managed" {
-			usersEmail, err := state.GetEmailofusersingroup(entry)
+			usersEmail, err := state.GetEmailofusersingroup(entry,TargetLDAPConn)
 			if err != nil {
 				log.Println(err)
 				return err
@@ -27,7 +28,7 @@ func (state *RuntimeState) SendRequestemail(username string, groupnames []string
 			}
 			state.SuccessRequestemail(username, usersEmail, entry, remoteAddr, userAgent)
 		} else {
-			usersEmail, err := state.GetEmailofusersingroup(entry)
+			usersEmail, err := state.GetEmailofusersingroup(entry,TargetLDAPConn)
 			if err != nil {
 				log.Println(err)
 				return err
@@ -40,7 +41,6 @@ func (state *RuntimeState) SendRequestemail(username string, groupnames []string
 }
 
 const requestAccessMailTemplateText = `Subject: Requesting access for group {{.Groupname}}
-
 User {{.RequestedUser}} has requested access for group {{.Groupname}} (from {{.RemoteAddr}} ({{.Browser}} {{.OS}} ))`
 
 //send email for requesting access to a group
@@ -93,13 +93,12 @@ func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail 
 ////Approve email  start.....//////
 
 const requestApproveMailTemplateText = `Subject: Regarding access for group {{.Groupname}}
-
 User {{.OtherUser}} has Approved access to user {{.RequestedUser}} for group {{.Groupname}} (from {{.RemoteAddr}} ({{.Browser}} {{.OS}} ))`
 
 //send approve email
 func (state *RuntimeState) sendApproveemail(username string,
-	userPair [][]string, remoteAddr string, userAgent string) error {
-	userEmail, err := state.GetEmailofauser(username)
+	userPair [][]string, remoteAddr string, userAgent string,TargetLDAPConn *ldap.Conn) error {
+	userEmail, err := state.GetEmailofauser(username,TargetLDAPConn)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -108,7 +107,7 @@ func (state *RuntimeState) sendApproveemail(username string,
 		var targetAddress []string
 		targetAddress = append(targetAddress, userEmail[0])
 		requesteduser := entry[0]
-		otheruserEmail, err := state.GetEmailofauser(requesteduser)
+		otheruserEmail, err := state.GetEmailofauser(requesteduser,TargetLDAPConn)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -173,13 +172,12 @@ func (state *RuntimeState) approveRequestemail(requesteduser string, otheruser s
 
 ////Reject email  start.....//////
 const requestRejectMailTemplateText = `Subject: Regarding access for group {{.Groupname}}
-
 User {{.OtherUser}} has Rejected access to user {{.RequestedUser}} for group {{.Groupname}} (from {{.RemoteAddr}} ({{.Browser}} {{.OS}} ))`
 
 //send reject email
 func (state *RuntimeState) sendRejectemail(username string, userPair [][]string,
-	remoteAddr string, userAgent string) error {
-	userEmail, err := state.GetEmailofauser(username)
+	remoteAddr string, userAgent string,TargetLDAPConn *ldap.Conn) error {
+	userEmail, err := state.GetEmailofauser(username,TargetLDAPConn)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -188,7 +186,7 @@ func (state *RuntimeState) sendRejectemail(username string, userPair [][]string,
 		var targetAddress []string
 		targetAddress = append(targetAddress, userEmail[0])
 		requesteduser := entry[0]
-		otheruserEmail, err := state.GetEmailofauser(requesteduser)
+		otheruserEmail, err := state.GetEmailofauser(requesteduser,TargetLDAPConn)
 		if err != nil {
 			log.Println(err)
 			return err

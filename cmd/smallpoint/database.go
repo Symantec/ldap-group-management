@@ -5,6 +5,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"time"
+	"gopkg.in/ldap.v2"
 )
 
 //Initialsing database
@@ -28,7 +29,7 @@ func initDB(state *RuntimeState) (err error) {
 }
 
 //insert a request into DB
-func (state *RuntimeState) insertRequestInDB(username string, groupname []string) error {
+func (state *RuntimeState) insertRequestInDB(username string, groupname []string,TargetLDAPConn *ldap.Conn) error {
 
 	stmtText := "insert into pending_requests(username, groupname, time_stamp) values (?,?,?);"
 	stmt, err := state.db.Prepare(stmtText)
@@ -38,7 +39,7 @@ func (state *RuntimeState) insertRequestInDB(username string, groupname []string
 	}
 	defer stmt.Close()
 	for _, entry := range groupname {
-		if state.entryExistsorNot(username, entry) || state.IsgroupmemberorNot(entry, username) {
+		if state.entryExistsorNot(username, entry) || state.IsgroupmemberorNot(entry, username,TargetLDAPConn) {
 			continue
 		} else {
 
