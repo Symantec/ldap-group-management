@@ -101,8 +101,8 @@ func (state *RuntimeState) AddAtributedescription(groupname string,TargetLDAPCon
 }
 
 //Deleting the attribute in a dn in Target Ldap. --required
-func (state *RuntimeState) deleteDescription(result []string,TargetLDAPConn *ldap.Conn) error {
-	for _, entry := range result {
+func (state *RuntimeState) deleteDescription(groupnames []string,TargetLDAPConn *ldap.Conn) error {
+	for _, entry := range groupnames {
 		entry = state.CreategroupDn(entry)
 
 		modify := ldap.NewModifyRequest(entry)
