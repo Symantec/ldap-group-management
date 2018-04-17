@@ -11,8 +11,8 @@ test:
 	 go test -v ./...
 
 clean:
-	 (GOCLEAN)
-	rm -f $(BINARY_NAME)
+	 go clean
+	 rm -f $(BINARY_NAME)
 
 run:
 	 go build -o $(BINARY_NAME) -v ./...
