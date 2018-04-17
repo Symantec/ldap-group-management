@@ -55,14 +55,14 @@ func (state *RuntimeState) MygroupsHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
-	user_groups, err := state.GetgroupsofUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
+	userGroups, err := state.GetgroupsofUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	sort.Strings(user_groups)
-	response := Response{username, user_groups, nil, nil}
+	sort.Strings(userGroups)
+	response := Response{username, userGroups, nil, nil}
 	if state.UserisadminOrNot(response.UserName) {
 		generateHTML(w, response, "index", "admins_sidebar", "my_groups")
 	} else {
@@ -247,7 +247,7 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		return
 	}
-	DB_entries, err := state.getDBentries()
+	DBentries, err := state.getDBentries()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -256,7 +256,7 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 	var description string
 	var response Response
 	response.UserName = username
-	for _, entry := range DB_entries {
+	for _, entry := range DBentries {
 		description, err = state.GetDescriptionvalue(entry[1])
 		if err != nil {
 			log.Println(err)
@@ -303,8 +303,8 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 	}
 	//log.Println(out)
 	//log.Println(out["groups"])
-	var user_pair = out["groups"]
-	for _, entry := range user_pair {
+	var UserPair = out["groups"]
+	for _, entry := range UserPair {
 		if state.IsgroupmemberorNot(entry[1], entry[0]) {
 			err = state.deleteEntryInDB(entry[0], entry[1])
 			if err != nil {
