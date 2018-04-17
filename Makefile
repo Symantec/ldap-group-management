@@ -20,4 +20,3 @@ run:
 
 deps:
 	 go get -t ./...
-	 
