@@ -40,6 +40,7 @@ type UserInfoLDAPSource struct {
 	GroupSearchBaseDNs string `yaml:"group_search_base_dns"`
 	GroupSearchFilter  string `yaml:"group_search_filter"`
 	Admins             string `yaml:"super_admins"`
+	ServiceAccountBaseDNs string `yaml:"service_search_base_dns"`
 }
 
 type AppConfigFile struct {
@@ -214,10 +215,10 @@ func main() {
 		panic(err)
 	}
 
-	http.HandleFunc("/allgroups", state.GetallgroupsHandler)
-	http.HandleFunc("/allusers", state.GetallusersHandler)
-	http.HandleFunc("/user_groups/", state.GetgroupsofuserHandler)
-	http.HandleFunc("/group_users/", state.GetusersingroupHandler)
+	http.Handle("/allgroups", simpleOidcAuth.Handler(http.HandlerFunc(state.GetallgroupsHandler)))
+	http.Handle("/allusers", simpleOidcAuth.Handler(http.HandlerFunc(state.GetallusersHandler)))
+	http.Handle("/user_groups/", simpleOidcAuth.Handler(http.HandlerFunc(state.GetgroupsofuserHandler)))
+	http.Handle("/group_users/", simpleOidcAuth.Handler(http.HandlerFunc(state.GetusersingroupHandler)))
 
 	http.Handle("/create_group", simpleOidcAuth.Handler(http.HandlerFunc(state.creategroupWebpageHandler)))
 	http.Handle("/delete_group", simpleOidcAuth.Handler(http.HandlerFunc(state.deletegroupWebpageHandler)))
@@ -235,7 +236,7 @@ func main() {
 	http.Handle("/approve-request", simpleOidcAuth.Handler(http.HandlerFunc(state.approveHandler)))
 	http.Handle("/reject-request", simpleOidcAuth.Handler(http.HandlerFunc(state.rejectHandler)))
 
-	http.HandleFunc("/addmembers/", state.AddmemberstoGroup)
+	http.Handle("/addmembers/", simpleOidcAuth.Handler(http.HandlerFunc(state.AddmemberstoGroup)))
 
 	fs := http.FileServer(http.Dir("templates"))
 	http.Handle("/css/", fs)
