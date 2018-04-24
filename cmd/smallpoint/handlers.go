@@ -62,11 +62,13 @@ func (state *RuntimeState) MygroupsHandler(w http.ResponseWriter, r *http.Reques
 	}
 	sort.Strings(userGroups)
 	response := Response{username, userGroups, nil, nil}
+	sidebarType := "sidebar"
+
 	if state.Config.TargetLDAP.UserisadminOrNot(response.UserName) {
-		generateHTML(w, response, "index", "admins_sidebar", "my_groups")
-	} else {
-		generateHTML(w, response, "index", "sidebar", "my_groups")
+		sidebarType = "admins_sidebar"
 	}
+
+	generateHTML(w, response, "index", sidebarType, "my_groups")
 }
 
 //user's pending requests
@@ -156,12 +158,13 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 	go state.SendRequestemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
-	if state.Config.TargetLDAP.UserisadminOrNot(username) == true {
-		generateHTML(w, Response{UserName: username}, "index", "admins_sidebar", "Accessrequestsent")
+	sidebarType := "sidebar"
 
-	} else {
-		generateHTML(w, Response{UserName: username}, "index", "sidebar", "Accessrequestsent")
+	if state.Config.TargetLDAP.UserisadminOrNot(username)==true {
+		sidebarType = "admins_sidebar"
 	}
+	generateHTML(w, Response{UserName: username}, "index", sidebarType, "Accessrequestsent")
+
 }
 
 //delete access requests made by user
