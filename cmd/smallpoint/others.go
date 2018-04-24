@@ -32,7 +32,7 @@ func (state *RuntimeState) DisabledAccountsinSourceLDAP(UserSearchBaseDNs string
 //---required
 func (state *RuntimeState) CompareDisabledaccounts(result []string) error {
 	for _, entry := range result {
-		entry = state.CreateuserDn(entry)
+		entry = state.Config.TargetLDAP.CreateuserDn(entry)
 
 		modify := ldap.NewModifyRequest(entry)
 		modify.Replace("nsaccountLock", nsaccountLock)
