@@ -7,13 +7,13 @@ import (
 	"log"
 	"strings"
 
-	"strconv"
-	"net/url"
 	"github.com/Symantec/keymaster/lib/authutil"
+	"net/url"
+	"strconv"
 	"time"
 )
 
-func (u *UserInfoLDAPSource) getTargetLDAPConnection()(*ldap.Conn,error) {
+func (u *UserInfoLDAPSource) getTargetLDAPConnection() (*ldap.Conn, error) {
 	var ldapURL []*url.URL
 	for _, ldapURLString := range strings.Split(u.LDAPTargetURLs, ",") {
 		newURL, err := authutil.ParseLDAPURL(ldapURLString)
@@ -42,7 +42,7 @@ func (u *UserInfoLDAPSource) getTargetLDAPConnection()(*ldap.Conn,error) {
 		}
 		return conn, nil
 	}
-	return nil,errors.New("cannot connect to LDAP server")
+	return nil, errors.New("cannot connect to LDAP server")
 }
 
 //Get all ldap users and put that in map ---required
@@ -76,7 +76,7 @@ func (u *UserInfoLDAPSource) GetallUsers() (map[string]string, error) {
 }
 
 //To build a user base DN using uid only for Target LDAP.
-func  (u *UserInfoLDAPSource) CreateuserDn(username string) string {
+func (u *UserInfoLDAPSource) CreateuserDn(username string) string {
 	//uid := username
 	result := "uid=" + username + "," + u.UserSearchBaseDNs
 
@@ -86,14 +86,14 @@ func  (u *UserInfoLDAPSource) CreateuserDn(username string) string {
 
 //To build a GroupDN for a particular group in Target ldap
 func (u *UserInfoLDAPSource) CreategroupDn(groupname string) string {
-	result := "cn=" +groupname+ "," + u.GroupSearchBaseDNs
+	result := "cn=" + groupname + "," + u.GroupSearchBaseDNs
 
 	return string(result)
 
 }
 
-func (u *UserInfoLDAPSource) CreateserviceDn(groupname string) string{
-	result:="cn="+groupname+ ","+ u.ServiceAccountBaseDNs
+func (u *UserInfoLDAPSource) CreateserviceDn(groupname string) string {
+	result := "cn=" + groupname + "," + u.ServiceAccountBaseDNs
 
 	return string(result)
 }
@@ -153,7 +153,6 @@ func (u *UserInfoLDAPSource) AddAtributedescription(groupname string) error {
 		return err
 	}
 	defer conn.Close()
-
 
 	entry := u.CreategroupDn(groupname)
 	modify := ldap.NewModifyRequest(entry)

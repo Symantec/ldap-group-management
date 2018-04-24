@@ -75,7 +75,7 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
-	groupnames, _, err := findrequestsofUserinDB(username,state)
+	groupnames, _, err := findrequestsofUserinDB(username, state)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -149,13 +149,13 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 	}
 	//log.Println(out)
 	//fmt.Print(out["groups"])
-	err = insertRequestInDB(username, out["groups"],state)
+	err = insertRequestInDB(username, out["groups"], state)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "oops! an error occured.", http.StatusInternalServerError)
 		return
 	}
-	go state.SendRequestemail(username,out["groups"],r.RemoteAddr, r.UserAgent())
+	go state.SendRequestemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
 	if state.Config.TargetLDAP.UserisadminOrNot(username) == true {
 		generateHTML(w, Response{UserName: username}, "index", "admins_sidebar", "Accessrequestsent")
 
@@ -178,7 +178,7 @@ func (state *RuntimeState) deleteRequests(w http.ResponseWriter, r *http.Request
 		return
 	}
 	for _, entry := range out["groups"] {
-		err = deleteEntryInDB(username, entry,state)
+		err = deleteEntryInDB(username, entry, state)
 		if err != nil {
 			log.Println(err)
 		}
@@ -270,7 +270,7 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 			groupName = description
 		}
 		// Check now if username is member of groupname(in description) and if it is, then add it.
-		if state.Config.TargetLDAP.IsgroupmemberorNot(groupName,username) {
+		if state.Config.TargetLDAP.IsgroupmemberorNot(groupName, username) {
 			response.PendingActions = append(response.PendingActions, entry)
 		}
 	}
@@ -306,13 +306,13 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 	var userPair = out["groups"]
 	for _, entry := range userPair {
 		if state.Config.TargetLDAP.IsgroupmemberorNot(entry[1], entry[0]) {
-			err = deleteEntryInDB(entry[0], entry[1],state)
+			err = deleteEntryInDB(entry[0], entry[1], state)
 			if err != nil {
 				fmt.Println("error me")
 				log.Println(err)
 			}
 
-		} else if entryExistsorNot(entry[0], entry[1],state) {
+		} else if entryExistsorNot(entry[0], entry[1], state) {
 			var groupinfo groupInfo
 			groupinfo.groupname = entry[1]
 			groupinfo.memberUid = append(groupinfo.memberUid, entry[0])
@@ -321,7 +321,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			if err != nil {
 				log.Println(err)
 			}
-			err = deleteEntryInDB(entry[0], entry[1],state)
+			err = deleteEntryInDB(entry[0], entry[1], state)
 			if err != nil {
 				fmt.Println("error here!")
 				log.Println(err)
@@ -350,7 +350,7 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request)
 
 	for _, entry := range out["groups"] {
 		fmt.Println(entry[0], entry[1])
-		err =deleteEntryInDB(entry[0], entry[1],state)
+		err = deleteEntryInDB(entry[0], entry[1], state)
 		if err != nil {
 			//fmt.Println("I am the error")
 			log.Println(err)
@@ -358,7 +358,6 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request)
 	}
 	go state.sendRejectemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
 }
-
 
 // Create a group handler --required
 func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Request) {
@@ -421,7 +420,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, "error occurred! May be there is no such group!", http.StatusInternalServerError)
 		return
 	}
-	err = deleteEntryofGroupsInDB(groupnames,state)
+	err = deleteEntryofGroupsInDB(groupnames, state)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)

@@ -1,8 +1,6 @@
 package main
 
-
 type Operations interface {
-
 	GetallUsers() (map[string]string, error)
 
 	CreateuserDn(username string) string
@@ -46,5 +44,4 @@ type Operations interface {
 	GetEmailofusersingroup(groupname string) ([]string, error)
 
 	CreateServiceAccount(groupinfo groupInfo) error
-
 }

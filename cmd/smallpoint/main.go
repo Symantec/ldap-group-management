@@ -32,14 +32,14 @@ type baseConfig struct {
 }
 
 type UserInfoLDAPSource struct {
-	BindUsername       string `yaml:"bind_username"`
-	BindPassword       string `yaml:"bind_password"`
-	LDAPTargetURLs     string `yaml:"ldap_target_urls"`
-	UserSearchBaseDNs  string `yaml:"user_search_base_dns"`
-	UserSearchFilter   string `yaml:"user_search_filter"`
-	GroupSearchBaseDNs string `yaml:"group_search_base_dns"`
-	GroupSearchFilter  string `yaml:"group_search_filter"`
-	Admins             string `yaml:"super_admins"`
+	BindUsername          string `yaml:"bind_username"`
+	BindPassword          string `yaml:"bind_password"`
+	LDAPTargetURLs        string `yaml:"ldap_target_urls"`
+	UserSearchBaseDNs     string `yaml:"user_search_base_dns"`
+	UserSearchFilter      string `yaml:"user_search_filter"`
+	GroupSearchBaseDNs    string `yaml:"group_search_base_dns"`
+	GroupSearchFilter     string `yaml:"group_search_filter"`
+	Admins                string `yaml:"super_admins"`
 	ServiceAccountBaseDNs string `yaml:"service_search_base_dns"`
 }
 
