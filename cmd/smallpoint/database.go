@@ -11,7 +11,7 @@ import (
 func initDB(state *RuntimeState) (err error) {
 
 	state.dbType = "sqlite3"
-	state.db, err = sql.Open("sqlite3", "./ldap-group-management1.db")
+	state.db, err = sql.Open("sqlite3", state.Config.Base.StorageURL)
 	if err != nil {
 		return err
 	}
