@@ -28,7 +28,7 @@ func initDB(state *RuntimeState) (err error) {
 }
 
 //insert a request into DB
-func (state *RuntimeState) insertRequestInDB(username string, groupname []string) error {
+func insertRequestInDB(username string, groupnames []string, state *RuntimeState) error {
 
 	stmtText := "insert into pending_requests(username, groupname, time_stamp) values (?,?,?);"
 	stmt, err := state.db.Prepare(stmtText)
@@ -37,8 +37,8 @@ func (state *RuntimeState) insertRequestInDB(username string, groupname []string
 		log.Fatal(err)
 	}
 	defer stmt.Close()
-	for _, entry := range groupname {
-		if state.entryExistsorNot(username, entry) || state.IsgroupmemberorNot(entry, username) {
+	for _, entry := range groupnames {
+		if entryExistsorNot(username, entry, state) || state.Config.TargetLDAP.IsgroupmemberorNot(entry, username) {
 			continue
 		} else {
 
@@ -52,7 +52,7 @@ func (state *RuntimeState) insertRequestInDB(username string, groupname []string
 }
 
 //delete the request after approved or declined
-func (state *RuntimeState) deleteEntryInDB(username string, groupname string) error {
+func deleteEntryInDB(username string, groupname string, state *RuntimeState) error {
 
 	stmtText := "delete from pending_requests where username= ? and groupname= ?;"
 	stmt, err := state.db.Prepare(stmtText)
@@ -70,7 +70,7 @@ func (state *RuntimeState) deleteEntryInDB(username string, groupname string) er
 }
 
 //deleting all groups in DB which are deleted from Target LDAP
-func (state *RuntimeState) deleteEntryofGroupsInDB(groupnames []string) error {
+func deleteEntryofGroupsInDB(groupnames []string, state *RuntimeState) error {
 
 	stmtText := "delete from pending_requests where groupname= ?;"
 	stmt, err := state.db.Prepare(stmtText)
@@ -90,7 +90,7 @@ func (state *RuntimeState) deleteEntryofGroupsInDB(groupnames []string) error {
 }
 
 //Search for a particular request made by a user (or) a group. (for my_pending_actions)
-func (state *RuntimeState) findrequestsofUserinDB(username string) ([]string, bool, error) {
+func findrequestsofUserinDB(username string, state *RuntimeState) ([]string, bool, error) {
 	stmtText := "select groupname from pending_requests where username=?;"
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
@@ -122,7 +122,7 @@ func (state *RuntimeState) findrequestsofUserinDB(username string) ([]string, bo
 }
 
 //looks in the DB if the entry already exists or not
-func (state *RuntimeState) entryExistsorNot(username string, groupname string) bool {
+func entryExistsorNot(username string, groupname string, state *RuntimeState) bool {
 	stmtText := "select * from pending_requests where username=? and groupname=?;"
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
@@ -148,7 +148,7 @@ func (state *RuntimeState) entryExistsorNot(username string, groupname string) b
 }
 
 //(username,groupname) get whole db entries.
-func (state *RuntimeState) getDBentries() ([][]string, error) {
+func getDBentries(state *RuntimeState) ([][]string, error) {
 	stmtText := "select username,groupname from pending_requests;"
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
