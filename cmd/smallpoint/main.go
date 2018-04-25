@@ -1,24 +1,18 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"database/sql"
 	"errors"
 	"flag"
-	"github.com/Symantec/keymaster/lib/authutil"
 	"github.com/cviecco/go-simple-oidc-auth/authhandler"
 	_ "github.com/mattn/go-sqlite3"
 	"gopkg.in/ldap.v2"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
-	"time"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
 type baseConfig struct {
@@ -31,27 +25,15 @@ type baseConfig struct {
 	SmtpSenderAddress     string `yaml:"smtp_sender_address"`
 }
 
-type UserInfoLDAPSource struct {
-	BindUsername          string `yaml:"bind_username"`
-	BindPassword          string `yaml:"bind_password"`
-	LDAPTargetURLs        string `yaml:"ldap_target_urls"`
-	UserSearchBaseDNs     string `yaml:"user_search_base_dns"`
-	UserSearchFilter      string `yaml:"user_search_filter"`
-	GroupSearchBaseDNs    string `yaml:"group_search_base_dns"`
-	GroupSearchFilter     string `yaml:"group_search_filter"`
-	Admins                string `yaml:"super_admins"`
-	ServiceAccountBaseDNs string `yaml:"service_search_base_dns"`
-}
 
 type AppConfigFile struct {
 	Base       baseConfig         `yaml:"base"`
-	SourceLDAP UserInfoLDAPSource `yaml:"source_config"`
-	TargetLDAP UserInfoLDAPSource `yaml:"target_config"`
+	SourceLDAP userinfo.UserInfoLDAPSource `yaml:"source_config"`
+	TargetLDAP userinfo.UserInfoLDAPSource `yaml:"target_config"`
 }
 
 type RuntimeState struct {
 	Config     AppConfigFile
-	sourceLdap *ldap.Conn
 	targetLdap *ldap.Conn
 	dbType     string
 	db         *sql.DB
@@ -82,20 +64,6 @@ type Response struct {
 	PendingActions [][]string
 }
 
-type groupInfo struct {
-	groupname   string
-	description string
-	memberUid   []string
-	member      []string
-	cn          string
-}
-
-const ldapTimeoutSecs = 10
-
-//maximum possible paging size number
-const maximumPagingsize = 2147483647
-
-var nsaccountLock = []string{"True"}
 
 var (
 	configFilename = flag.String("config", "config.yml", "The filename of the configuration")
@@ -136,41 +104,6 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	return state, err
 }
 
-//Establishing connection
-func GetLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ldap.Conn, string, error) {
-
-	if u.Scheme != "ldaps" {
-		err := errors.New("Invalid ldap scheme (we only support ldaps)")
-		return nil, "", err
-	}
-
-	serverPort := strings.Split(u.Host, ":")
-	port := "636"
-
-	if len(serverPort) == 2 {
-		port = serverPort[1]
-	}
-
-	server := serverPort[0]
-	hostnamePort := server + ":" + port
-
-	timeout := time.Duration(time.Duration(timeoutSecs) * time.Second)
-	start := time.Now()
-
-	tlsConn, err := tls.DialWithDialer(&net.Dialer{Timeout: timeout}, "tcp",
-		hostnamePort, &tls.Config{ServerName: server, RootCAs: rootCAs})
-
-	if err != nil {
-		log.Printf("rooCAs=%+v,  serverName=%s, hostnameport=%s, tlsConn=%+v", rootCAs, server, hostnamePort, tlsConn)
-		errorTime := time.Since(start).Seconds() * 1000
-		log.Printf("connection failure for:%s (%s)(time(ms)=%v)", server, err.Error(), errorTime)
-		return nil, "", err
-	}
-
-	// we dont close the tls connection directly  close defer to the new ldap connection
-	conn := ldap.NewConn(tlsConn, true)
-	return conn, server, nil
-}
 
 type mailAttributes struct {
 	RequestedUser string
@@ -197,23 +130,6 @@ func main() {
 	}
 	authSource = simpleOidcAuth
 
-	//Parsing Source LDAP URL, establishing connection and binding user.
-	SourceLdapUrl, err := authutil.ParseLDAPURL(state.Config.SourceLDAP.LDAPTargetURLs)
-
-	state.sourceLdap, _, err = GetLDAPConnection(*SourceLdapUrl, ldapTimeoutSecs, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	timeout := time.Duration(time.Duration(ldapTimeoutSecs) * time.Second)
-	state.sourceLdap.SetTimeout(timeout)
-	state.sourceLdap.Start()
-
-	err = state.sourceLdap.Bind(state.Config.SourceLDAP.BindUsername, state.Config.SourceLDAP.BindPassword)
-
-	if err != nil {
-		panic(err)
-	}
 
 	http.Handle("/allgroups", simpleOidcAuth.Handler(http.HandlerFunc(state.GetallgroupsHandler)))
 	http.Handle("/allusers", simpleOidcAuth.Handler(http.HandlerFunc(state.GetallusersHandler)))
@@ -226,7 +142,7 @@ func main() {
 	http.Handle("/delete_group/", simpleOidcAuth.Handler(http.HandlerFunc(state.deleteGrouphandler)))
 
 	http.Handle("/requestaccess", simpleOidcAuth.Handler(http.HandlerFunc(state.requestAccessHandler)))
-	http.Handle("/index.html", simpleOidcAuth.Handler(http.HandlerFunc(state.IndexHandler)))
+	http.Handle("/", simpleOidcAuth.Handler(http.HandlerFunc(state.IndexHandler)))
 	http.Handle("/mygroups/", simpleOidcAuth.Handler(http.HandlerFunc(state.MygroupsHandler)))
 	http.Handle("/pending-actions", simpleOidcAuth.Handler(http.HandlerFunc(state.pendingActions)))
 	http.Handle("/pending-requests", simpleOidcAuth.Handler(http.HandlerFunc(state.pendingRequests)))

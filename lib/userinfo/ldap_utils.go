@@ -1,4 +1,4 @@
-package main
+package userinfo
 
 import (
 	"errors"
@@ -11,7 +11,48 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+	"crypto/x509"
+	"crypto/tls"
+	"net"
 )
+
+const ldapTimeoutSecs = 10
+
+
+func getLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ldap.Conn, string, error) {
+
+	if u.Scheme != "ldaps" {
+		err := errors.New("Invalid ldaputil scheme (we only support ldaps)")
+		return nil, "", err
+	}
+
+	serverPort := strings.Split(u.Host, ":")
+	port := "636"
+
+	if len(serverPort) == 2 {
+		port = serverPort[1]
+	}
+
+	server := serverPort[0]
+	hostnamePort := server + ":" + port
+
+	timeout := time.Duration(time.Duration(timeoutSecs) * time.Second)
+	start := time.Now()
+
+	tlsConn, err := tls.DialWithDialer(&net.Dialer{Timeout: timeout}, "tcp",
+		hostnamePort, &tls.Config{ServerName: server, RootCAs: rootCAs})
+
+	if err != nil {
+		log.Printf("rooCAs=%+v,  serverName=%s, hostnameport=%s, tlsConn=%+v", rootCAs, server, hostnamePort, tlsConn)
+		errorTime := time.Since(start).Seconds() * 1000
+		log.Printf("connection failure for:%s (%s)(time(ms)=%v)", server, err.Error(), errorTime)
+		return nil, "", err
+	}
+
+	// we dont close the tls connection directly  close defer to the new ldaputil connection
+	conn := ldap.NewConn(tlsConn, true)
+	return conn, server, nil
+}
 
 func (u *UserInfoLDAPSource) getTargetLDAPConnection() (*ldap.Conn, error) {
 	var ldapURL []*url.URL
@@ -25,7 +66,7 @@ func (u *UserInfoLDAPSource) getTargetLDAPConnection() (*ldap.Conn, error) {
 	}
 
 	for _, TargetLdapUrl := range ldapURL {
-		conn, _, err := GetLDAPConnection(*TargetLdapUrl, ldapTimeoutSecs, nil)
+		conn, _, err := getLDAPConnection(*TargetLdapUrl, ldapTimeoutSecs, nil)
 
 		if err != nil {
 			log.Println(err)
@@ -45,7 +86,7 @@ func (u *UserInfoLDAPSource) getTargetLDAPConnection() (*ldap.Conn, error) {
 	return nil, errors.New("cannot connect to LDAP server")
 }
 
-//Get all ldap users and put that in map ---required
+//Get all ldaputil users and put that in map ---required
 func (u *UserInfoLDAPSource) GetallUsers() (map[string]string, error) {
 
 	conn, err := u.getTargetLDAPConnection()
@@ -84,7 +125,7 @@ func (u *UserInfoLDAPSource) CreateuserDn(username string) string {
 
 }
 
-//To build a GroupDN for a particular group in Target ldap
+//To build a GroupDN for a particular group in Target ldaputil
 func (u *UserInfoLDAPSource) CreategroupDn(groupname string) string {
 	result := "cn=" + groupname + "," + u.GroupSearchBaseDNs
 
@@ -99,24 +140,24 @@ func (u *UserInfoLDAPSource) CreateserviceDn(groupname string) string {
 }
 
 //Creating a Group --required
-func (u *UserInfoLDAPSource) CreateGroup(groupinfo groupInfo) error {
+func (u *UserInfoLDAPSource) CreateGroup(groupinfo GroupInfo) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	entry := u.CreategroupDn(groupinfo.groupname)
+	entry := u.CreategroupDn(groupinfo.Groupname)
 	gidnum, err := u.GetmaximumGidnumber()
 	if err != nil {
 		panic(err)
 	}
 	group := ldap.NewAddRequest(entry)
 	group.Attribute("objectClass", []string{"posixGroup", "top", "groupOfNames"})
-	group.Attribute("cn", []string{groupinfo.groupname})
-	group.Attribute("description", []string{groupinfo.description})
-	group.Attribute("member", groupinfo.member)
-	group.Attribute("memberUid", groupinfo.memberUid)
+	group.Attribute("cn", []string{groupinfo.Groupname})
+	group.Attribute("description", []string{groupinfo.Description})
+	group.Attribute("member", groupinfo.Member)
+	group.Attribute("memberUid", groupinfo.MemberUid)
 	group.Attribute("gidNumber", []string{gidnum})
 	err = conn.Add(group)
 	if err != nil {
@@ -125,7 +166,7 @@ func (u *UserInfoLDAPSource) CreateGroup(groupinfo groupInfo) error {
 	return nil
 }
 
-//deleting a Group from target ldap. --required
+//deleting a Group from target ldaputil. --required
 func (u *UserInfoLDAPSource) DeleteGroup(groupnames []string) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
@@ -190,7 +231,7 @@ func (u *UserInfoLDAPSource) DeleteDescription(groupnames []string) error {
 	return nil
 }
 
-//function to get details of a user from Target ldap.(should make some changes) --required
+//function to get details of a user from Target ldaputil.(should make some changes) --required
 func (u *UserInfoLDAPSource) UserInfo(Userdn string) ([]string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
@@ -212,7 +253,7 @@ func (u *UserInfoLDAPSource) UserInfo(Userdn string) ([]string, error) {
 	return userinfo, nil
 }
 
-//function to get all the groups in Target ldap and put it in array --required
+//function to get all the groups in Target ldaputil and put it in array --required
 func (u *UserInfoLDAPSource) GetallGroups() ([]string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
@@ -306,7 +347,7 @@ func (u *UserInfoLDAPSource) UserisadminOrNot(username string) bool {
 	return false
 }
 
-//it helps to findout the current maximum gid number in ldap.
+//it helps to findout the current maximum gid number in ldaputil.
 func (u *UserInfoLDAPSource) GetmaximumGidnumber() (string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
@@ -340,16 +381,16 @@ func (u *UserInfoLDAPSource) GetmaximumGidnumber() (string, error) {
 }
 
 //adding members to existing group
-func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo groupInfo) error {
+func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo GroupInfo) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	entry := u.CreategroupDn(groupinfo.groupname)
+	entry := u.CreategroupDn(groupinfo.Groupname)
 	modify := ldap.NewModifyRequest(entry)
-	modify.Add("memberUid", groupinfo.memberUid)
-	modify.Add("member", groupinfo.member)
+	modify.Add("memberUid", groupinfo.MemberUid)
+	modify.Add("member", groupinfo.Member)
 	err = conn.Modify(modify)
 	if err != nil {
 		return err
@@ -358,16 +399,16 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo groupInfo) error {
 }
 
 //remove members from existing group
-func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo groupInfo) error {
+func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo GroupInfo) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	entry := u.CreategroupDn(groupinfo.groupname)
+	entry := u.CreategroupDn(groupinfo.Groupname)
 	modify := ldap.NewModifyRequest(entry)
-	modify.Delete("memberUid", groupinfo.memberUid)
-	modify.Delete("member", groupinfo.member)
+	modify.Delete("memberUid", groupinfo.MemberUid)
+	modify.Delete("member", groupinfo.Member)
 	err = conn.Modify(modify)
 	if err != nil {
 		return err
@@ -457,22 +498,22 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 	return userEmail, nil
 }
 
-func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo groupInfo) error {
+func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo GroupInfo) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	entry := u.CreateserviceDn(groupinfo.groupname)
+	entry := u.CreateserviceDn(groupinfo.Groupname)
 	gidnum, err := u.GetmaximumGidnumber()
 	if err != nil {
 		panic(err)
 	}
 	group := ldap.NewAddRequest(entry)
 	group.Attribute("objectClass", []string{"posixGroup", "top", "groupOfNames"})
-	group.Attribute("cn", []string{groupinfo.groupname})
-	group.Attribute("description", []string{groupinfo.description})
+	group.Attribute("cn", []string{groupinfo.Groupname})
+	group.Attribute("description", []string{groupinfo.Description})
 	group.Attribute("gidNumber", []string{gidnum})
 	err = conn.Add(group)
 	if err != nil {

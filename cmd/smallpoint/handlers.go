@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
+
 )
 
 func GetRemoteUserName(w http.ResponseWriter, r *http.Request) (string, error) {
@@ -204,12 +206,12 @@ func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter, r *http.Requ
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	var groupinfo groupInfo
-	groupinfo.groupname = r.PostFormValue("groupname")
+	var groupinfo userinfo.GroupInfo
+	groupinfo.Groupname = r.PostFormValue("groupname")
 	members := r.PostFormValue("members")
 	for _, member := range strings.Split(members, ",") {
-		groupinfo.memberUid = append(groupinfo.memberUid, member)
-		groupinfo.member = append(groupinfo.member, state.Config.TargetLDAP.CreateuserDn(member))
+		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
+		groupinfo.Member = append(groupinfo.Member, state.Config.TargetLDAP.CreateuserDn(member))
 	}
 
 	err = state.Config.TargetLDAP.CreateGroup(groupinfo)
@@ -233,11 +235,11 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 		return
 
 	}
-	var groupinfo groupInfo
-	groupinfo.member = append(groupinfo.member, state.Config.TargetLDAP.CreateuserDn(username))
-	groupinfo.memberUid = append(groupinfo.memberUid, username)
+	var groupinfo userinfo.GroupInfo
+	groupinfo.Member = append(groupinfo.Member, state.Config.TargetLDAP.CreateuserDn(username))
+	groupinfo.MemberUid = append(groupinfo.MemberUid, username)
 	for _, entry := range out["groups"] {
-		groupinfo.groupname = entry
+		groupinfo.Groupname = entry
 		err = state.Config.TargetLDAP.DeletemembersfromGroup(groupinfo)
 		if err != nil {
 			log.Println(err)
@@ -316,10 +318,10 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			}
 
 		} else if entryExistsorNot(entry[0], entry[1], state) {
-			var groupinfo groupInfo
-			groupinfo.groupname = entry[1]
-			groupinfo.memberUid = append(groupinfo.memberUid, entry[0])
-			groupinfo.member = append(groupinfo.member, state.Config.TargetLDAP.CreateuserDn(entry[0]))
+			var groupinfo userinfo.GroupInfo
+			groupinfo.Groupname = entry[1]
+			groupinfo.MemberUid = append(groupinfo.MemberUid, entry[0])
+			groupinfo.Member = append(groupinfo.Member, state.Config.TargetLDAP.CreateuserDn(entry[0]))
 			err := state.Config.TargetLDAP.AddmemberstoExisting(groupinfo)
 			if err != nil {
 				log.Println(err)
@@ -378,16 +380,15 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	var groupinfo groupInfo
-	groupinfo.groupname = r.PostFormValue("groupname")
-	groupinfo.description = r.PostFormValue("description")
+	var groupinfo userinfo.GroupInfo
+	groupinfo.Groupname = r.PostFormValue("groupname")
+	groupinfo.Description = r.PostFormValue("description")
 	members := r.PostFormValue("members")
 
 	for _, member := range strings.Split(members, ",") {
-		groupinfo.memberUid = append(groupinfo.memberUid, member)
-		groupinfo.member = append(groupinfo.member, state.Config.TargetLDAP.CreateuserDn(member))
+		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
+		groupinfo.Member = append(groupinfo.Member, state.Config.TargetLDAP.CreateuserDn(member))
 	}
-
 	err = state.Config.TargetLDAP.CreateGroup(groupinfo)
 
 	if err != nil {
