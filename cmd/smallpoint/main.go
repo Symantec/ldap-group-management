@@ -12,7 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	. "github.com/Symantec/ldap-group-management/lib/ldaputil"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
 type baseConfig struct {
@@ -28,8 +28,8 @@ type baseConfig struct {
 
 type AppConfigFile struct {
 	Base       baseConfig         `yaml:"base"`
-	SourceLDAP UserInfoLDAPSource `yaml:"source_config"`
-	TargetLDAP UserInfoLDAPSource `yaml:"target_config"`
+	SourceLDAP userinfo.UserInfoLDAPSource `yaml:"source_config"`
+	TargetLDAP userinfo.UserInfoLDAPSource `yaml:"target_config"`
 }
 
 type RuntimeState struct {

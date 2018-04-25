@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	. "github.com/Symantec/ldap-group-management/lib/ldaputil"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 
 )
 
@@ -206,7 +206,7 @@ func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter, r *http.Requ
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	var groupinfo GroupInfo
+	var groupinfo userinfo.GroupInfo
 	groupinfo.Groupname = r.PostFormValue("groupname")
 	members := r.PostFormValue("members")
 	for _, member := range strings.Split(members, ",") {
@@ -235,7 +235,7 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 		return
 
 	}
-	var groupinfo GroupInfo
+	var groupinfo userinfo.GroupInfo
 	groupinfo.Member = append(groupinfo.Member, state.Config.TargetLDAP.CreateuserDn(username))
 	groupinfo.MemberUid = append(groupinfo.MemberUid, username)
 	for _, entry := range out["groups"] {
@@ -318,7 +318,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			}
 
 		} else if entryExistsorNot(entry[0], entry[1], state) {
-			var groupinfo GroupInfo
+			var groupinfo userinfo.GroupInfo
 			groupinfo.Groupname = entry[1]
 			groupinfo.MemberUid = append(groupinfo.MemberUid, entry[0])
 			groupinfo.Member = append(groupinfo.Member, state.Config.TargetLDAP.CreateuserDn(entry[0]))
@@ -380,7 +380,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	var groupinfo GroupInfo
+	var groupinfo userinfo.GroupInfo
 	groupinfo.Groupname = r.PostFormValue("groupname")
 	groupinfo.Description = r.PostFormValue("description")
 	members := r.PostFormValue("members")

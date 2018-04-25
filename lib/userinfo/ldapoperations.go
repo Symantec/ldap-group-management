@@ -1,4 +1,4 @@
-package ldaputil
+package userinfo
 
 
 type UserInfoLDAPSource struct {
