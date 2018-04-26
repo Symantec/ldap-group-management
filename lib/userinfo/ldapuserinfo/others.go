@@ -1,4 +1,4 @@
-package userinfo
+package ldapuserinfo
 
 import (
 	"gopkg.in/ldap.v2"
