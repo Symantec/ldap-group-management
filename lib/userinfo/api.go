@@ -1,9 +1,16 @@
 package userinfo
 
 
-import "ldap-group-management/lib/userinfo/ldapuserinfo"
+type GroupInfo struct {
+	Groupname   string
+	Description string
+	MemberUid   []string
+	Member      []string
+	Cn          string
+}
 
-type Operations interface {
+
+type UserInfo interface {
 
 	GetallUsers() (map[string]string, error)
 
@@ -13,7 +20,7 @@ type Operations interface {
 
 	CreateserviceDn(groupname string) string
 
-	CreateGroup(groupinfo ldapuserinfo.GroupInfo) error
+	CreateGroup(groupinfo GroupInfo) error
 
 	DeleteGroup(groupnames []string) error
 
@@ -35,9 +42,9 @@ type Operations interface {
 
 	GetmaximumGidnumber() (string, error)
 
-	AddmemberstoExisting(groupinfo ldapuserinfo.GroupInfo) error
+	AddmemberstoExisting(groupinfo GroupInfo) error
 
-	DeletemembersfromGroup(groupinfo ldapuserinfo.GroupInfo) error
+	DeletemembersfromGroup(groupinfo GroupInfo) error
 
 	IsgroupmemberorNot(groupname string, username string) bool
 
@@ -47,5 +54,5 @@ type Operations interface {
 
 	GetEmailofusersingroup(groupname string) ([]string, error)
 
-	CreateServiceAccount(groupinfo ldapuserinfo.GroupInfo) error
+	CreateServiceAccount(groupinfo GroupInfo) error
 }

@@ -6,7 +6,6 @@ import (
 	"gopkg.in/ldap.v2"
 	"log"
 	"strings"
-
 	"github.com/Symantec/keymaster/lib/authutil"
 	"net/url"
 	"strconv"
@@ -14,6 +13,7 @@ import (
 	"crypto/x509"
 	"crypto/tls"
 	"net"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
 const ldapTimeoutSecs = 10
@@ -28,14 +28,6 @@ type UserInfoLDAPSource struct {
 	GroupSearchFilter     string `yaml:"group_search_filter"`
 	Admins                string `yaml:"super_admins"`
 	ServiceAccountBaseDNs string `yaml:"service_search_base_dns"`
-}
-
-type GroupInfo struct {
-	Groupname   string
-	Description string
-	MemberUid   []string
-	Member      []string
-	Cn          string
 }
 
 
@@ -160,7 +152,7 @@ func (u *UserInfoLDAPSource) CreateserviceDn(groupname string) string {
 }
 
 //Creating a Group --required
-func (u *UserInfoLDAPSource) CreateGroup(groupinfo GroupInfo) error {
+func (u *UserInfoLDAPSource) CreateGroup(groupinfo userinfo.GroupInfo) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return err
@@ -259,7 +251,7 @@ func (u *UserInfoLDAPSource) UserInfo(Userdn string) ([]string, error) {
 	}
 	defer conn.Close()
 
-	var userinfo []string
+	var UserInfo []string
 	searchrequest := ldap.NewSearchRequest(Userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, "((objectClass=*))", nil, nil)
 	result, err := conn.Search(searchrequest)
@@ -267,10 +259,10 @@ func (u *UserInfoLDAPSource) UserInfo(Userdn string) ([]string, error) {
 		return nil, err
 	}
 	for _, entry := range result.Entries {
-		userinfo = entry.GetAttributeValues("objectClass")
+		UserInfo = entry.GetAttributeValues("objectClass")
 		//println(entry.GetAttributeValue(entry.Attributes[5].Name))
 	}
-	return userinfo, nil
+	return UserInfo, nil
 }
 
 //function to get all the groups in Target ldaputil and put it in array --required
@@ -401,7 +393,7 @@ func (u *UserInfoLDAPSource) GetmaximumGidnumber() (string, error) {
 }
 
 //adding members to existing group
-func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo GroupInfo) error {
+func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return err
@@ -419,7 +411,7 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo GroupInfo) error {
 }
 
 //remove members from existing group
-func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo GroupInfo) error {
+func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return err
@@ -518,7 +510,7 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 	return userEmail, nil
 }
 
-func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo GroupInfo) error {
+func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return err
