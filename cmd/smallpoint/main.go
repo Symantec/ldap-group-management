@@ -5,13 +5,12 @@ import (
 	"errors"
 	"flag"
 	"github.com/cviecco/go-simple-oidc-auth/authhandler"
-	_ "github.com/mattn/go-sqlite3"
-	"gopkg.in/ldap.v2"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
@@ -25,18 +24,17 @@ type baseConfig struct {
 	SmtpSenderAddress     string `yaml:"smtp_sender_address"`
 }
 
-
 type AppConfigFile struct {
 	Base       baseConfig         `yaml:"base"`
-	SourceLDAP userinfo.UserInfoLDAPSource `yaml:"source_config"`
-	TargetLDAP userinfo.UserInfoLDAPSource `yaml:"target_config"`
+	SourceLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"source_config"`
+	TargetLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"target_config"`
 }
 
 type RuntimeState struct {
 	Config     AppConfigFile
-	targetLdap *ldap.Conn
 	dbType     string
 	db         *sql.DB
+	user userinfo.UserInfo
 }
 
 type GetGroups struct {
@@ -101,6 +99,7 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	if err != nil {
 		return state, err
 	}
+	state.user=&state.Config.TargetLDAP
 	return state, err
 }
 
