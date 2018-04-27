@@ -18,7 +18,7 @@ func (state *RuntimeState) GetallgroupsHandler(w http.ResponseWriter, r *http.Re
 	}
 	var AllGroupsTargetLdap GetGroups
 
-	Allgroups, err := state.user.GetallGroups()
+	Allgroups, err := state.Userinfo.GetallGroups()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -43,7 +43,7 @@ func (state *RuntimeState) GetallusersHandler(w http.ResponseWriter, r *http.Req
 
 	var AllUsersTargetLdap GetUsers
 
-	AllUsers, err := state.user.GetallUsers()
+	AllUsers, err := state.Userinfo.GetallUsers()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -79,7 +79,7 @@ func (state *RuntimeState) GetgroupsofuserHandler(w http.ResponseWriter, r *http
 	var userGroups GetUserGroups
 
 	userGroups.UserName = params[0] //username is "cn" Attribute of a User
-	UsersAllgroups, err := state.user.GetgroupsofUser(userGroups.UserName)
+	UsersAllgroups, err := state.Userinfo.GetgroupsofUser(userGroups.UserName)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -113,7 +113,7 @@ func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http
 	var groupUsers GetGroupUsers
 
 	groupUsers.GroupName = params[0] //username is "cn" Attribute of a User
-	AllUsersinGroup, err := state.user.GetusersofaGroup(groupUsers.GroupName)
+	AllUsersinGroup, err := state.Userinfo.GetusersofaGroup(groupUsers.GroupName)
 	sort.Strings(AllUsersinGroup[0])
 	groupUsers.Groupusers = AllUsersinGroup[0]
 	if err != nil {
