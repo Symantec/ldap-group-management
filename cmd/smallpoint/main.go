@@ -34,7 +34,7 @@ type RuntimeState struct {
 	Config     AppConfigFile
 	dbType     string
 	db         *sql.DB
-	user userinfo.UserInfo
+	Userinfo userinfo.UserInfo
 }
 
 type GetGroups struct {
@@ -99,7 +99,7 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	if err != nil {
 		return state, err
 	}
-	state.user=&state.Config.TargetLDAP
+	state.Userinfo=&state.Config.TargetLDAP
 	return state, err
 }
 
