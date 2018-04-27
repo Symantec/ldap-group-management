@@ -32,7 +32,7 @@ func (state *RuntimeState) IndexHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		return
 	}
-	Allgroups, err := state.Config.TargetLDAP.GetallGroups()
+	Allgroups, err := state.Userinfo.GetallGroups()
 
 	if err != nil {
 		log.Println(err)
@@ -42,7 +42,7 @@ func (state *RuntimeState) IndexHandler(w http.ResponseWriter, r *http.Request) 
 	sort.Strings(Allgroups)
 	response := Response{username, Allgroups, nil, nil}
 	//response.UserName=*userInfo.Username
-	if state.Config.TargetLDAP.UserisadminOrNot(username) == true {
+	if state.Userinfo.UserisadminOrNot(username) == true {
 		generateHTML(w, response, "index", "admins_sidebar", "groups")
 
 	} else {
@@ -56,7 +56,7 @@ func (state *RuntimeState) MygroupsHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
-	userGroups, err := state.Config.TargetLDAP.GetgroupsofUser(username)
+	userGroups, err := state.Userinfo.GetgroupsofUser(username)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -66,7 +66,7 @@ func (state *RuntimeState) MygroupsHandler(w http.ResponseWriter, r *http.Reques
 	response := Response{username, userGroups, nil, nil}
 	sidebarType := "sidebar"
 
-	if state.Config.TargetLDAP.UserisadminOrNot(response.UserName) {
+	if state.Userinfo.UserisadminOrNot(response.UserName) {
 		sidebarType = "admins_sidebar"
 	}
 
@@ -87,7 +87,7 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Reques
 	}
 	response := Response{UserName: username, Groups: groupnames, Users: nil, PendingActions: nil}
 	sidebarType := "sidebar"
-	if state.Config.TargetLDAP.UserisadminOrNot(username) {
+	if state.Userinfo.UserisadminOrNot(username) {
 		sidebarType = "admins_sidebar"
 	}
 	if groupnames == nil {
@@ -104,14 +104,14 @@ func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *h
 	if err != nil {
 		return
 	}
-	Allgroups, err := state.Config.TargetLDAP.GetallGroups()
+	Allgroups, err := state.Userinfo.GetallGroups()
 
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	if !state.Config.TargetLDAP.UserisadminOrNot(username) {
+	if !state.Userinfo.UserisadminOrNot(username) {
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
@@ -128,7 +128,7 @@ func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *h
 	if err != nil {
 		return
 	}
-	if !state.Config.TargetLDAP.UserisadminOrNot(username) {
+	if !state.Userinfo.UserisadminOrNot(username) {
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
@@ -162,7 +162,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 	go state.SendRequestemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
 	sidebarType := "sidebar"
 
-	if state.Config.TargetLDAP.UserisadminOrNot(username)==true {
+	if state.Userinfo.UserisadminOrNot(username)==true {
 		sidebarType = "admins_sidebar"
 	}
 	generateHTML(w, Response{UserName: username}, "index", sidebarType, "Accessrequestsent")
@@ -196,7 +196,7 @@ func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return
 	}
-	if !state.Config.TargetLDAP.UserisadminOrNot(username) {
+	if !state.Userinfo.UserisadminOrNot(username) {
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 	}
 
@@ -211,10 +211,10 @@ func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter, r *http.Requ
 	members := r.PostFormValue("members")
 	for _, member := range strings.Split(members, ",") {
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
-		groupinfo.Member = append(groupinfo.Member, state.Config.TargetLDAP.CreateuserDn(member))
+		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
 	}
 
-	err = state.Config.TargetLDAP.CreateGroup(groupinfo)
+	err = state.Userinfo.CreateGroup(groupinfo)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -236,11 +236,11 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 
 	}
 	var groupinfo userinfo.GroupInfo
-	groupinfo.Member = append(groupinfo.Member, state.Config.TargetLDAP.CreateuserDn(username))
+	groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(username))
 	groupinfo.MemberUid = append(groupinfo.MemberUid, username)
 	for _, entry := range out["groups"] {
 		groupinfo.Groupname = entry
-		err = state.Config.TargetLDAP.DeletemembersfromGroup(groupinfo)
+		err = state.Userinfo.DeletemembersfromGroup(groupinfo)
 		if err != nil {
 			log.Println(err)
 		}
@@ -265,7 +265,7 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 	for _, entry := range DBentries {
 		groupName := entry[1]
 		//fmt.Println(groupName)
-		description, err = state.Config.TargetLDAP.GetDescriptionvalue(groupName)
+		description, err = state.Userinfo.GetDescriptionvalue(groupName)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -275,12 +275,12 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 			groupName = description
 		}
 		// Check now if username is member of groupname(in description) and if it is, then add it.
-		if state.Config.TargetLDAP.IsgroupmemberorNot(groupName, username) {
+		if state.Userinfo.IsgroupmemberorNot(groupName, username) {
 			response.PendingActions = append(response.PendingActions, entry)
 		}
 	}
 	sidebarType := "sidebar"
-	if state.Config.TargetLDAP.UserisadminOrNot(username) {
+	if state.Userinfo.UserisadminOrNot(username) {
 		sidebarType = "admins_sidebar"
 	}
 
@@ -310,7 +310,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 	//log.Println(out["groups"])
 	var userPair = out["groups"]
 	for _, entry := range userPair {
-		if state.Config.TargetLDAP.IsgroupmemberorNot(entry[1], entry[0]) {
+		if state.Userinfo.IsgroupmemberorNot(entry[1], entry[0]) {
 			err = deleteEntryInDB(entry[0], entry[1], state)
 			if err != nil {
 				fmt.Println("error me")
@@ -321,8 +321,8 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			var groupinfo userinfo.GroupInfo
 			groupinfo.Groupname = entry[1]
 			groupinfo.MemberUid = append(groupinfo.MemberUid, entry[0])
-			groupinfo.Member = append(groupinfo.Member, state.Config.TargetLDAP.CreateuserDn(entry[0]))
-			err := state.Config.TargetLDAP.AddmemberstoExisting(groupinfo)
+			groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(entry[0]))
+			err := state.Userinfo.AddmemberstoExisting(groupinfo)
 			if err != nil {
 				log.Println(err)
 			}
@@ -370,7 +370,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return
 	}
-	if !state.Config.TargetLDAP.UserisadminOrNot(username) {
+	if !state.Userinfo.UserisadminOrNot(username) {
 		http.Error(w, "you are not authorized ", http.StatusUnauthorized)
 		return
 	}
@@ -387,9 +387,9 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 
 	for _, member := range strings.Split(members, ",") {
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
-		groupinfo.Member = append(groupinfo.Member, state.Config.TargetLDAP.CreateuserDn(member))
+		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
 	}
-	err = state.Config.TargetLDAP.CreateGroup(groupinfo)
+	err = state.Userinfo.CreateGroup(groupinfo)
 
 	if err != nil {
 		log.Println(err)
@@ -405,7 +405,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return
 	}
-	if !state.Config.TargetLDAP.UserisadminOrNot(username) {
+	if !state.Userinfo.UserisadminOrNot(username) {
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 	}
 
@@ -418,7 +418,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	for _, eachGroup := range strings.Split(groups, ",") {
 		groupnames = append(groupnames, eachGroup)
 	}
-	err = state.Config.TargetLDAP.DeleteGroup(groupnames)
+	err = state.Userinfo.DeleteGroup(groupnames)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "error occurred! May be there is no such group!", http.StatusInternalServerError)

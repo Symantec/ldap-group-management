@@ -38,7 +38,7 @@ func insertRequestInDB(username string, groupnames []string, state *RuntimeState
 	}
 	defer stmt.Close()
 	for _, entry := range groupnames {
-		if entryExistsorNot(username, entry, state) || state.Config.TargetLDAP.IsgroupmemberorNot(entry, username) {
+		if entryExistsorNot(username, entry, state) || state.Userinfo.IsgroupmemberorNot(entry, username) {
 			continue
 		} else {
 

@@ -13,13 +13,13 @@ import (
 func (state *RuntimeState) SendRequestemail(username string, groupnames []string,
 	remoteAddr string, userAgent string) error {
 	for _, entry := range groupnames {
-		description, err := state.Config.TargetLDAP.GetDescriptionvalue(entry)
+		description, err := state.Userinfo.GetDescriptionvalue(entry)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
 		if description == "self-managed" {
-			usersEmail, err := state.Config.TargetLDAP.GetEmailofusersingroup(entry)
+			usersEmail, err := state.Userinfo.GetEmailofusersingroup(entry)
 			if err != nil {
 				log.Println(err)
 				return err
@@ -27,7 +27,7 @@ func (state *RuntimeState) SendRequestemail(username string, groupnames []string
 			}
 			state.SuccessRequestemail(username, usersEmail, entry, remoteAddr, userAgent)
 		} else {
-			usersEmail, err := state.Config.TargetLDAP.GetEmailofusersingroup(entry)
+			usersEmail, err := state.Userinfo.GetEmailofusersingroup(entry)
 			if err != nil {
 				log.Println(err)
 				return err
@@ -97,7 +97,7 @@ User {{.OtherUser}} has Approved access to user {{.RequestedUser}} for group {{.
 //send approve email
 func (state *RuntimeState) sendApproveemail(username string,
 	userPair [][]string, remoteAddr string, userAgent string) error {
-	userEmail, err := state.Config.TargetLDAP.GetEmailofauser(username)
+	userEmail, err := state.Userinfo.GetEmailofauser(username)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -106,7 +106,7 @@ func (state *RuntimeState) sendApproveemail(username string,
 		var targetAddress []string
 		targetAddress = append(targetAddress, userEmail[0])
 		requesteduser := entry[0]
-		otheruserEmail, err := state.Config.TargetLDAP.GetEmailofauser(requesteduser)
+		otheruserEmail, err := state.Userinfo.GetEmailofauser(requesteduser)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -176,7 +176,7 @@ User {{.OtherUser}} has Rejected access to user {{.RequestedUser}} for group {{.
 //send reject email
 func (state *RuntimeState) sendRejectemail(username string, userPair [][]string,
 	remoteAddr string, userAgent string) error {
-	userEmail, err := state.Config.TargetLDAP.GetEmailofauser(username)
+	userEmail, err := state.Userinfo.GetEmailofauser(username)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -185,7 +185,7 @@ func (state *RuntimeState) sendRejectemail(username string, userPair [][]string,
 		var targetAddress []string
 		targetAddress = append(targetAddress, userEmail[0])
 		requesteduser := entry[0]
-		otheruserEmail, err := state.Config.TargetLDAP.GetEmailofauser(requesteduser)
+		otheruserEmail, err := state.Userinfo.GetEmailofauser(requesteduser)
 		if err != nil {
 			log.Println(err)
 			return err
