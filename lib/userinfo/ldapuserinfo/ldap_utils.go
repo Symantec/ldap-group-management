@@ -243,27 +243,6 @@ func (u *UserInfoLDAPSource) DeleteDescription(groupnames []string) error {
 	return nil
 }
 
-//function to get details of a user from Target ldaputil.(should make some changes) --required
-func (u *UserInfoLDAPSource) UserInfo(Userdn string) ([]string, error) {
-	conn, err := u.getTargetLDAPConnection()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	var UserInfo []string
-	searchrequest := ldap.NewSearchRequest(Userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-		0, 0, false, "((objectClass=*))", nil, nil)
-	result, err := conn.Search(searchrequest)
-	if err != nil {
-		return nil, err
-	}
-	for _, entry := range result.Entries {
-		UserInfo = entry.GetAttributeValues("objectClass")
-		//println(entry.GetAttributeValue(entry.Attributes[5].Name))
-	}
-	return UserInfo, nil
-}
 
 //function to get all the groups in Target ldaputil and put it in array --required
 func (u *UserInfoLDAPSource) GetallGroups() ([]string, error) {

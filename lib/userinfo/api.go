@@ -28,7 +28,6 @@ type UserInfo interface {
 
 	DeleteDescription(groupnames []string) error
 
-	UserInfo(Userdn string) ([]string, error)
 
 	GetallGroups() ([]string, error)
 
