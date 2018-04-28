@@ -5,7 +5,7 @@ import (
 	"log"
 	"strconv"
 	"fmt"
-	"ldap-group-management/lib/userinfo"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
 type MockLdap struct {
