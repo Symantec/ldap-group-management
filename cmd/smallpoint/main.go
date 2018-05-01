@@ -38,13 +38,12 @@ type RuntimeState struct {
 	db          *sql.DB
 	Userinfo    userinfo.UserInfo
 	authcookies map[string]cookieInfo
-	mutex       sync.Mutex
+	cookiemutex       sync.Mutex
 }
 
 type cookieInfo struct {
 	Username    string
 	ExpiresAt   time.Time
-	Cookievalue string
 }
 type GetGroups struct {
 	AllGroups []string `json:"allgroups"`
@@ -78,6 +77,7 @@ var (
 	authSource *authhandler.SimpleOIDCAuth
 )
 
+const cookieExpirationTime  = 12
 //parses the config file
 func loadConfig(configFilename string) (RuntimeState, error) {
 
