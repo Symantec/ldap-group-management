@@ -108,6 +108,7 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 		return state, err
 	}
 	state.Userinfo = &state.Config.TargetLDAP
+	state.authcookies=make(map[string]cookieInfo)
 	return state, err
 }
 
