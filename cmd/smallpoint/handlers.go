@@ -1,29 +1,29 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
 	"net/http"
 	"sort"
 	"strings"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
-	"crypto/rand"
 	"time"
-	"encoding/base64"
 )
 
 func randomStringGeneration() (string, error) {
-	const size=32
-	bytes:=make([]byte,size)
-	_,err:=rand.Read(bytes)
+	const size = 32
+	bytes := make([]byte, size)
+	_, err := rand.Read(bytes)
 	if err != nil {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
-func (state *RuntimeState) LoginHandler(w http.ResponseWriter,r *http.Request) {
+func (state *RuntimeState) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
 		log.Println(err)
@@ -37,9 +37,9 @@ func (state *RuntimeState) LoginHandler(w http.ResponseWriter,r *http.Request) {
 		return
 	}
 	randomString, err := randomStringGeneration()
-	if err!=nil{
+	if err != nil {
 		log.Println(err)
-		http.Error(w,"cannot generate random string",http.StatusInternalServerError)
+		http.Error(w, "cannot generate random string", http.StatusInternalServerError)
 		return
 	}
 
@@ -60,25 +60,25 @@ func (state *RuntimeState) LoginHandler(w http.ResponseWriter,r *http.Request) {
 
 func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Request) (string, error) {
 
-	remoteCookie,err:=r.Cookie("smallpointauth")
-	if err!=nil{
+	remoteCookie, err := r.Cookie("smallpointauth")
+	if err != nil {
 		log.Println(err)
-		http.Redirect(w,r,"/login",http.StatusFound)
-		return "",err
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return "", err
 	}
 	state.mutex.Lock()
 	cookieInfo, ok := state.authcookies[remoteCookie.Value]
 	state.mutex.Unlock()
 
-	if !ok{
-		http.Redirect(w,r,"/login",http.StatusFound)
-		return "",nil
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return "", nil
 	}
-	if cookieInfo.ExpiresAt.Before(time.Now()){
-		http.Redirect(w,r,"/login",http.StatusFound)
-		return "",nil
+	if cookieInfo.ExpiresAt.Before(time.Now()) {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return "", nil
 	}
-	return cookieInfo.Username,nil
+	return cookieInfo.Username, nil
 }
 
 //Main page with all LDAP groups displayed
@@ -217,7 +217,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 	go state.SendRequestemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
 	sidebarType := "sidebar"
 
-	if state.Userinfo.UserisadminOrNot(username)==true {
+	if state.Userinfo.UserisadminOrNot(username) == true {
 		sidebarType = "admins_sidebar"
 	}
 	generateHTML(w, Response{UserName: username}, "index", sidebarType, "Accessrequestsent")

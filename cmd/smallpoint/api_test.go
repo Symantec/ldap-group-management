@@ -1,19 +1,20 @@
 package main
 
 import (
-	"testing"
+	"errors"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"time"
 	"os"
-	"io/ioutil"
-	"gopkg.in/yaml.v2"
-	"errors"
+	"testing"
+	"time"
 )
-func createCookie() http.Cookie{
-	expiresAt:=time.Now().Add(time.Hour*12)
-	cookie:=http.Cookie{Name:"smallpointauth",Value:"hellogroup1group2",Path:"/",Expires:expiresAt,HttpOnly:true}
+
+func createCookie() http.Cookie {
+	expiresAt := time.Now().Add(time.Hour * 12)
+	cookie := http.Cookie{Name: "smallpointauth", Value: "hellogroup1group2", Path: "/", Expires: expiresAt, HttpOnly: true}
 	return cookie
 }
 
@@ -45,15 +46,14 @@ func loadConfigforTests(configFilename string) (RuntimeState, error) {
 	if err != nil {
 		return state, err
 	}
-	mock:=New()
-	state.Userinfo=mock
-	state.authcookies=make(map[string]cookieInfo)
-	expiresAt:=time.Now().Add(time.Hour*12)
-	usersession:=cookieInfo{"user1",expiresAt,"hellogroup1group2"}
-	state.authcookies["hellogroup1group2"]=usersession
+	mock := New()
+	state.Userinfo = mock
+	state.authcookies = make(map[string]cookieInfo)
+	expiresAt := time.Now().Add(time.Hour * 12)
+	usersession := cookieInfo{"user1", expiresAt, "hellogroup1group2"}
+	state.authcookies["hellogroup1group2"] = usersession
 	return state, err
 }
-
 
 func TestRuntimeState_GetallgroupsHandler(t *testing.T) {
 	state, err := loadConfigforTests(*configFilename)
@@ -61,17 +61,17 @@ func TestRuntimeState_GetallgroupsHandler(t *testing.T) {
 		log.Println(err)
 	}
 
-	req,err:=http.NewRequest("GET","/allgroups",nil)
-	if err!=nil{
+	req, err := http.NewRequest("GET", "/allgroups", nil)
+	if err != nil {
 		t.Fatal(err)
 	}
-	cookie:=createCookie()
+	cookie := createCookie()
 	req.AddCookie(&cookie)
 
-	rr:=httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(state.GetallgroupsHandler)
 
-	handler.ServeHTTP(rr,req)
+	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
@@ -84,17 +84,17 @@ func TestRuntimeState_GetusersingroupHandlerFail(t *testing.T) {
 		log.Println(err)
 	}
 
-	req,err:=http.NewRequest("GET","/group_users/",nil)
-	if err!=nil{
+	req, err := http.NewRequest("GET", "/group_users/", nil)
+	if err != nil {
 		t.Fatal(err)
 	}
-	cookie:=createCookie()
+	cookie := createCookie()
 	req.AddCookie(&cookie)
 
-	rr:=httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(state.GetusersingroupHandler)
 
-	handler.ServeHTTP(rr,req)
+	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
 	if status := rr.Code; status != http.StatusInternalServerError {
 		t.Errorf("handler returned wrong status code: got %v want %v",
@@ -109,17 +109,17 @@ func TestRuntimeState_GetusersingroupHandlerSuccess(t *testing.T) {
 		log.Println(err)
 	}
 
-	req,err:=http.NewRequest("GET","/group_users/?groupname=group1",nil)
-	if err!=nil{
+	req, err := http.NewRequest("GET", "/group_users/?groupname=group1", nil)
+	if err != nil {
 		t.Fatal(err)
 	}
-	cookie:=createCookie()
+	cookie := createCookie()
 	req.AddCookie(&cookie)
 
-	rr:=httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(state.GetusersingroupHandler)
 
-	handler.ServeHTTP(rr,req)
+	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
@@ -134,18 +134,17 @@ func TestRuntimeState_GetgroupsofuserHandlerFail(t *testing.T) {
 		log.Println(err)
 	}
 
-	req,err:=http.NewRequest("GET","/user_groups/",nil)
-	if err!=nil{
+	req, err := http.NewRequest("GET", "/user_groups/", nil)
+	if err != nil {
 		t.Fatal(err)
 	}
-	cookie:=createCookie()
+	cookie := createCookie()
 	req.AddCookie(&cookie)
 
-
-	rr:=httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(state.GetgroupsofuserHandler)
 
-	handler.ServeHTTP(rr,req)
+	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
 	if status := rr.Code; status != http.StatusInternalServerError {
 		t.Errorf("handler returned wrong status code: got %v want %v",
@@ -154,24 +153,23 @@ func TestRuntimeState_GetgroupsofuserHandlerFail(t *testing.T) {
 
 }
 
-
 func TestRuntimeState_GetgroupsofuserHandlerSuccess(t *testing.T) {
 	state, err := loadConfigforTests(*configFilename)
 	if err != nil {
 		log.Println(err)
 	}
 
-	req,err:=http.NewRequest("GET","/user_groups/?username=user1",nil)
-	if err!=nil{
+	req, err := http.NewRequest("GET", "/user_groups/?username=user1", nil)
+	if err != nil {
 		t.Fatal(err)
 	}
-	cookie:=createCookie()
+	cookie := createCookie()
 	req.AddCookie(&cookie)
 
-	rr:=httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(state.GetgroupsofuserHandler)
 
-	handler.ServeHTTP(rr,req)
+	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
@@ -179,7 +177,6 @@ func TestRuntimeState_GetgroupsofuserHandlerSuccess(t *testing.T) {
 	}
 
 }
-
 
 func TestRuntimeState_GetallusersHandler(t *testing.T) {
 	state, err := loadConfigforTests(*configFilename)
@@ -187,17 +184,17 @@ func TestRuntimeState_GetallusersHandler(t *testing.T) {
 		log.Println(err)
 	}
 
-	req,err:=http.NewRequest("GET","/allusers",nil)
-	if err!=nil{
+	req, err := http.NewRequest("GET", "/allusers", nil)
+	if err != nil {
 		t.Fatal(err)
 	}
-	cookie:=createCookie()
+	cookie := createCookie()
 	req.AddCookie(&cookie)
 
-	rr:=httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(state.GetallusersHandler)
 
-	handler.ServeHTTP(rr,req)
+	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
@@ -205,4 +202,3 @@ func TestRuntimeState_GetallusersHandler(t *testing.T) {
 	}
 
 }
-

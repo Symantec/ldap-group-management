@@ -4,16 +4,16 @@ import (
 	"database/sql"
 	"errors"
 	"flag"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
+	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
 	"github.com/cviecco/go-simple-oidc-auth/authhandler"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
-	"time"
 	"sync"
+	"time"
 )
 
 type baseConfig struct {
@@ -27,23 +27,23 @@ type baseConfig struct {
 }
 
 type AppConfigFile struct {
-	Base       baseConfig         `yaml:"base"`
+	Base       baseConfig                      `yaml:"base"`
 	SourceLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"source_config"`
 	TargetLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"target_config"`
 }
 
 type RuntimeState struct {
-	Config     AppConfigFile
-	dbType     string
-	db         *sql.DB
-	Userinfo userinfo.UserInfo
+	Config      AppConfigFile
+	dbType      string
+	db          *sql.DB
+	Userinfo    userinfo.UserInfo
 	authcookies map[string]cookieInfo
-	mutex  sync.Mutex
+	mutex       sync.Mutex
 }
 
-type cookieInfo struct{
-	Username string
-	ExpiresAt time.Time
+type cookieInfo struct {
+	Username    string
+	ExpiresAt   time.Time
 	Cookievalue string
 }
 type GetGroups struct {
@@ -70,7 +70,6 @@ type Response struct {
 	Users          []string
 	PendingActions [][]string
 }
-
 
 var (
 	configFilename = flag.String("config", "config.yml", "The filename of the configuration")
@@ -108,10 +107,9 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	if err != nil {
 		return state, err
 	}
-	state.Userinfo=&state.Config.TargetLDAP
+	state.Userinfo = &state.Config.TargetLDAP
 	return state, err
 }
-
 
 type mailAttributes struct {
 	RequestedUser string
@@ -138,7 +136,6 @@ func main() {
 	}
 	authSource = simpleOidcAuth
 
-
 	http.Handle("/allgroups", simpleOidcAuth.Handler(http.HandlerFunc(state.GetallgroupsHandler)))
 	http.Handle("/allusers", simpleOidcAuth.Handler(http.HandlerFunc(state.GetallusersHandler)))
 	http.Handle("/user_groups/", simpleOidcAuth.Handler(http.HandlerFunc(state.GetgroupsofuserHandler)))
@@ -157,7 +154,7 @@ func main() {
 	http.Handle("/deleterequests", simpleOidcAuth.Handler(http.HandlerFunc(state.deleteRequests)))
 	http.Handle("/exitgroup", simpleOidcAuth.Handler(http.HandlerFunc(state.exitfromGroup)))
 
-	http.Handle("/login",http.HandlerFunc(state.LoginHandler))
+	http.Handle("/login", http.HandlerFunc(state.LoginHandler))
 
 	http.Handle("/approve-request", simpleOidcAuth.Handler(http.HandlerFunc(state.approveHandler)))
 	http.Handle("/reject-request", simpleOidcAuth.Handler(http.HandlerFunc(state.rejectHandler)))
