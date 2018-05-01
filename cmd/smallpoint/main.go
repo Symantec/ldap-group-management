@@ -12,6 +12,8 @@ import (
 	"os"
 	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
+	"time"
+	"sync"
 )
 
 type baseConfig struct {
@@ -35,8 +37,15 @@ type RuntimeState struct {
 	dbType     string
 	db         *sql.DB
 	Userinfo userinfo.UserInfo
+	authcookies map[string]cookieInfo
+	mutex  sync.Mutex
 }
 
+type cookieInfo struct{
+	Username string
+	ExpiresAt time.Time
+	Cookievalue string
+}
 type GetGroups struct {
 	AllGroups []string `json:"allgroups"`
 }
@@ -147,6 +156,8 @@ func main() {
 	http.Handle("/pending-requests", simpleOidcAuth.Handler(http.HandlerFunc(state.pendingRequests)))
 	http.Handle("/deleterequests", simpleOidcAuth.Handler(http.HandlerFunc(state.deleteRequests)))
 	http.Handle("/exitgroup", simpleOidcAuth.Handler(http.HandlerFunc(state.exitfromGroup)))
+
+	http.Handle("/login",http.HandlerFunc(state.LoginHandler))
 
 	http.Handle("/approve-request", simpleOidcAuth.Handler(http.HandlerFunc(state.approveHandler)))
 	http.Handle("/reject-request", simpleOidcAuth.Handler(http.HandlerFunc(state.rejectHandler)))
