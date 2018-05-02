@@ -5,12 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
 func randomStringGeneration() (string, error) {
@@ -45,7 +45,7 @@ func (state *RuntimeState) LoginHandler(w http.ResponseWriter, r *http.Request) 
 
 	expires := time.Now().Add(time.Hour * cookieExpirationTime)
 
-	usercookie := http.Cookie{Name: "smallpointauth", Value: randomString, Path: "/", Expires: expires, HttpOnly: true,Secure:true}
+	usercookie := http.Cookie{Name: cookieName, Value: randomString, Path: indexpath, Expires: expires, HttpOnly: true,Secure:true}
 
 	http.SetCookie(w, &usercookie)
 
@@ -55,15 +55,15 @@ func (state *RuntimeState) LoginHandler(w http.ResponseWriter, r *http.Request) 
 	state.authcookies[usercookie.Value] = Cookieinfo
 	state.cookiemutex.Unlock()
 
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, indexpath, http.StatusFound)
 }
 
 func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Request) (string, error) {
 
-	remoteCookie, err := r.Cookie("smallpointauth")
+	remoteCookie, err := r.Cookie(cookieName)
 	if err != nil {
 		log.Println(err)
-		http.Redirect(w, r, "/login", http.StatusFound)
+		http.Redirect(w, r, loginpath, http.StatusFound)
 		return "", err
 	}
 	state.cookiemutex.Lock()
@@ -71,11 +71,11 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 	state.cookiemutex.Unlock()
 
 	if !ok {
-		http.Redirect(w, r, "/login", http.StatusFound)
+		http.Redirect(w, r, loginpath, http.StatusFound)
 		return "", nil
 	}
 	if cookieInfo.ExpiresAt.Before(time.Now()) {
-		http.Redirect(w, r, "/login", http.StatusFound)
+		http.Redirect(w, r, loginpath, http.StatusFound)
 		return "", nil
 	}
 	return cookieInfo.Username, nil
@@ -326,7 +326,7 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
-		if description != "self-managed" {
+		if description != descriptionAttribute {
 			groupName = description
 		}
 		// Check now if username is member of groupname(in description) and if it is, then add it.
