@@ -1,62 +1,32 @@
 package main
 
 import (
-	"errors"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 )
 
 func createCookie() http.Cookie {
-	expiresAt := time.Now().Add(time.Hour * 12)
-	cookie := http.Cookie{Name: "smallpointauth", Value: "hellogroup1group2", Path: "/", Expires: expiresAt, HttpOnly: true}
+	expiresAt := time.Now().Add(time.Hour * cookieExpirationTime)
+	cookie := http.Cookie{Name: "smallpointauth", Value: "hellogroup1group2", Path: "/", Expires: expiresAt, HttpOnly: true,Secure:true}
 	return cookie
 }
 
-func loadConfigforTests(configFilename string) (RuntimeState, error) {
-
+func Init() (RuntimeState, error) {
 	var state RuntimeState
-
-	if _, err := os.Stat(configFilename); os.IsNotExist(err) {
-		err = errors.New("mising config file failure")
-		return state, err
-	}
-
-	//ioutil.ReadFile returns a byte slice (i.e)(source)
-	source, err := ioutil.ReadFile(configFilename)
-	if err != nil {
-		err = errors.New("cannot read config file")
-		return state, err
-	}
-
-	//Unmarshall(source []byte,out interface{})decodes the source byte slice/value and puts them in out.
-	err = yaml.Unmarshal(source, &state.Config)
-
-	if err != nil {
-		err = errors.New("Cannot parse config file")
-		log.Printf("Source=%s", source)
-		return state, err
-	}
-	err = initDB(&state)
-	if err != nil {
-		return state, err
-	}
 	mock := New()
 	state.Userinfo = mock
 	state.authcookies = make(map[string]cookieInfo)
-	expiresAt := time.Now().Add(time.Hour * 12)
-	usersession := cookieInfo{"user1", expiresAt, "hellogroup1group2"}
+	expiresAt := time.Now().Add(time.Hour * cookieExpirationTime)
+	usersession := cookieInfo{"user1", expiresAt}
 	state.authcookies["hellogroup1group2"] = usersession
-	return state, err
+	return state, nil
 }
 
 func TestRuntimeState_GetallgroupsHandler(t *testing.T) {
-	state, err := loadConfigforTests(*configFilename)
+	state, err := Init()
 	if err != nil {
 		log.Println(err)
 	}
@@ -79,7 +49,7 @@ func TestRuntimeState_GetallgroupsHandler(t *testing.T) {
 	}
 }
 func TestRuntimeState_GetusersingroupHandlerFail(t *testing.T) {
-	state, err := loadConfigforTests(*configFilename)
+	state, err := Init()
 	if err != nil {
 		log.Println(err)
 	}
@@ -104,7 +74,7 @@ func TestRuntimeState_GetusersingroupHandlerFail(t *testing.T) {
 }
 
 func TestRuntimeState_GetusersingroupHandlerSuccess(t *testing.T) {
-	state, err := loadConfigforTests(*configFilename)
+	state, err := Init()
 	if err != nil {
 		log.Println(err)
 	}
@@ -129,7 +99,7 @@ func TestRuntimeState_GetusersingroupHandlerSuccess(t *testing.T) {
 }
 
 func TestRuntimeState_GetgroupsofuserHandlerFail(t *testing.T) {
-	state, err := loadConfigforTests(*configFilename)
+	state, err := Init()
 	if err != nil {
 		log.Println(err)
 	}
@@ -154,7 +124,7 @@ func TestRuntimeState_GetgroupsofuserHandlerFail(t *testing.T) {
 }
 
 func TestRuntimeState_GetgroupsofuserHandlerSuccess(t *testing.T) {
-	state, err := loadConfigforTests(*configFilename)
+	state, err := Init()
 	if err != nil {
 		log.Println(err)
 	}
@@ -179,7 +149,7 @@ func TestRuntimeState_GetgroupsofuserHandlerSuccess(t *testing.T) {
 }
 
 func TestRuntimeState_GetallusersHandler(t *testing.T) {
-	state, err := loadConfigforTests(*configFilename)
+	state, err := Init()
 	if err != nil {
 		log.Println(err)
 	}
