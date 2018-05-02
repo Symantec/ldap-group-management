@@ -2,9 +2,10 @@ package main
 
 import (
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"time"
+	_ "github.com/mattn/go-sqlite3"
+
 )
 
 //Initialsing database
