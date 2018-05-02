@@ -43,17 +43,17 @@ func (state *RuntimeState) LoginHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	expires := time.Now().Add(time.Hour * 12)
+	expires := time.Now().Add(time.Hour * cookieExpirationTime)
 
-	usercookie := http.Cookie{Name: "smallpointauth", Value: randomString, Path: "/", Expires: expires, HttpOnly: true}
+	usercookie := http.Cookie{Name: "smallpointauth", Value: randomString, Path: "/", Expires: expires, HttpOnly: true,Secure:true}
 
 	http.SetCookie(w, &usercookie)
 
-	Cookieinfo := cookieInfo{*userInfo.Username, usercookie.Expires, usercookie.Value}
+	Cookieinfo := cookieInfo{*userInfo.Username, usercookie.Expires}
 
-	state.mutex.Lock()
+	state.cookiemutex.Lock()
 	state.authcookies[usercookie.Value] = Cookieinfo
-	state.mutex.Unlock()
+	state.cookiemutex.Unlock()
 
 	http.Redirect(w, r, "/", http.StatusFound)
 }
@@ -66,9 +66,9 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return "", err
 	}
-	state.mutex.Lock()
+	state.cookiemutex.Lock()
 	cookieInfo, ok := state.authcookies[remoteCookie.Value]
-	state.mutex.Unlock()
+	state.cookiemutex.Unlock()
 
 	if !ok {
 		http.Redirect(w, r, "/login", http.StatusFound)
