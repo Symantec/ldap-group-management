@@ -4,16 +4,16 @@ import (
 	"database/sql"
 	"errors"
 	"flag"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
-	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
-	"github.com/cviecco/go-simple-oidc-auth/authhandler"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+	"gopkg.in/yaml.v2"
+	"github.com/cviecco/go-simple-oidc-auth/authhandler"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
+	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
 )
 
 type baseConfig struct {
@@ -77,7 +77,37 @@ var (
 	authSource *authhandler.SimpleOIDCAuth
 )
 
-const cookieExpirationTime  = 12
+
+const (
+	descriptionAttribute="self-managed"
+	cookieExpirationTime  = 12
+	cookieName="smallpointauth"
+
+	allgroups="/allgroups"
+	allusers="/allusers"
+	usergroups="/user_groups/"
+	groupusers="/group_users/"
+	creategroupWebPage="/create_group"
+	deletegroupWebPage="/delete_group"
+	creategroup="/create_group/"
+	deletegroup="/delete_group/"
+	requestaccess="/requestaccess"
+	mygroups="/mygroups/"
+	pendingactions="/pending-actions"
+	pendingrequests="/pending-requests"
+	deleterequests="/deleterequests"
+	exitgroup="/exitgroup"
+	loginpath="/login"
+	approverequest="/approve-request"
+	rejectrequest="/reject-request"
+	addmembers="/addmembers"
+	indexpath="/"
+
+	templatesdirectory="templates"
+	csspath="/css/"
+	images="/images/"
+
+)
 //parses the config file
 func loadConfig(configFilename string) (RuntimeState, error) {
 
@@ -137,33 +167,33 @@ func main() {
 	}
 	authSource = simpleOidcAuth
 
-	http.Handle("/allgroups", simpleOidcAuth.Handler(http.HandlerFunc(state.GetallgroupsHandler)))
-	http.Handle("/allusers", simpleOidcAuth.Handler(http.HandlerFunc(state.GetallusersHandler)))
-	http.Handle("/user_groups/", simpleOidcAuth.Handler(http.HandlerFunc(state.GetgroupsofuserHandler)))
-	http.Handle("/group_users/", simpleOidcAuth.Handler(http.HandlerFunc(state.GetusersingroupHandler)))
+	http.Handle(allgroups, http.HandlerFunc(state.GetallgroupsHandler))
+	http.Handle(allusers, http.HandlerFunc(state.GetallusersHandler))
+	http.Handle(usergroups, http.HandlerFunc(state.GetgroupsofuserHandler))
+	http.Handle(groupusers, http.HandlerFunc(state.GetusersingroupHandler))
 
-	http.Handle("/create_group", simpleOidcAuth.Handler(http.HandlerFunc(state.creategroupWebpageHandler)))
-	http.Handle("/delete_group", simpleOidcAuth.Handler(http.HandlerFunc(state.deletegroupWebpageHandler)))
-	http.Handle("/create_group/", simpleOidcAuth.Handler(http.HandlerFunc(state.createGrouphandler)))
-	http.Handle("/delete_group/", simpleOidcAuth.Handler(http.HandlerFunc(state.deleteGrouphandler)))
+	http.Handle(creategroupWebPage, http.HandlerFunc(state.creategroupWebpageHandler))
+	http.Handle(deletegroupWebPage, http.HandlerFunc(state.deletegroupWebpageHandler))
+	http.Handle(creategroup, http.HandlerFunc(state.createGrouphandler))
+	http.Handle(deletegroup, http.HandlerFunc(state.deleteGrouphandler))
 
-	http.Handle("/requestaccess", simpleOidcAuth.Handler(http.HandlerFunc(state.requestAccessHandler)))
-	http.Handle("/", simpleOidcAuth.Handler(http.HandlerFunc(state.IndexHandler)))
-	http.Handle("/mygroups/", simpleOidcAuth.Handler(http.HandlerFunc(state.MygroupsHandler)))
-	http.Handle("/pending-actions", simpleOidcAuth.Handler(http.HandlerFunc(state.pendingActions)))
-	http.Handle("/pending-requests", simpleOidcAuth.Handler(http.HandlerFunc(state.pendingRequests)))
-	http.Handle("/deleterequests", simpleOidcAuth.Handler(http.HandlerFunc(state.deleteRequests)))
-	http.Handle("/exitgroup", simpleOidcAuth.Handler(http.HandlerFunc(state.exitfromGroup)))
+	http.Handle(requestaccess, http.HandlerFunc(state.requestAccessHandler))
+	http.Handle(indexpath, http.HandlerFunc(state.IndexHandler))
+	http.Handle(mygroups, http.HandlerFunc(state.MygroupsHandler))
+	http.Handle(pendingactions, http.HandlerFunc(state.pendingActions))
+	http.Handle(pendingrequests, http.HandlerFunc(state.pendingRequests))
+	http.Handle(deleterequests, http.HandlerFunc(state.deleteRequests))
+	http.Handle(exitgroup, http.HandlerFunc(state.exitfromGroup))
 
-	http.Handle("/login", http.HandlerFunc(state.LoginHandler))
+	http.Handle(loginpath, simpleOidcAuth.Handler(http.HandlerFunc(state.LoginHandler)))
 
-	http.Handle("/approve-request", simpleOidcAuth.Handler(http.HandlerFunc(state.approveHandler)))
-	http.Handle("/reject-request", simpleOidcAuth.Handler(http.HandlerFunc(state.rejectHandler)))
+	http.Handle(approverequest, http.HandlerFunc(state.approveHandler))
+	http.Handle(rejectrequest, http.HandlerFunc(state.rejectHandler))
 
-	http.Handle("/addmembers/", simpleOidcAuth.Handler(http.HandlerFunc(state.AddmemberstoGroup)))
+	http.Handle(addmembers, http.HandlerFunc(state.AddmemberstoGroup))
 
-	fs := http.FileServer(http.Dir("templates"))
-	http.Handle("/css/", fs)
-	http.Handle("/images/", fs)
+	fs := http.FileServer(http.Dir(templatesdirectory))
+	http.Handle(csspath, fs)
+	http.Handle(images, fs)
 	log.Fatal(http.ListenAndServeTLS(state.Config.Base.HttpAddress, state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename, nil))
 }
