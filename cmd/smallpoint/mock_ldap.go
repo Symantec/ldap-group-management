@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
 	"strconv"
 	"strings"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
 type MockLdap struct {
@@ -132,7 +132,7 @@ func (m *MockLdap) DeleteGroup(groupnames []string) error {
 func (m *MockLdap) AddAtributedescription(groupname string) error {
 	groupdn := m.CreategroupDn(groupname)
 	GroupInfo := m.Groups[groupdn]
-	GroupInfo.description = "self-managed"
+	GroupInfo.description = descriptionAttribute
 	m.Groups[groupdn] = GroupInfo
 	return nil
 
