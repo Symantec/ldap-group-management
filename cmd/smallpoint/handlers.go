@@ -1,34 +1,89 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
-
 )
 
-func GetRemoteUserName(w http.ResponseWriter, r *http.Request) (string, error) {
+func randomStringGeneration() (string, error) {
+	const size = 32
+	bytes := make([]byte, size)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(bytes), nil
+}
+
+func (state *RuntimeState) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return "", err
+		return
 	}
 	if userInfo == nil {
 		log.Println("null userinfo!")
+
 		http.Error(w, "null userinfo", http.StatusInternalServerError)
+		return
+	}
+	randomString, err := randomStringGeneration()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "cannot generate random string", http.StatusInternalServerError)
+		return
+	}
+
+	expires := time.Now().Add(time.Hour * cookieExpirationHours)
+
+	usercookie := http.Cookie{Name: cookieName, Value: randomString, Path: indexPath, Expires: expires, HttpOnly: true,Secure:true}
+
+	http.SetCookie(w, &usercookie)
+
+	Cookieinfo := cookieInfo{*userInfo.Username, usercookie.Expires}
+
+	state.cookiemutex.Lock()
+	state.authcookies[usercookie.Value] = Cookieinfo
+	state.cookiemutex.Unlock()
+
+	http.Redirect(w, r, indexPath, http.StatusFound)
+}
+
+func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Request) (string, error) {
+
+	remoteCookie, err := r.Cookie(cookieName)
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, loginPath, http.StatusFound)
 		return "", err
 	}
-	return *userInfo.Username, nil
+	state.cookiemutex.Lock()
+	cookieInfo, ok := state.authcookies[remoteCookie.Value]
+	state.cookiemutex.Unlock()
+
+	if !ok {
+		http.Redirect(w, r, loginPath, http.StatusFound)
+		return "", nil
+	}
+	if cookieInfo.ExpiresAt.Before(time.Now()) {
+		http.Redirect(w, r, loginPath, http.StatusFound)
+		return "", nil
+	}
+	return cookieInfo.Username, nil
 }
 
 //Main page with all LDAP groups displayed
 func (state *RuntimeState) IndexHandler(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -52,7 +107,7 @@ func (state *RuntimeState) IndexHandler(w http.ResponseWriter, r *http.Request) 
 
 //User Groups page
 func (state *RuntimeState) MygroupsHandler(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -75,7 +130,7 @@ func (state *RuntimeState) MygroupsHandler(w http.ResponseWriter, r *http.Reques
 
 //user's pending requests
 func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -100,7 +155,7 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Reques
 }
 
 func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -124,7 +179,7 @@ func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *h
 }
 
 func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -140,7 +195,7 @@ func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *h
 
 //requesting access by users to join in groups...
 func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -162,7 +217,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 	go state.SendRequestemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
 	sidebarType := "sidebar"
 
-	if state.Userinfo.UserisadminOrNot(username)==true {
+	if state.Userinfo.UserisadminOrNot(username) == true {
 		sidebarType = "admins_sidebar"
 	}
 	generateHTML(w, Response{UserName: username}, "index", sidebarType, "Accessrequestsent")
@@ -171,7 +226,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 
 //delete access requests made by user
 func (state *RuntimeState) deleteRequests(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -192,7 +247,7 @@ func (state *RuntimeState) deleteRequests(w http.ResponseWriter, r *http.Request
 
 //Parses post info from create group button click.
 func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -223,7 +278,7 @@ func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter, r *http.Requ
 }
 
 func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -249,7 +304,7 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 
 //User's Pending Actions
 func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -271,7 +326,7 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
-		if description != "self-managed" {
+		if description != descriptionAttribute {
 			groupName = description
 		}
 		// Check now if username is member of groupname(in description) and if it is, then add it.
@@ -295,7 +350,7 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 
 //Approving
 func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -339,7 +394,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 
 //Reject handler
 func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -366,7 +421,7 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request)
 
 // Create a group handler --required
 func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -401,7 +456,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 
 //Delete groups handler --required
 func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Request) {
-	username, err := GetRemoteUserName(w, r)
+	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
