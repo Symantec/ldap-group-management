@@ -43,9 +43,9 @@ func (state *RuntimeState) LoginHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	expires := time.Now().Add(time.Hour * cookieExpirationTime)
+	expires := time.Now().Add(time.Hour * cookieExpirationHours)
 
-	usercookie := http.Cookie{Name: cookieName, Value: randomString, Path: indexpath, Expires: expires, HttpOnly: true,Secure:true}
+	usercookie := http.Cookie{Name: cookieName, Value: randomString, Path: indexPath, Expires: expires, HttpOnly: true,Secure:true}
 
 	http.SetCookie(w, &usercookie)
 
@@ -55,7 +55,7 @@ func (state *RuntimeState) LoginHandler(w http.ResponseWriter, r *http.Request) 
 	state.authcookies[usercookie.Value] = Cookieinfo
 	state.cookiemutex.Unlock()
 
-	http.Redirect(w, r, indexpath, http.StatusFound)
+	http.Redirect(w, r, indexPath, http.StatusFound)
 }
 
 func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Request) (string, error) {
@@ -63,7 +63,7 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 	remoteCookie, err := r.Cookie(cookieName)
 	if err != nil {
 		log.Println(err)
-		http.Redirect(w, r, loginpath, http.StatusFound)
+		http.Redirect(w, r, loginPath, http.StatusFound)
 		return "", err
 	}
 	state.cookiemutex.Lock()
@@ -71,11 +71,11 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 	state.cookiemutex.Unlock()
 
 	if !ok {
-		http.Redirect(w, r, loginpath, http.StatusFound)
+		http.Redirect(w, r, loginPath, http.StatusFound)
 		return "", nil
 	}
 	if cookieInfo.ExpiresAt.Before(time.Now()) {
-		http.Redirect(w, r, loginpath, http.StatusFound)
+		http.Redirect(w, r, loginPath, http.StatusFound)
 		return "", nil
 	}
 	return cookieInfo.Username, nil

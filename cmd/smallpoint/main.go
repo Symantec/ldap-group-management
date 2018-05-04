@@ -80,32 +80,32 @@ var (
 
 const (
 	descriptionAttribute="self-managed"
-	cookieExpirationTime  = 12
+	cookieExpirationHours  = 12
 	cookieName="smallpointauth"
 
-	allgroups="/allgroups"
-	allusers="/allusers"
-	usergroups="/user_groups/"
-	groupusers="/group_users/"
-	creategroupWebPage="/create_group"
-	deletegroupWebPage="/delete_group"
-	creategroup="/create_group/"
-	deletegroup="/delete_group/"
-	requestaccess="/requestaccess"
-	mygroups="/mygroups/"
-	pendingactions="/pending-actions"
-	pendingrequests="/pending-requests"
-	deleterequests="/deleterequests"
-	exitgroup="/exitgroup"
-	loginpath="/login"
-	approverequest="/approve-request"
-	rejectrequest="/reject-request"
-	addmembers="/addmembers"
-	indexpath="/"
+	allgroupsPath="/allgroups"
+	allusersPath="/allusers"
+	usergroupsPath="/user_groups/"
+	groupusersPath="/group_users/"
+	creategroupWebPagePath="/create_group"
+	deletegroupWebPagePath="/delete_group"
+	creategroupPath="/create_group/"
+	deletegroupPath="/delete_group/"
+	requestaccessPath="/requestaccess"
+	mygroupsPath="/mygroups/"
+	pendingactionsPath="/pending-actions"
+	pendingrequestsPath="/pending-requests"
+	deleterequestsPath="/deleterequests"
+	exitgroupPath="/exitgroup"
+	loginPath="/login"
+	approverequestPath="/approve-request"
+	rejectrequestPath="/reject-request"
+	addmembersPath="/addmembers"
+	indexPath="/"
 
-	templatesdirectory="templates"
-	csspath="/css/"
-	images="/images/"
+	templatesdirectoryPath="templates"
+	cssPath="/css/"
+	imagesPath="/images/"
 
 )
 //parses the config file
@@ -167,33 +167,33 @@ func main() {
 	}
 	authSource = simpleOidcAuth
 
-	http.Handle(allgroups, http.HandlerFunc(state.GetallgroupsHandler))
-	http.Handle(allusers, http.HandlerFunc(state.GetallusersHandler))
-	http.Handle(usergroups, http.HandlerFunc(state.GetgroupsofuserHandler))
-	http.Handle(groupusers, http.HandlerFunc(state.GetusersingroupHandler))
+	http.Handle(allgroupsPath, http.HandlerFunc(state.GetallgroupsHandler))
+	http.Handle(allusersPath, http.HandlerFunc(state.GetallusersHandler))
+	http.Handle(usergroupsPath, http.HandlerFunc(state.GetgroupsofuserHandler))
+	http.Handle(groupusersPath, http.HandlerFunc(state.GetusersingroupHandler))
 
-	http.Handle(creategroupWebPage, http.HandlerFunc(state.creategroupWebpageHandler))
-	http.Handle(deletegroupWebPage, http.HandlerFunc(state.deletegroupWebpageHandler))
-	http.Handle(creategroup, http.HandlerFunc(state.createGrouphandler))
-	http.Handle(deletegroup, http.HandlerFunc(state.deleteGrouphandler))
+	http.Handle(creategroupWebPagePath, http.HandlerFunc(state.creategroupWebpageHandler))
+	http.Handle(deletegroupWebPagePath, http.HandlerFunc(state.deletegroupWebpageHandler))
+	http.Handle(creategroupPath, http.HandlerFunc(state.createGrouphandler))
+	http.Handle(deletegroupPath, http.HandlerFunc(state.deleteGrouphandler))
 
-	http.Handle(requestaccess, http.HandlerFunc(state.requestAccessHandler))
-	http.Handle(indexpath, http.HandlerFunc(state.IndexHandler))
-	http.Handle(mygroups, http.HandlerFunc(state.MygroupsHandler))
-	http.Handle(pendingactions, http.HandlerFunc(state.pendingActions))
-	http.Handle(pendingrequests, http.HandlerFunc(state.pendingRequests))
-	http.Handle(deleterequests, http.HandlerFunc(state.deleteRequests))
-	http.Handle(exitgroup, http.HandlerFunc(state.exitfromGroup))
+	http.Handle(requestaccessPath, http.HandlerFunc(state.requestAccessHandler))
+	http.Handle(indexPath, http.HandlerFunc(state.IndexHandler))
+	http.Handle(mygroupsPath, http.HandlerFunc(state.MygroupsHandler))
+	http.Handle(pendingactionsPath, http.HandlerFunc(state.pendingActions))
+	http.Handle(pendingrequestsPath, http.HandlerFunc(state.pendingRequests))
+	http.Handle(deleterequestsPath, http.HandlerFunc(state.deleteRequests))
+	http.Handle(exitgroupPath, http.HandlerFunc(state.exitfromGroup))
 
-	http.Handle(loginpath, simpleOidcAuth.Handler(http.HandlerFunc(state.LoginHandler)))
+	http.Handle(loginPath, simpleOidcAuth.Handler(http.HandlerFunc(state.LoginHandler)))
 
-	http.Handle(approverequest, http.HandlerFunc(state.approveHandler))
-	http.Handle(rejectrequest, http.HandlerFunc(state.rejectHandler))
+	http.Handle(approverequestPath, http.HandlerFunc(state.approveHandler))
+	http.Handle(rejectrequestPath, http.HandlerFunc(state.rejectHandler))
 
-	http.Handle(addmembers, http.HandlerFunc(state.AddmemberstoGroup))
+	http.Handle(addmembersPath, http.HandlerFunc(state.AddmemberstoGroup))
 
-	fs := http.FileServer(http.Dir(templatesdirectory))
-	http.Handle(csspath, fs)
-	http.Handle(images, fs)
+	fs := http.FileServer(http.Dir(templatesdirectoryPath))
+	http.Handle(cssPath, fs)
+	http.Handle(imagesPath, fs)
 	log.Fatal(http.ListenAndServeTLS(state.Config.Base.HttpAddress, state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename, nil))
 }
