@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-
 const (
 	usergroupsTest  = "/user_groups/?username=user1"
 	groupusersTest  = "/group_users/?groupname=group1"

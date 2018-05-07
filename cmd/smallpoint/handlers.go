@@ -47,7 +47,6 @@ func (state *RuntimeState) LoginHandler(w http.ResponseWriter, r *http.Request) 
 
 	usercookie := http.Cookie{Name: cookieName, Value: randomString, Path: indexPath, Expires: expires, HttpOnly: true, Secure: true}
 
-
 	http.SetCookie(w, &usercookie)
 
 	Cookieinfo := cookieInfo{*userInfo.Username, usercookie.Expires}
