@@ -4,16 +4,16 @@ import (
 	"database/sql"
 	"errors"
 	"flag"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
+	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
+	"github.com/cviecco/go-simple-oidc-auth/authhandler"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"sync"
 	"time"
-	"gopkg.in/yaml.v2"
-	"github.com/cviecco/go-simple-oidc-auth/authhandler"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
-	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
 )
 
 type baseConfig struct {
@@ -38,12 +38,12 @@ type RuntimeState struct {
 	db          *sql.DB
 	Userinfo    userinfo.UserInfo
 	authcookies map[string]cookieInfo
-	cookiemutex       sync.Mutex
+	cookiemutex sync.Mutex
 }
 
 type cookieInfo struct {
-	Username    string
-	ExpiresAt   time.Time
+	Username  string
+	ExpiresAt time.Time
 }
 type GetGroups struct {
 	AllGroups []string `json:"allgroups"`
@@ -77,37 +77,36 @@ var (
 	authSource *authhandler.SimpleOIDCAuth
 )
 
-
 const (
-	descriptionAttribute="self-managed"
-	cookieExpirationTime  = 12
-	cookieName="smallpointauth"
+	descriptionAttribute = "self-managed"
+	cookieExpirationTime = 12
+	cookieName           = "smallpointauth"
 
-	allgroups="/allgroups"
-	allusers="/allusers"
-	usergroups="/user_groups/"
-	groupusers="/group_users/"
-	creategroupWebPage="/create_group"
-	deletegroupWebPage="/delete_group"
-	creategroup="/create_group/"
-	deletegroup="/delete_group/"
-	requestaccess="/requestaccess"
-	mygroups="/mygroups/"
-	pendingactions="/pending-actions"
-	pendingrequests="/pending-requests"
-	deleterequests="/deleterequests"
-	exitgroup="/exitgroup"
-	loginpath="/login"
-	approverequest="/approve-request"
-	rejectrequest="/reject-request"
-	addmembers="/addmembers"
-	indexpath="/"
+	allgroups          = "/allgroups"
+	allusers           = "/allusers"
+	usergroups         = "/user_groups/"
+	groupusers         = "/group_users/"
+	creategroupWebPage = "/create_group"
+	deletegroupWebPage = "/delete_group"
+	creategroup        = "/create_group/"
+	deletegroup        = "/delete_group/"
+	requestaccess      = "/requestaccess"
+	mygroups           = "/mygroups/"
+	pendingactions     = "/pending-actions"
+	pendingrequests    = "/pending-requests"
+	deleterequests     = "/deleterequests"
+	exitgroup          = "/exitgroup"
+	loginpath          = "/login"
+	approverequest     = "/approve-request"
+	rejectrequest      = "/reject-request"
+	addmembers         = "/addmembers"
+	indexpath          = "/auth/oidcsimple/callback"
 
-	templatesdirectory="templates"
-	csspath="/css/"
-	images="/images/"
-
+	templatesdirectory = "templates"
+	csspath            = "/css/"
+	images             = "/images/"
 )
+
 //parses the config file
 func loadConfig(configFilename string) (RuntimeState, error) {
 
@@ -138,7 +137,7 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 		return state, err
 	}
 	state.Userinfo = &state.Config.TargetLDAP
-	state.authcookies=make(map[string]cookieInfo)
+	state.authcookies = make(map[string]cookieInfo)
 	return state, err
 }
 
@@ -178,7 +177,7 @@ func main() {
 	http.Handle(deletegroup, http.HandlerFunc(state.deleteGrouphandler))
 
 	http.Handle(requestaccess, http.HandlerFunc(state.requestAccessHandler))
-	http.Handle(indexpath, http.HandlerFunc(state.IndexHandler))
+	http.Handle(indexpath, simpleOidcAuth.Handler(http.HandlerFunc(state.IndexHandler)))
 	http.Handle(mygroups, http.HandlerFunc(state.MygroupsHandler))
 	http.Handle(pendingactions, http.HandlerFunc(state.pendingActions))
 	http.Handle(pendingrequests, http.HandlerFunc(state.pendingRequests))
