@@ -78,14 +78,14 @@ var (
 )
 
 const (
-	descriptionAttribute = "self-managed"
+	descriptionAttribute  = "self-managed"
 	cookieExpirationHours = 12
-	cookieName           = "smallpointauth"
+	cookieName            = "smallpointauth"
 
 	allgroupsPath          = "/allgroups"
 	allusersPath           = "/allusers"
 	usergroupsPath         = "/user_groups/"
-	groupusersPath        = "/group_users/"
+	groupusersPath         = "/group_users/"
 	creategroupWebPagePath = "/create_group"
 	deletegroupWebPagePath = "/delete_group"
 	creategroupPath        = "/create_group/"
@@ -96,15 +96,15 @@ const (
 	pendingrequestsPath    = "/pending-requests"
 	deleterequestsPath     = "/deleterequests"
 	exitgroupPath          = "/exitgroup"
-	loginPath          = "/login"
+	loginPath              = "/login"
 	approverequestPath     = "/approve-request"
 	rejectrequestPath      = "/reject-request"
 	addmembersPath         = "/addmembers"
-	indexPath          = "/"
-	authPath           = "/auth/oidcsimple/callback"
+	indexPath              = "/"
+	authPath               = "/auth/oidcsimple/callback"
 
 	templatesdirectoryPath = "templates"
-	cssPath            = "/css/"
+	cssPath                = "/css/"
 	imagesPath             = "/images/"
 )
 
@@ -179,7 +179,7 @@ func main() {
 
 	http.Handle(requestaccessPath, http.HandlerFunc(state.requestAccessHandler))
 	http.Handle(indexPath, http.HandlerFunc(state.IndexHandler))
-	http.Handle(authPath,simpleOidcAuth.Handler(http.HandlerFunc(state.IndexHandler)))
+	http.Handle(authPath, simpleOidcAuth.Handler(http.HandlerFunc(state.IndexHandler)))
 	http.Handle(mygroupsPath, http.HandlerFunc(state.MygroupsHandler))
 	http.Handle(pendingactionsPath, http.HandlerFunc(state.pendingActions))
 	http.Handle(pendingrequestsPath, http.HandlerFunc(state.pendingRequests))
