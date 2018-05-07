@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+
 const (
 	usergroupsTest  = "/user_groups/?username=user1"
 	groupusersTest  = "/group_users/?groupname=group1"
@@ -18,6 +19,7 @@ const (
 func createCookie() http.Cookie {
 	expiresAt := time.Now().Add(time.Hour * cookieExpirationTime)
 	cookie := http.Cookie{Name: cookieName, Value: cookievalueTest, Path: indexpath, Expires: expiresAt, HttpOnly: true, Secure: true}
+
 	return cookie
 }
 
@@ -26,7 +28,7 @@ func Init() (RuntimeState, error) {
 	mock := New()
 	state.Userinfo = mock
 	state.authcookies = make(map[string]cookieInfo)
-	expiresAt := time.Now().Add(time.Hour * cookieExpirationTime)
+	expiresAt := time.Now().Add(time.Hour * cookieExpirationHours)
 	usersession := cookieInfo{testusername, expiresAt}
 	state.authcookies[cookievalueTest] = usersession
 	return state, nil
@@ -38,7 +40,7 @@ func TestRuntimeState_GetallgroupsHandler(t *testing.T) {
 		log.Println(err)
 	}
 
-	req, err := http.NewRequest("GET", allgroups, nil)
+	req, err := http.NewRequest("GET", allgroupsPath, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +63,7 @@ func TestRuntimeState_GetusersingroupHandlerFail(t *testing.T) {
 		log.Println(err)
 	}
 
-	req, err := http.NewRequest("GET", groupusers, nil)
+	req, err := http.NewRequest("GET", groupusersPath, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,6 +89,7 @@ func TestRuntimeState_GetusersingroupHandlerSuccess(t *testing.T) {
 	}
 
 	req, err := http.NewRequest("GET", groupusersTest, nil)
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +114,7 @@ func TestRuntimeState_GetgroupsofuserHandlerFail(t *testing.T) {
 		log.Println(err)
 	}
 
-	req, err := http.NewRequest("GET", usergroups, nil)
+	req, err := http.NewRequest("GET", usergroupsPath, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +139,7 @@ func TestRuntimeState_GetgroupsofuserHandlerSuccess(t *testing.T) {
 		log.Println(err)
 	}
 
-	req, err := http.NewRequest("GET", usergroupsTest, nil)
+	req, err := http.NewRequest("GET", usergroupsTestPath, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +164,7 @@ func TestRuntimeState_GetallusersHandler(t *testing.T) {
 		log.Println(err)
 	}
 
-	req, err := http.NewRequest("GET", allusers, nil)
+	req, err := http.NewRequest("GET", allusersPath, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
