@@ -8,16 +8,17 @@ import (
 	"time"
 )
 
-const(
-	usergroupsTestPath="/user_groups/?username=user1"
-	groupusersTestPath="/group_users/?groupname=group1"
-	cookievalueTest="hellogroup1group2"
-	testusername="user1"
+const (
+	usergroupsTest  = "/user_groups/?username=user1"
+	groupusersTest  = "/group_users/?groupname=group1"
+	cookievalueTest = "hellogroup1group2"
+	testusername    = "user1"
 )
 
 func createCookie() http.Cookie {
 	expiresAt := time.Now().Add(time.Hour * cookieExpirationHours)
-	cookie := http.Cookie{Name: cookieName, Value: cookievalueTest, Path: indexPath, Expires: expiresAt, HttpOnly: true,Secure:true}
+	cookie := http.Cookie{Name: cookieName, Value: cookievalueTest, Path: indexPath, Expires: expiresAt, HttpOnly: true, Secure: true}
+
 	return cookie
 }
 
@@ -86,7 +87,8 @@ func TestRuntimeState_GetusersingroupHandlerSuccess(t *testing.T) {
 		log.Println(err)
 	}
 
-	req, err := http.NewRequest("GET",groupusersTestPath , nil)
+	req, err := http.NewRequest("GET", groupusersTest, nil)
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +138,7 @@ func TestRuntimeState_GetgroupsofuserHandlerSuccess(t *testing.T) {
 		log.Println(err)
 	}
 
-	req, err := http.NewRequest("GET", usergroupsTestPath, nil)
+	req, err := http.NewRequest("GET", usergroupsTest, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

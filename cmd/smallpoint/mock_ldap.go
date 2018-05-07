@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
 	"strconv"
 	"strings"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
 type MockLdap struct {

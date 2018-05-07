@@ -4,16 +4,16 @@ import (
 	"database/sql"
 	"errors"
 	"flag"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
+	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
+	"github.com/cviecco/go-simple-oidc-auth/authhandler"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"sync"
 	"time"
-	"gopkg.in/yaml.v2"
-	"github.com/cviecco/go-simple-oidc-auth/authhandler"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
-	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
 )
 
 type baseConfig struct {
@@ -38,12 +38,12 @@ type RuntimeState struct {
 	db          *sql.DB
 	Userinfo    userinfo.UserInfo
 	authcookies map[string]cookieInfo
-	cookiemutex       sync.Mutex
+	cookiemutex sync.Mutex
 }
 
 type cookieInfo struct {
-	Username    string
-	ExpiresAt   time.Time
+	Username  string
+	ExpiresAt time.Time
 }
 type GetGroups struct {
 	AllGroups []string `json:"allgroups"`
@@ -77,37 +77,37 @@ var (
 	authSource *authhandler.SimpleOIDCAuth
 )
 
-
 const (
-	descriptionAttribute="self-managed"
-	cookieExpirationHours  = 12
-	cookieName="smallpointauth"
+	descriptionAttribute  = "self-managed"
+	cookieExpirationHours = 12
+	cookieName            = "smallpointauth"
 
-	allgroupsPath="/allgroups"
-	allusersPath="/allusers"
-	usergroupsPath="/user_groups/"
-	groupusersPath="/group_users/"
-	creategroupWebPagePath="/create_group"
-	deletegroupWebPagePath="/delete_group"
-	creategroupPath="/create_group/"
-	deletegroupPath="/delete_group/"
-	requestaccessPath="/requestaccess"
-	mygroupsPath="/mygroups/"
-	pendingactionsPath="/pending-actions"
-	pendingrequestsPath="/pending-requests"
-	deleterequestsPath="/deleterequests"
-	exitgroupPath="/exitgroup"
-	loginPath="/login"
-	approverequestPath="/approve-request"
-	rejectrequestPath="/reject-request"
-	addmembersPath="/addmembers"
-	indexPath="/"
+	allgroupsPath          = "/allgroups"
+	allusersPath           = "/allusers"
+	usergroupsPath         = "/user_groups/"
+	groupusersPath         = "/group_users/"
+	creategroupWebPagePath = "/create_group"
+	deletegroupWebPagePath = "/delete_group"
+	creategroupPath        = "/create_group/"
+	deletegroupPath        = "/delete_group/"
+	requestaccessPath      = "/requestaccess"
+	mygroupsPath           = "/mygroups/"
+	pendingactionsPath     = "/pending-actions"
+	pendingrequestsPath    = "/pending-requests"
+	deleterequestsPath     = "/deleterequests"
+	exitgroupPath          = "/exitgroup"
+	loginPath              = "/login"
+	approverequestPath     = "/approve-request"
+	rejectrequestPath      = "/reject-request"
+	addmembersPath         = "/addmembers"
+	indexPath              = "/"
+	authPath               = "/auth/oidcsimple/callback"
 
-	templatesdirectoryPath="templates"
-	cssPath="/css/"
-	imagesPath="/images/"
-
+	templatesdirectoryPath = "templates"
+	cssPath                = "/css/"
+	imagesPath             = "/images/"
 )
+
 //parses the config file
 func loadConfig(configFilename string) (RuntimeState, error) {
 
@@ -138,7 +138,7 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 		return state, err
 	}
 	state.Userinfo = &state.Config.TargetLDAP
-	state.authcookies=make(map[string]cookieInfo)
+	state.authcookies = make(map[string]cookieInfo)
 	return state, err
 }
 
@@ -179,6 +179,7 @@ func main() {
 
 	http.Handle(requestaccessPath, http.HandlerFunc(state.requestAccessHandler))
 	http.Handle(indexPath, http.HandlerFunc(state.IndexHandler))
+	http.Handle(authPath, simpleOidcAuth.Handler(http.HandlerFunc(state.IndexHandler)))
 	http.Handle(mygroupsPath, http.HandlerFunc(state.MygroupsHandler))
 	http.Handle(pendingactionsPath, http.HandlerFunc(state.pendingActions))
 	http.Handle(pendingrequestsPath, http.HandlerFunc(state.pendingRequests))
@@ -189,7 +190,6 @@ func main() {
 
 	http.Handle(approverequestPath, http.HandlerFunc(state.approveHandler))
 	http.Handle(rejectrequestPath, http.HandlerFunc(state.rejectHandler))
-
 	http.Handle(addmembersPath, http.HandlerFunc(state.AddmemberstoGroup))
 
 	fs := http.FileServer(http.Dir(templatesdirectoryPath))
