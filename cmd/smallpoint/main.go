@@ -190,7 +190,6 @@ func main() {
 
 	http.Handle(approverequestPath, http.HandlerFunc(state.approveHandler))
 	http.Handle(rejectrequestPath, http.HandlerFunc(state.rejectHandler))
-
 	http.Handle(addmembersPath, http.HandlerFunc(state.AddmemberstoGroup))
 
 	fs := http.FileServer(http.Dir(templatesdirectoryPath))
