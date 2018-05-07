@@ -1,10 +1,10 @@
 package main
 
 import (
+	"github.com/mssola/user_agent"
 	"log"
 	"net/smtp"
 	texttemplate "text/template"
-	"github.com/mssola/user_agent"
 )
 
 ////Request Access email  start.....//////

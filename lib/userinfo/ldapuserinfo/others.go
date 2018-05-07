@@ -6,16 +6,14 @@ import (
 	"strings"
 )
 
-
 const maximumPagingsize = 2147483647
 
 var nsaccountLock = []string{"True"}
 
-
 //Function which returns the array of disabled accounts from Source LDAP.--required
 func (u *UserInfoLDAPSource) getDisabledAccountsinLDAP() ([]string, error) {
-		var disabledAccounts []string
-	Attributes:=[]string{"sAMAccountName"}
+	var disabledAccounts []string
+	Attributes := []string{"sAMAccountName"}
 	searchrequest := ldap.NewSearchRequest(u.UserSearchBaseDNs, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, u.UserSearchFilter, Attributes, nil)
 

@@ -1,6 +1,5 @@
 package userinfo
 
-
 type GroupInfo struct {
 	Groupname   string
 	Description string
@@ -9,9 +8,7 @@ type GroupInfo struct {
 	Cn          string
 }
 
-
 type UserInfo interface {
-
 	GetallUsers() (map[string]string, error)
 
 	CreateuserDn(username string) string
@@ -27,7 +24,6 @@ type UserInfo interface {
 	AddAtributedescription(groupname string) error
 
 	DeleteDescription(groupnames []string) error
-
 
 	GetallGroups() ([]string, error)
 

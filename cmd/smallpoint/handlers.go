@@ -5,12 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
 func randomStringGeneration() (string, error) {
@@ -45,7 +45,7 @@ func (state *RuntimeState) LoginHandler(w http.ResponseWriter, r *http.Request) 
 
 	expires := time.Now().Add(time.Hour * cookieExpirationTime)
 
-	usercookie := http.Cookie{Name: cookieName, Value: randomString, Path: indexpath, Expires: expires, HttpOnly: true,Secure:true}
+	usercookie := http.Cookie{Name: cookieName, Value: randomString, Path: indexpath, Expires: expires, HttpOnly: true, Secure: true}
 
 	http.SetCookie(w, &usercookie)
 

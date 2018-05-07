@@ -1,19 +1,19 @@
 package ldapuserinfo
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/Symantec/keymaster/lib/authutil"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"gopkg.in/ldap.v2"
 	"log"
-	"strings"
-	"github.com/Symantec/keymaster/lib/authutil"
+	"net"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
-	"crypto/x509"
-	"crypto/tls"
-	"net"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
 const ldapTimeoutSecs = 10
@@ -29,7 +29,6 @@ type UserInfoLDAPSource struct {
 	Admins                string `yaml:"super_admins"`
 	ServiceAccountBaseDNs string `yaml:"service_search_base_dns"`
 }
-
 
 func getLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ldap.Conn, string, error) {
 
@@ -242,7 +241,6 @@ func (u *UserInfoLDAPSource) DeleteDescription(groupnames []string) error {
 	}
 	return nil
 }
-
 
 //function to get all the groups in Target ldaputil and put it in array --required
 func (u *UserInfoLDAPSource) GetallGroups() ([]string, error) {
