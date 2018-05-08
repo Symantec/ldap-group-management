@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"sort"
 	"strings"
 	"time"
 )
@@ -120,14 +119,13 @@ func (state *RuntimeState) IndexHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		return
 	}
-	Allgroups, err := state.Userinfo.GetallGroups()
+	Allgroups, err := state.Userinfo.GetallGroupsandDescription(state.Config.TargetLDAP.GroupSearchBaseDNs)
 
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	sort.Strings(Allgroups)
 	response := Response{username, Allgroups, nil, nil}
 	//response.UserName=*userInfo.Username
 	if state.Userinfo.UserisadminOrNot(username) == true {
@@ -144,13 +142,12 @@ func (state *RuntimeState) MygroupsHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
-	userGroups, err := state.Userinfo.GetgroupsofUser(username)
+	userGroups, err := state.Userinfo.GetGroupsInfoOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	sort.Strings(userGroups)
 	response := Response{username, userGroups, nil, nil}
 	sidebarType := "sidebar"
 
@@ -173,7 +170,11 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Reques
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	response := Response{UserName: username, Groups: groupnames, Users: nil, PendingActions: nil}
+	groups, err := state.Userinfo.ManagedbyAttribute(groupnames)
+	if err != nil {
+		log.Println(err)
+	}
+	response := Response{UserName: username, Groups: groups, Users: nil, PendingActions: nil}
 	sidebarType := "sidebar"
 	if state.Userinfo.UserisadminOrNot(username) {
 		sidebarType = "admins_sidebar"
@@ -203,9 +204,8 @@ func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *h
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
-	sort.Strings(Allgroups)
 
-	response := Response{username, Allgroups, nil, nil}
+	response := Response{username, [][]string{Allgroups}, nil, nil}
 
 	generateHTML(w, response, "index", "admins_sidebar", "create_group")
 
