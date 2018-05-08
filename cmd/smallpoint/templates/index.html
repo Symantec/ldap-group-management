@@ -25,16 +25,16 @@
             crossorigin="anonymous"></script>
     <script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-
+    <script type="text/javascript" src="/js/table.js"></script>
 
 
 </head>
 
-<body class="w3-light-grey">
+<body class="w3-light-grey" onload="Run_OnLoad({{.Groups}},{{.Pending_actions}});">
 
 <!-- Top container -->
 <div class="w3-bar w3-top w3-new-blue w3-large" style="z-index: 4">
-   <button class="w3-bar-item w3-button w3-hide-large w3-hover-none w3-hover-text-light-grey" onclick="w3_open();"><i class="fa fa-bars"></i> &nbsp;Menu</button>
+   <button class="w3-bar-item w3-button w3-hide-large w3-hover-none w3-hover-text-light-grey" onclick="sidebar_open();"><i class="fa fa-bars"></i> &nbsp;Menu</button>
     <div>
         <img src="/images/darkBG.svg" alt="CPE Logo" style="height: 28px">
         <span class="w3-bar-item w3-right w3-text-new-white"><strong><b>LDAP GROUP MANAGEMENT</b></strong></span>
@@ -45,7 +45,7 @@
 </div>
 
 <!-- Overlay effect when opening sidebar on small screens -->
-<div class="w3-overlay w3-hide-large w3-animate-opacity" onclick="w3_close()" style="cursor:pointer" title="close side menu" id="myOverlay"></div>
+<div class="w3-overlay w3-hide-large w3-animate-opacity" onclick="sidebar_close()" style="cursor:pointer" title="close side menu" id="myOverlay"></div>
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
@@ -58,201 +58,6 @@
         </footer>
         <!-- End page content -->
 </div>
-
-<script>
-    // Get the Sidebar
-    var mySidebar = document.getElementById("mySidebar");
-
-    // Get the DIV with overlay effect
-    var overlayBg = document.getElementById("myOverlay");
-
-    // Toggle between showing and hiding the sidebar, and add overlay effect
-    function w3_open() {
-        if (mySidebar.style.display === 'block') {
-            mySidebar.style.display = 'none';
-            overlayBg.style.display = "none";
-        } else {
-            mySidebar.style.display = 'block';
-            overlayBg.style.display = "block";
-        }
-    }
-
-    // Close the sidebar with the close button
-    function w3_close() {
-        mySidebar.style.display = "block";
-        overlayBg.style.display = "none";
-    }
-
-</script>
-
-<script>
-    var groupnames={{.Groups}};
-    function array(groupnames) {
-        var group_names=[];
-        var groupname=[];
-        for(i=0;i<groupnames.length;i++){
-            groupname[0]=groupnames[i];
-            group_names[i]=groupname;
-            groupname=[];
-        }
-        return group_names
-    }
-    if (groupnames!=null){
-
-        var final_groupnames=array(groupnames);
-
-    }
-
-
-    $(document).ready(function() {
-        $('#display').DataTable( {
-            data: final_groupnames,
-            columns: [
-                {title:"groups"}
-            ]
-        } );
-    } );
-
-    $(document).ready(function() {
-        var table = $('#display').DataTable();
-
-        $('#display tbody').on( 'click', 'tr', function () {
-            $(this).toggleClass('selected');
-        } );
-        $('#length_btn').click( function () {
-            var length=table.rows('.selected').data().length;
-            $('#add_here').html(length);
-        });
-
-        //Request access confirm button
-        $('#btn_requestaccess').click( function () {
-            //alert( table.rows('.selected').data().length +' row(s) selected' );
-            var data_selected=table.rows('.selected').data();
-            var xhttp = new XMLHttpRequest();   // new HttpRequest instance
-            xhttp.open("POST", "/requestaccess");
-            xhttp.setRequestHeader("Content-Type", "application/json");
-            var request_groups={};
-            var groups=[];
-            request_groups.groups=groups;
-            for(i=0;i<table.rows('.selected').data().length;i++){
-                request_groups.groups.push(data_selected[i][0]);
-            }
-            console.log(request_groups.groups);
-            xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            location.reload();
-        } );
-
-        //delete requests confirm button
-        $('#btn_deleterequest').click( function () {
-            //alert( table.rows('.selected').data().length +' row(s) selected' );
-            var data_selected=table.rows('.selected').data();
-            var xhttp = new XMLHttpRequest();   // new HttpRequest instance
-            xhttp.open("POST", "/deleterequests");
-            xhttp.setRequestHeader("Content-Type", "application/json");
-            var request_groups={};
-            var groups=[];
-            request_groups.groups=groups;
-            for(i=0;i<table.rows('.selected').data().length;i++){
-                request_groups.groups.push(data_selected[i][0]);
-            }
-            console.log(request_groups.groups);
-            xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            location.reload();
-
-        } );
-
-        //exitgroup button
-        $('#btn_exitgroup').click( function () {
-            //alert( table.rows('.selected').data().length +' row(s) selected' );
-            var data_selected=table.rows('.selected').data();
-            var xhttp = new XMLHttpRequest();   // new HttpRequest instance
-            xhttp.open("POST", "/exitgroup");
-            xhttp.setRequestHeader("Content-Type", "application/json");
-            var request_groups={};
-            var groups=[];
-            request_groups.groups=groups;
-            for(i=0;i<table.rows('.selected').data().length;i++){
-                request_groups.groups.push(data_selected[i][0]);
-            }
-            console.log(request_groups.groups);
-            xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            location.reload();
-
-        } );
-    } );
-
-    $(document).ready(function() {
-        $('#pending_actions').DataTable( {
-            data: {{.PendingActions}},
-            columns: [
-                {title:"username"},
-                {title:"groupname"}
-            ]
-        } );
-    } );
-
-    $(document).ready(function() {
-        var table2 = $('#pending_actions').DataTable();
-
-        $('#pending_actions tbody').on( 'click', 'tr', function () {
-            $(this).toggleClass('selected');
-        } );
-        $('#length_btn1').click( function () {
-            var length=table2.rows('.selected').data().length;
-            $('#add_here1').html(length);
-        });
-
-        $('#btn_reject').click( function () {
-            //alert( table.rows('.selected').data().length +' row(s) selected' );
-            var data_selected=table2.rows('.selected').data();
-            var xhttp = new XMLHttpRequest();   // new HttpRequest instance
-            xhttp.open("POST", "/reject-request");
-            xhttp.setRequestHeader("Content-Type", "application/json");
-            var request_groups={};
-            var groups=[];
-            request_groups.groups=groups;
-            for(i=0;i<table2.rows('.selected').data().length;i++){
-                request_groups.groups.push(data_selected[i]);
-            }
-            console.log(request_groups.groups);
-            xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            window.location.reload();
-
-        } );
-        $('#length_btn2').click( function () {
-            var length=table2.rows('.selected').data().length;
-            $('#add_here2').html(length);
-        });
-
-        $('#btn_approve').click( function () {
-            //alert( table.rows('.selected').data().length +' row(s) selected' );
-            var data_selected=table2.rows('.selected').data();
-            var xhttp = new XMLHttpRequest();   // new HttpRequest instance
-            xhttp.open("POST", "/approve-request");
-            xhttp.setRequestHeader("Content-Type", "application/json");
-            var request_groups={};
-            var groups=[];
-            request_groups.groups=groups;
-            for(i=0;i<table2.rows('.selected').data().length;i++){
-                request_groups.groups.push(data_selected[i]);
-            }
-            console.log(request_groups.groups);
-            xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            window.location.reload();
-        } );
-    } );
-
-</script>
-
-
-<script>
-    var groupnames={{.Groups}};
-    for(i=0;i<groupnames.length;i++){
-        $('#datalist_groups').append("<option value='" + groupnames[i] + "'>");
-    }
-
-</script>
-
 
 </body>
 
