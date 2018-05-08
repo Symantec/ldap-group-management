@@ -11,7 +11,7 @@ import (
 //All handlers and API endpoints starts from here.
 
 //Display all groups in Target LDAP --required
-func (state *RuntimeState) GetallgroupsHandler(w http.ResponseWriter, r *http.Request) {
+func (state *RuntimeState) getallgroupsHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
@@ -35,7 +35,7 @@ func (state *RuntimeState) GetallgroupsHandler(w http.ResponseWriter, r *http.Re
 }
 
 //Display all users in Target LDAP --required
-func (state *RuntimeState) GetallusersHandler(w http.ResponseWriter, r *http.Request) {
+func (state *RuntimeState) getallusersHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
@@ -64,7 +64,7 @@ func (state *RuntimeState) GetallusersHandler(w http.ResponseWriter, r *http.Req
 }
 
 //Displays all Groups of a User. --required
-func (state *RuntimeState) GetgroupsofuserHandler(w http.ResponseWriter, r *http.Request) {
+func (state *RuntimeState) getgroupsofuserHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
@@ -97,7 +97,7 @@ func (state *RuntimeState) GetgroupsofuserHandler(w http.ResponseWriter, r *http
 }
 
 //Displays All Users in a Group --required
-func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http.Request) {
+func (state *RuntimeState) getusersingroupHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
