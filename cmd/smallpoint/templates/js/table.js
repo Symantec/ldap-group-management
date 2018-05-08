@@ -9,7 +9,6 @@ function Run_OnLoad(groupnames,PendingActions) {
     if(PendingActions!=null){
         var pending_actions=arrayPendingActions(PendingActions);
         pendingActionsTable(pending_actions);
-        return;
     }
 
 }
@@ -251,6 +250,6 @@ function sidebar_close() {
 
 function datalist(groupnames) {
     for(i=0;i<groupnames.length;i++){
-        $('#datalist_groups').append("<option value='" + groupnames[i] + "'>");
+        $('#select_groups').append("<option value='" + groupnames[i] + "'>"+groupnames[i]+"</option>");
     }
 }
