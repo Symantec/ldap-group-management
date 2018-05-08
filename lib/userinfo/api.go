@@ -50,4 +50,10 @@ type UserInfo interface {
 	GetEmailofusersingroup(groupname string) ([]string, error)
 
 	CreateServiceAccount(groupinfo GroupInfo) error
+
+	GetallGroupsandDescription(groupdn string)([][]string,error)
+
+	GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error)
+
+	ManagedbyAttribute(groupnames []string)([][]string,error)
 }

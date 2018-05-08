@@ -510,3 +510,82 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 	}
 	return nil
 }
+
+
+func (u *UserInfoLDAPSource) GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error) {
+	conn, err := u.getTargetLDAPConnection()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	var GroupandDescriptionPair [][]string
+	var Groupattributes []string
+
+	searchRequest := ldap.NewSearchRequest(
+		groupdn,
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		"(&(memberUid="+username+" ))",
+		nil, //memberOf (if searching other way around using usersdn instead of groupdn)
+		nil,
+	)
+	sr, err := conn.Search(searchRequest)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range sr.Entries {
+		Groupattributes = append(Groupattributes, entry.GetAttributeValue("cn"), entry.GetAttributeValue("description"))
+		GroupandDescriptionPair = append(GroupandDescriptionPair, Groupattributes)
+		Groupattributes = nil
+	}
+	return GroupandDescriptionPair, nil
+}
+
+func (u *UserInfoLDAPSource) GetallGroupsandDescription(grouddn string) ([][]string, error) {
+	conn, err := u.getTargetLDAPConnection()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	var GroupandDescriptionPair [][]string
+	var Groupattributes []string
+
+	searchrequest := ldap.NewSearchRequest(grouddn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		"(|(objectClass=posixGroup)(objectClass=groupofNames))", []string{"cn", "description"}, nil)
+	result, err := conn.Search(searchrequest)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range result.Entries {
+		Groupattributes = append(Groupattributes, entry.GetAttributeValue("cn"), entry.GetAttributeValue("description"))
+		GroupandDescriptionPair = append(GroupandDescriptionPair, Groupattributes)
+		Groupattributes = nil
+	}
+	return GroupandDescriptionPair, nil
+
+}
+
+func (u *UserInfoLDAPSource) ManagedbyAttribute(groupnames []string)([][]string,error){
+	conn, err := u.getTargetLDAPConnection()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	GroupandDescriptionPair,err:=u.GetallGroupsandDescription(u.GroupSearchBaseDNs)
+	if err!=nil{
+		log.Println(err)
+		return nil,err
+	}
+	var UserGroupInfo [][]string
+	for _,eachgroup:=range groupnames {
+		for _, eachEntry := range GroupandDescriptionPair {
+			if (eachEntry[0]==eachgroup){
+				UserGroupInfo=append(UserGroupInfo,eachEntry)
+				break
+			}
+		}
+	}
+	return UserGroupInfo,nil
+}
