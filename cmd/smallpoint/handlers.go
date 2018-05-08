@@ -4,14 +4,42 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
 )
+
+const postMethod = "POST"
+const getMethod = "GET"
+
+func checkCSRF(w http.ResponseWriter, r *http.Request) (bool, error) {
+	if r.Method != getMethod {
+		referer := r.Referer()
+		if len(referer) > 0 && len(r.Host) > 0 {
+			log.Println(3, "ref =%s, host=%s", referer, r.Host)
+			refererURL, err := url.Parse(referer)
+			if err != nil {
+				log.Println(err)
+				return false, err
+			}
+			log.Println(3, "refHost =%s, host=%s", refererURL.Host, r.Host)
+			if refererURL.Host != r.Host {
+				log.Printf("CSRF detected.... rejecting with a 400")
+				http.Error(w, "you are not authorized", http.StatusUnauthorized)
+				err := errors.New("CSRF detected... rejecting")
+				return false, err
+
+			}
+		}
+	}
+	return true, nil
+}
 
 func randomStringGeneration() (string, error) {
 	const size = 32
@@ -59,7 +87,12 @@ func (state *RuntimeState) LoginHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Request) (string, error) {
-
+	_, err := checkCSRF(w, r)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusUnauthorized)
+		return "", err
+	}
 	remoteCookie, err := r.Cookie(cookieName)
 	if err != nil {
 		log.Println(err)
@@ -195,6 +228,10 @@ func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *h
 
 //requesting access by users to join in groups...
 func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
@@ -226,6 +263,10 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 
 //delete access requests made by user
 func (state *RuntimeState) deleteRequests(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
@@ -278,6 +319,10 @@ func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter, r *http.Requ
 }
 
 func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
@@ -350,6 +395,10 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 
 //Approving
 func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
@@ -394,6 +443,10 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 
 //Reject handler
 func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
@@ -421,6 +474,10 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request)
 
 // Create a group handler --required
 func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
@@ -456,6 +513,10 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 
 //Delete groups handler --required
 func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
