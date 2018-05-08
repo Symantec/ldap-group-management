@@ -287,3 +287,45 @@ func (m *MockLdap) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
 
 	return nil
 }
+
+func (m *MockLdap) GetallGroupsandDescription(groupdn string) ([][]string, error) {
+	var groups [][]string
+	var eachGroup []string
+	for _, value := range m.Groups {
+		eachGroup = append(eachGroup, value.cn, value.description)
+		groups = append(groups, eachGroup)
+		eachGroup = nil
+	}
+
+	return groups, nil
+}
+
+func (m *MockLdap) GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error) {
+	var usergroupsinfo [][]string
+	var usergroups []string
+	userdn := m.CreateuserDn(username)
+	Userinfo := m.Users[userdn]
+	for _, groupdn := range Userinfo.memberOf {
+		Groupinfo := m.Groups[groupdn]
+		usergroups = append(usergroups, Groupinfo.cn, Groupinfo.description)
+		usergroupsinfo = append(usergroupsinfo, usergroups)
+		usergroups = nil
+	}
+	return usergroupsinfo, nil
+}
+
+func (m *MockLdap) ManagedbyAttribute(groupnames []string) ([][]string, error) {
+	var UserGroupInfo [][]string
+	var groupcndescription []string
+	for _, eachgroup := range groupnames {
+		groupdescription, err := m.GetDescriptionvalue(eachgroup)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		groupcndescription = append(groupcndescription, eachgroup, groupdescription)
+		UserGroupInfo = append(UserGroupInfo, groupcndescription)
+		groupcndescription = nil
+	}
+	return UserGroupInfo, nil
+}
