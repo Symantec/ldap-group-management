@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 )
@@ -50,7 +51,7 @@ func randomStringGeneration() (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
-func (state *RuntimeState) LoginHandler(w http.ResponseWriter, r *http.Request) {
+func (state *RuntimeState) loginHandler(w http.ResponseWriter, r *http.Request) {
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
 		log.Println(err)
@@ -114,7 +115,7 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 }
 
 //Main page with all LDAP groups displayed
-func (state *RuntimeState) IndexHandler(w http.ResponseWriter, r *http.Request) {
+func (state *RuntimeState) indexHandler(w http.ResponseWriter, r *http.Request) {
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
@@ -137,7 +138,7 @@ func (state *RuntimeState) IndexHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 //User Groups page
-func (state *RuntimeState) MygroupsHandler(w http.ResponseWriter, r *http.Request) {
+func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Request) {
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
@@ -283,38 +284,6 @@ func (state *RuntimeState) deleteRequests(w http.ResponseWriter, r *http.Request
 		if err != nil {
 			log.Println(err)
 		}
-	}
-}
-
-//Parses post info from create group button click.
-func (state *RuntimeState) AddmemberstoGroup(w http.ResponseWriter, r *http.Request) {
-	username, err := state.GetRemoteUserName(w, r)
-	if err != nil {
-		return
-	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
-	}
-
-	err = r.ParseForm()
-	if err != nil {
-		log.Println("Cannot parse form")
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	var groupinfo userinfo.GroupInfo
-	groupinfo.Groupname = r.PostFormValue("groupname")
-	members := r.PostFormValue("members")
-	for _, member := range strings.Split(members, ",") {
-		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
-		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
-	}
-
-	err = state.Userinfo.CreateGroup(groupinfo)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
 	}
 }
 
@@ -548,4 +517,190 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	}
 	generateHTML(w, Response{UserName: username}, "index", "admins_sidebar", "groupdeletion_success")
 
+}
+
+func (state *RuntimeState) addmemberstoGroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+
+	Allgroups, err := state.Userinfo.GetallGroups()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
+	sort.Strings(Allgroups)
+
+	response := Response{username, [][]string{Allgroups}, nil, nil}
+
+	generateHTML(w, response, "index", "admins_sidebar", "addpeopletogroups")
+
+}
+
+func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+	if !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+	}
+
+	err = r.ParseForm()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
+	var groupinfo userinfo.GroupInfo
+	groupinfo.Groupname = r.PostFormValue("groupname")
+	members := r.PostFormValue("members")
+	for _, member := range strings.Split(members, ",") {
+		if !state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member) {
+			continue
+		}
+		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
+		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
+	}
+
+	err = state.Userinfo.AddmemberstoExisting(groupinfo)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	generateHTML(w, Response{UserName: username}, "index", "admins_sidebar", "addpeopletogroups_success")
+
+}
+
+func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+
+	Allgroups, err := state.Userinfo.GetallGroups()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
+	sort.Strings(Allgroups)
+
+	response := Response{username, [][]string{Allgroups}, nil, nil}
+
+	generateHTML(w, response, "index", "admins_sidebar", "deletemembersfromgroup")
+
+}
+
+func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+	if !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+	}
+
+	err = r.ParseForm()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
+	var groupinfo userinfo.GroupInfo
+	groupinfo.Groupname = r.PostFormValue("groupname")
+	members := r.PostFormValue("members")
+	for _, member := range strings.Split(members, ",") {
+		if !state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member) {
+			continue
+		}
+		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
+		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
+	}
+
+	err = state.Userinfo.DeletemembersfromGroup(groupinfo)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	generateHTML(w, Response{UserName: username}, "index", "admins_sidebar", "deletemembersfromgroup_success")
+
+}
+
+func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter, r *http.Request) {
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+	Allgroups, err := state.Userinfo.GetallGroups()
+
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	response := Response{username, [][]string{Allgroups}, nil, nil}
+
+	generateHTML(w, response, "index", "admins_sidebar", "create_service_account")
+
+}
+
+func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+	if !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, "you are not authorized ", http.StatusUnauthorized)
+		return
+	}
+	err = r.ParseForm()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	var groupinfo userinfo.GroupInfo
+	groupinfo.Groupname = r.PostFormValue("groupname")
+	groupinfo.Description = r.PostFormValue("description")
+
+	err = state.Userinfo.CreateServiceAccount(groupinfo)
+
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
+		return
+	}
+	generateHTML(w, Response{UserName: username}, "index", "admins_sidebar", "serviceacc_creation_success")
 }
