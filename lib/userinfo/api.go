@@ -51,9 +51,9 @@ type UserInfo interface {
 
 	CreateServiceAccount(groupinfo GroupInfo) error
 
-	GetallGroupsandDescription(groupdn string)([][]string,error)
+	GetallGroupsandDescription(groupdn string) ([][]string, error)
 
 	GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error)
 
-	ManagedbyAttribute(groupnames []string)([][]string,error)
+	ManagedbyAttribute(groupnames []string) ([][]string, error)
 }

@@ -511,7 +511,6 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 	return nil
 }
 
-
 func (u *UserInfoLDAPSource) GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
@@ -566,26 +565,26 @@ func (u *UserInfoLDAPSource) GetallGroupsandDescription(grouddn string) ([][]str
 
 }
 
-func (u *UserInfoLDAPSource) ManagedbyAttribute(groupnames []string)([][]string,error){
+func (u *UserInfoLDAPSource) ManagedbyAttribute(groupnames []string) ([][]string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	GroupandDescriptionPair,err:=u.GetallGroupsandDescription(u.GroupSearchBaseDNs)
-	if err!=nil{
+	GroupandDescriptionPair, err := u.GetallGroupsandDescription(u.GroupSearchBaseDNs)
+	if err != nil {
 		log.Println(err)
-		return nil,err
+		return nil, err
 	}
 	var UserGroupInfo [][]string
-	for _,eachgroup:=range groupnames {
+	for _, eachgroup := range groupnames {
 		for _, eachEntry := range GroupandDescriptionPair {
-			if (eachEntry[0]==eachgroup){
-				UserGroupInfo=append(UserGroupInfo,eachEntry)
+			if eachEntry[0] == eachgroup {
+				UserGroupInfo = append(UserGroupInfo, eachEntry)
 				break
 			}
 		}
 	}
-	return UserGroupInfo,nil
+	return UserGroupInfo, nil
 }
