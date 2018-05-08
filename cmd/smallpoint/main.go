@@ -65,7 +65,7 @@ type GetGroupUsers struct {
 
 type Response struct {
 	UserName       string
-	Groups         []string
+	Groups         [][]string
 	Users          []string
 	PendingActions [][]string
 }
@@ -106,6 +106,7 @@ const (
 	templatesdirectoryPath = "templates"
 	cssPath                = "/css/"
 	imagesPath             = "/images/"
+	jsPath                 = "/js/"
 )
 
 //parses the config file
@@ -195,5 +196,7 @@ func main() {
 	fs := http.FileServer(http.Dir(templatesdirectoryPath))
 	http.Handle(cssPath, fs)
 	http.Handle(imagesPath, fs)
+	http.Handle(jsPath, fs)
+
 	log.Fatal(http.ListenAndServeTLS(state.Config.Base.HttpAddress, state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename, nil))
 }
