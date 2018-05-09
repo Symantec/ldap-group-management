@@ -263,7 +263,7 @@ func (m *MockLdap) GetEmailofusersingroup(groupname string) ([]string, error) {
 		log.Println(err)
 	}
 	var userEmail []string
-	for _, entry := range groupUsers[0] {
+	for _, entry := range groupUsers {
 		value, err := m.GetEmailofauser(entry)
 		if err != nil {
 			return nil, err
