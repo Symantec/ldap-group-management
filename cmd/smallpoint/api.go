@@ -114,8 +114,8 @@ func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http
 
 	groupUsers.GroupName = params[0] //username is "cn" Attribute of a User
 	AllUsersinGroup, err := state.Userinfo.GetusersofaGroup(groupUsers.GroupName)
-	sort.Strings(AllUsersinGroup[0])
-	groupUsers.Groupusers = AllUsersinGroup[0]
+	sort.Strings(AllUsersinGroup)
+	groupUsers.Groupusers = AllUsersinGroup
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
