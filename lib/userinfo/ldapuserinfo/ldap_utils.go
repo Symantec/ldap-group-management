@@ -290,7 +290,7 @@ func (u *UserInfoLDAPSource) GetgroupsofUser(username string) ([]string, error) 
 }
 
 //returns all the users of a group --required
-func (u *UserInfoLDAPSource) GetusersofaGroup(groupname string) ([][]string, error) {
+func (u *UserInfoLDAPSource) GetusersofaGroup(groupname string) ([]string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return nil, err
@@ -309,10 +309,7 @@ func (u *UserInfoLDAPSource) GetusersofaGroup(groupname string) ([][]string, err
 	if err != nil {
 		return nil, err
 	}
-	users := [][]string{}
-	for _, entry := range sr.Entries {
-		users = append(users, entry.GetAttributeValues("memberUid"))
-	}
+	users := sr.Entries[0].GetAttributeValues("memberUid")
 	return users, nil
 }
 
@@ -406,18 +403,19 @@ func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo
 }
 
 //if user is already a member of group or not
-func (u *UserInfoLDAPSource) IsgroupmemberorNot(groupname string, username string) bool {
+func (u *UserInfoLDAPSource) IsgroupmemberorNot(groupname string, username string) (bool, error) {
 
 	AllUsersinGroup, err := u.GetusersofaGroup(groupname)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return false, err
 	}
-	for _, entry := range AllUsersinGroup[0] {
+	for _, entry := range AllUsersinGroup {
 		if entry == username {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 //get description of a group
@@ -476,7 +474,7 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 		log.Println(err)
 	}
 	var userEmail []string
-	for _, entry := range groupUsers[0] {
+	for _, entry := range groupUsers {
 		value, err := u.GetEmailofauser(entry)
 		if err != nil {
 			return nil, err
@@ -509,4 +507,27 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 		return err
 	}
 	return nil
+}
+
+func (u *UserInfoLDAPSource) IsgroupAdminorNot(username string, groupname string) (bool, error) {
+	conn, err := u.getTargetLDAPConnection()
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
+
+	managedby, err := u.GetDescriptionvalue(groupname)
+	if managedby == "self-managed" {
+		Isgroupmember, err := u.IsgroupmemberorNot(groupname, username)
+		if !Isgroupmember || err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	Isgroupmember, err := u.IsgroupmemberorNot(managedby, username)
+	if !Isgroupmember || err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

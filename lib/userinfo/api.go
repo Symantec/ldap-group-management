@@ -29,7 +29,7 @@ type UserInfo interface {
 
 	GetgroupsofUser(username string) ([]string, error)
 
-	GetusersofaGroup(groupname string) ([][]string, error)
+	GetusersofaGroup(groupname string) ([]string, error)
 
 	ParseSuperadmins() []string
 
@@ -41,7 +41,7 @@ type UserInfo interface {
 
 	DeletemembersfromGroup(groupinfo GroupInfo) error
 
-	IsgroupmemberorNot(groupname string, username string) bool
+	IsgroupmemberorNot(groupname string, username string) (bool, error)
 
 	GetDescriptionvalue(groupname string) (string, error)
 
@@ -50,4 +50,6 @@ type UserInfo interface {
 	GetEmailofusersingroup(groupname string) ([]string, error)
 
 	CreateServiceAccount(groupinfo GroupInfo) error
+
+	IsgroupAdminorNot(username string, groupname string) (bool, error)
 }
