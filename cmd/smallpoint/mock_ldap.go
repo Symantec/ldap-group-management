@@ -169,12 +169,10 @@ func (m *MockLdap) GetgroupsofUser(username string) ([]string, error) {
 	return usergroups, nil
 }
 
-func (m *MockLdap) GetusersofaGroup(groupname string) ([][]string, error) {
-	var groupusers [][]string
+func (m *MockLdap) GetusersofaGroup(groupname string) ([]string, error) {
 	groupdn := m.CreategroupDn(groupname)
 	groupinfo := m.Groups[groupdn]
-	groupusers = append(groupusers, groupinfo.memberUid)
-	return groupusers, nil
+	return groupinfo.memberUid, nil
 }
 
 func (m *MockLdap) ParseSuperadmins() []string {
@@ -231,17 +229,18 @@ func (m *MockLdap) DeletemembersfromGroup(groupinfo userinfo.GroupInfo) error {
 	return nil
 }
 
-func (m *MockLdap) IsgroupmemberorNot(groupname string, username string) bool {
+func (m *MockLdap) IsgroupmemberorNot(groupname string, username string) (bool, error) {
 	AllUsersinGroup, err := m.GetusersofaGroup(groupname)
 	if err != nil {
 		log.Println(err)
+		return false, err
 	}
-	for _, entry := range AllUsersinGroup[0] {
+	for _, entry := range AllUsersinGroup {
 		if entry == username {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func (m *MockLdap) GetDescriptionvalue(groupname string) (string, error) {
@@ -286,4 +285,21 @@ func (m *MockLdap) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
 	m.Services[groupdn] = group
 
 	return nil
+}
+
+func (m *MockLdap) IsgroupAdminorNot(username string, groupname string) (bool, error) {
+	managedby, err := m.GetDescriptionvalue(groupname)
+	if managedby == "self-managed" {
+		Isgroupmember, err := m.IsgroupmemberorNot(groupname, username)
+		if !Isgroupmember && err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	Isgroupmember, err := m.IsgroupmemberorNot(managedby, username)
+	if !Isgroupmember && err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
