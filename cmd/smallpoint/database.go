@@ -38,7 +38,7 @@ func insertRequestInDB(username string, groupnames []string, state *RuntimeState
 	}
 	defer stmt.Close()
 	for _, entry := range groupnames {
-		IsgroupMember, err := state.Userinfo.IsgroupmemberorNot(entry, username)
+		IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(entry, username)
 		if err != nil {
 			log.Println(err)
 			return err
