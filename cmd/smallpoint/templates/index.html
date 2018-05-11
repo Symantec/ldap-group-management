@@ -132,14 +132,17 @@
             xhttp.open("POST", "/requestaccess");
             xhttp.setRequestHeader("Content-Type", "application/json");
             var request_groups={};
-            var groups=[];
-            request_groups.groups=groups;
+            request_groups.groups=[];
             for(i=0;i<table.rows('.selected').data().length;i++){
                 request_groups.groups.push(data_selected[i][0]);
             }
             console.log(request_groups.groups);
+            xhttp.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    location.reload();
+                }
+            };
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            location.reload();
         } );
 
         //delete requests confirm button
@@ -150,15 +153,17 @@
             xhttp.open("POST", "/deleterequests");
             xhttp.setRequestHeader("Content-Type", "application/json");
             var request_groups={};
-            var groups=[];
-            request_groups.groups=groups;
+            request_groups.groups=[];
             for(i=0;i<table.rows('.selected').data().length;i++){
                 request_groups.groups.push(data_selected[i][0]);
             }
             console.log(request_groups.groups);
+            xhttp.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    location.reload();
+                }
+            };
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            location.reload();
-
         } );
 
         //exitgroup button
@@ -169,15 +174,17 @@
             xhttp.open("POST", "/exitgroup");
             xhttp.setRequestHeader("Content-Type", "application/json");
             var request_groups={};
-            var groups=[];
-            request_groups.groups=groups;
+            request_groups.groups=[];
             for(i=0;i<table.rows('.selected').data().length;i++){
                 request_groups.groups.push(data_selected[i][0]);
             }
             console.log(request_groups.groups);
+            xhttp.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    location.reload();
+                }
+            };
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            location.reload();
-
         } );
     } );
 
@@ -209,15 +216,17 @@
             xhttp.open("POST", "/reject-request");
             xhttp.setRequestHeader("Content-Type", "application/json");
             var request_groups={};
-            var groups=[];
-            request_groups.groups=groups;
+            request_groups.groups=[];
             for(i=0;i<table2.rows('.selected').data().length;i++){
                 request_groups.groups.push(data_selected[i]);
             }
             console.log(request_groups.groups);
+            xhttp.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    location.reload();
+                }
+            };
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            window.location.reload();
-
         } );
         $('#length_btn2').click( function () {
             var length=table2.rows('.selected').data().length;
@@ -231,14 +240,17 @@
             xhttp.open("POST", "/approve-request");
             xhttp.setRequestHeader("Content-Type", "application/json");
             var request_groups={};
-            var groups=[];
-            request_groups.groups=groups;
+            request_groups.groups=[];
             for(i=0;i<table2.rows('.selected').data().length;i++){
                 request_groups.groups.push(data_selected[i]);
             }
             console.log(request_groups.groups);
+            xhttp.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    location.reload();
+                }
+            };
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            window.location.reload();
         } );
     } );
 
