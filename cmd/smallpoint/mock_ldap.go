@@ -303,3 +303,40 @@ func (m *MockLdap) IsgroupAdminorNot(username string, groupname string) (bool, e
 
 	return true, nil
 }
+
+func (m *MockLdap) UsernameExistsornot(username string) (bool, error) {
+
+	for _, entry := range m.Users {
+		uid := entry.uid
+		if uid == username {
+			return true, nil
+		}
+
+	}
+
+	return false, nil
+}
+
+func (m *MockLdap) GroupnameExistsornot(groupname string) (bool, error) {
+	for _, entry := range m.Groups {
+		uid := entry.cn
+		if uid == groupname {
+			return true, nil
+		}
+
+	}
+
+	return false, nil
+}
+
+func (m *MockLdap) ServiceAccountExistsornot(groupname string) (bool, error) {
+	for _, entry := range m.Services {
+		uid := entry.cn
+		if uid == groupname {
+			return true, nil
+		}
+
+	}
+
+	return false, nil
+}
