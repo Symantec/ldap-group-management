@@ -446,7 +446,7 @@ func (u *UserInfoLDAPSource) IsgroupmemberorNot(groupname string, username strin
 	}
 	for _, entry := range AllUsersinGroup {
 		if entry == username {
-			return true, "", nil
+			return true, description, nil
 		}
 	}
 	return false, description, nil
