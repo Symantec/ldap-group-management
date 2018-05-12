@@ -17,6 +17,8 @@ import (
 
 const postMethod = "POST"
 const getMethod = "GET"
+const UserServiceAccount = "User Service Account"
+const GroupServiceAccount = "Group Service Account"
 
 func checkCSRF(w http.ResponseWriter, r *http.Request) (bool, error) {
 	if r.Method != getMethod {
@@ -751,15 +753,23 @@ func (state *RuntimeState) addmemberstoGroupWebpageHandler(w http.ResponseWriter
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
-		return
-	}
+
 	sort.Strings(Allgroups)
 
 	response := Response{username, [][]string{Allgroups}, nil, nil}
 
-	generateHTML(w, response, "index", "admins_sidebar", "addpeopletogroups")
+	sidebarType := "sidebar"
+	if state.Userinfo.UserisadminOrNot(username) {
+		sidebarType = "admins_sidebar"
+	}
+
+	if response.PendingActions == nil {
+		generateHTML(w, response, "index", sidebarType, "no_pending_actions")
+
+	} else {
+		generateHTML(w, response, "index", sidebarType, "pending_actions")
+
+	}
 
 }
 
@@ -786,14 +796,49 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 	var groupinfo userinfo.GroupInfo
 	groupinfo.Groupname = r.PostFormValue("groupname")
 	members := r.PostFormValue("members")
+	//check if groupname given by user exists or not
+	GroupExistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Groupname)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !GroupExistsornot {
+		log.Println("Bad request!")
+		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+		return
+	}
+	IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, groupinfo.Groupname)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !IsgroupAdmin || !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, fmt.Sprint("You are not authorized to add people to this group!"), http.StatusBadRequest)
+		return
+	}
+
+	//check if given member exists or not and see if he is already a groupmember if yes continue.
 	for _, member := range strings.Split(members, ",") {
-		IsgroupMember,_,err:=state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member)
-		if err!=nil{
+		userExistsornot, err := state.Userinfo.UsernameExistsornot(member)
+		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
-		if !IsgroupMember {
+		if !userExistsornot {
+			log.Println("Bad request!")
+			http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+			return
+		}
+		IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		if IsgroupMember {
 			continue
 		}
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
@@ -822,16 +867,23 @@ func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseW
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
-		return
-	}
+
 	sort.Strings(Allgroups)
 
 	response := Response{username, [][]string{Allgroups}, nil, nil}
 
-	generateHTML(w, response, "index", "admins_sidebar", "deletemembersfromgroup")
+	sidebarType := "sidebar"
+	if state.Userinfo.UserisadminOrNot(username) {
+		sidebarType = "admins_sidebar"
+	}
 
+	if response.PendingActions == nil {
+		generateHTML(w, response, "index", sidebarType, "no_pending_actions")
+
+	} else {
+		generateHTML(w, response, "index", sidebarType, "pending_actions")
+
+	}
 }
 
 func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter, r *http.Request) {
@@ -857,14 +909,50 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	var groupinfo userinfo.GroupInfo
 	groupinfo.Groupname = r.PostFormValue("groupname")
 	members := r.PostFormValue("members")
+	//check if groupname given by user exists or not
+	GroupExistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Groupname)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !GroupExistsornot {
+		log.Println("Bad request!")
+		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+		return
+	}
+	IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, groupinfo.Groupname)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !IsgroupAdmin || !state.Userinfo.UserisadminOrNot(username) {
+		log.Println("you are not authorized!", username)
+		http.Error(w, fmt.Sprint("you are not authorized to remove members from this group!"), http.StatusBadRequest)
+		return
+	}
+
+	//check if given member exists or not and see if he is already a groupmember if yes continue.
 	for _, member := range strings.Split(members, ",") {
-		IsgroupMember,_,err:=state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member)
-		if err!=nil{
+		userExistsornot, err := state.Userinfo.UsernameExistsornot(member)
+		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
-		if !IsgroupMember {
+		if !userExistsornot {
+			log.Println("Bad request!")
+			http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+			return
+		}
+		IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		if IsgroupMember {
 			continue
 		}
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
@@ -924,10 +1012,35 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		return
 	}
 	var groupinfo userinfo.GroupInfo
-	groupinfo.Groupname = r.PostFormValue("groupname")
-	groupinfo.Description = r.PostFormValue("description")
+	accountType := r.PostFormValue("Service Account Type")
+	groupinfo.Groupname = r.PostFormValue("AccountName")
+	groupinfo.Mail = r.PostFormValue("Email Address")
 
-	err = state.Userinfo.CreateServiceAccount(groupinfo)
+	GroupExistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Groupname)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !GroupExistsornot {
+		log.Println("Bad request!")
+		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+		return
+	}
+
+	serviceAccountExists, _, err := state.Userinfo.ServiceAccountExistsornot(groupinfo.Groupname)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !serviceAccountExists {
+		log.Println("Service Account already exists!")
+		http.Error(w, fmt.Sprint("Service Account already exists!"), http.StatusBadRequest)
+		return
+	}
+
+	err = state.Userinfo.CreateServiceAccount(groupinfo, accountType)
 
 	if err != nil {
 		log.Println(err)
