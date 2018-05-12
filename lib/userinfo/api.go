@@ -6,6 +6,7 @@ type GroupInfo struct {
 	MemberUid   []string
 	Member      []string
 	Cn          string
+	Mail        string
 }
 
 type UserInfo interface {
@@ -15,7 +16,7 @@ type UserInfo interface {
 
 	CreategroupDn(groupname string) string
 
-	CreateserviceDn(groupname string) string
+	CreateserviceDn(groupname string, accountType string) string
 
 	CreateGroup(groupinfo GroupInfo) error
 
@@ -37,6 +38,8 @@ type UserInfo interface {
 
 	GetmaximumGidnumber() (string, error)
 
+	GetmaximumUidnumber() (string, error)
+
 	AddmemberstoExisting(groupinfo GroupInfo) error
 
 	DeletemembersfromGroup(groupinfo GroupInfo) error
@@ -49,7 +52,11 @@ type UserInfo interface {
 
 	GetEmailofusersingroup(groupname string) ([]string, error)
 
-	CreateServiceAccount(groupinfo GroupInfo) error
+	CreateServiceAccount(groupinfo GroupInfo, accountType string) error
+
+	CreateUserServiceAccount(groupinfo GroupInfo, serviceDN string) error
+
+	CreateGroupServiceAccount(groupinfo GroupInfo, serviceDN string) error
 
 	IsgroupAdminorNot(username string, groupname string) (bool, error)
 
@@ -57,7 +64,7 @@ type UserInfo interface {
 
 	GroupnameExistsornot(groupname string) (bool, string, error)
 
-	ServiceAccountExistsornot(groupname string) (bool, error)
+	ServiceAccountExistsornot(groupname string) (bool, string, error)
 
 	GetGroupDN(groupname string) (string, error)
 

@@ -17,6 +17,8 @@ import (
 )
 
 const ldapTimeoutSecs = 10
+const UserServiceAccount = "User Service Account"
+const GroupServiceAccount = "Group Service Account"
 
 type UserInfoLDAPSource struct {
 	BindUsername          string `yaml:"bind_username"`
@@ -148,10 +150,15 @@ func (u *UserInfoLDAPSource) CreategroupDn(groupname string) string {
 
 }
 
-func (u *UserInfoLDAPSource) CreateserviceDn(groupname string) string {
-	result := "cn=" + groupname + "," + u.ServiceAccountBaseDNs
-
-	return string(result)
+func (u *UserInfoLDAPSource) CreateserviceDn(groupname string, accountType string) string {
+	var serviceDN string
+	if accountType == UserServiceAccount {
+		serviceDN = "uid=" + groupname + "," + u.ServiceAccountBaseDNs
+	}
+	if accountType == GroupServiceAccount {
+		serviceDN = "cn=" + groupname + "," + u.ServiceAccountBaseDNs
+	}
+	return string(serviceDN)
 }
 
 //Creating a Group --required
@@ -392,6 +399,40 @@ func (u *UserInfoLDAPSource) GetmaximumGidnumber() (string, error) {
 	return fmt.Sprint(max + 1), nil
 }
 
+func (u *UserInfoLDAPSource) GetmaximumUidnumber() (string, error) {
+	conn, err := u.getTargetLDAPConnection()
+	if err != nil {
+		log.Println(err)
+		return "error in getTargetLDAPConnection", err
+	}
+	defer conn.Close()
+	searchRequest := ldap.NewSearchRequest(
+		u.UserSearchBaseDNs,
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		"(|(objectClass=posixAccount)(objectClass=person))",
+		[]string{"uidNumber"},
+		nil,
+	)
+	sr, err := conn.Search(searchRequest)
+	if err != nil {
+		log.Println(err)
+		return "error in ldapsearch", err
+	}
+	var max = 0
+	for _, entry := range sr.Entries {
+		gidnum := entry.GetAttributeValue("uidNumber")
+		value, _ := strconv.Atoi(gidnum)
+		//if err!=nil{
+		//	log.Println(err)
+		//}
+		if value > max {
+			max = value
+		}
+	}
+	//fmt.Println(max)
+	return fmt.Sprint(max + 1), nil
+}
+
 //adding members to existing group
 func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) error {
 	conn, err := u.getTargetLDAPConnection()
@@ -531,7 +572,31 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 	return userEmail, nil
 }
 
-func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
+func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo, accountType string) error {
+
+	serviceDN := u.CreateserviceDn(groupinfo.Groupname, accountType)
+
+	if accountType == UserServiceAccount {
+		err := u.CreateUserServiceAccount(groupinfo, serviceDN)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+	if accountType == GroupServiceAccount {
+		err := u.CreateGroupServiceAccount(groupinfo, serviceDN)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	} else {
+		return errors.New("accountType cannot be detected! " +
+			"Please Provide valid accountType (Group Service Account or User Service Account)")
+	}
+	return nil
+}
+
+func (u *UserInfoLDAPSource) CreateUserServiceAccount(groupinfo userinfo.GroupInfo, serviceDN string) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
@@ -539,16 +604,50 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 	}
 	defer conn.Close()
 
-	entry := u.CreateserviceDn(groupinfo.Groupname)
 	gidnum, err := u.GetmaximumGidnumber()
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	group := ldap.NewAddRequest(entry)
+	uidnum, err := u.GetmaximumUidnumber()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	user := ldap.NewAddRequest(serviceDN)
+	user.Attribute("objectClass", []string{"posixAccount", "person", "organizationalPerson"})
+	user.Attribute("cn", []string{groupinfo.Groupname})
+	user.Attribute("uid", []string{groupinfo.Groupname})
+	user.Attribute("mail", []string{groupinfo.Mail})
+	user.Attribute("gidNumber", []string{gidnum})
+	user.Attribute("uidNumber", []string{uidnum})
+
+	err = conn.Add(user)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
+func (u *UserInfoLDAPSource) CreateGroupServiceAccount(groupinfo userinfo.GroupInfo, serviceDN string) error {
+	conn, err := u.getTargetLDAPConnection()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer conn.Close()
+
+	gidnum, err := u.GetmaximumGidnumber()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	group := ldap.NewAddRequest(serviceDN)
 	group.Attribute("objectClass", []string{"posixGroup", "top", "groupOfNames"})
 	group.Attribute("cn", []string{groupinfo.Groupname})
-	group.Attribute("description", []string{groupinfo.Description})
+	group.Attribute("mail", []string{groupinfo.Mail})
 	group.Attribute("gidNumber", []string{gidnum})
 	err = conn.Add(group)
 	if err != nil {
@@ -652,37 +751,38 @@ func (u *UserInfoLDAPSource) GroupnameExistsornot(groupname string) (bool, strin
 	return true, description, nil
 }
 
-func (u *UserInfoLDAPSource) ServiceAccountExistsornot(groupname string) (bool, error) {
+func (u *UserInfoLDAPSource) ServiceAccountExistsornot(groupname string) (bool, string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
-		return false, err
+		return false, "", err
 	}
 	defer conn.Close()
 
-	Attributes := []string{"cn"}
+	Attributes := []string{"cn", "uid"}
 	searchrequest := ldap.NewSearchRequest(u.ServiceAccountBaseDNs, ldap.ScopeWholeSubtree,
-		ldap.NeverDerefAliases, 0, 0, false, "(&(cn="+groupname+" )(objectClass=posixGroup))",
+		ldap.NeverDerefAliases, 0, 0, false, "(|(cn="+groupname+" )(uid="+groupname+"))",
 		Attributes, nil)
 	result, err := conn.Search(searchrequest)
 	if err != nil {
 		log.Println(err)
-		return false, err
+		return false, "", err
 	}
 
 	if len(result.Entries) == 0 {
 		log.Println("No records found")
-		return false, nil
+		return false, "", nil
 	}
 	if len(result.Entries) > 1 {
 		log.Println("duplicate entries!")
-		return false, errors.New("Multiple entries available! Contact the administration!")
+		return false, "", errors.New("Multiple entries available! Contact the administration!")
 	}
 	if groupname == result.Entries[0].GetAttributeValue("cn") {
-		return true, nil
+		return true, "", nil
 	}
+	serviceAccountDN := result.Entries[0].DN
 
-	return false, nil
+	return false, serviceAccountDN, nil
 }
 
 func (u *UserInfoLDAPSource) GetGroupDN(groupname string) (string, error) {
