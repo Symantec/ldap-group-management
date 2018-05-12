@@ -106,8 +106,12 @@ function RequestAccess(final_groupnames) {
                 request_groups.groups.push(result);
             }
             //console.log(request_groups.groups);
+            xhttp.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    location.reload();
+                }
+            };
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            location.reload();
         } );
 
         //delete requests confirm button
@@ -125,8 +129,12 @@ function RequestAccess(final_groupnames) {
                 request_groups.groups.push(result);
             }
             //console.log(request_groups.groups);
+            xhttp.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    location.reload();
+                }
+            };
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            location.reload();
         } );
 
         //exitgroup button
@@ -146,8 +154,12 @@ function RequestAccess(final_groupnames) {
                 request_groups.groups.push(result);
             }
             //console.log(request_groups.groups);
+            xhttp.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    location.reload();
+                }
+            };
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            location.reload();
         } );
     } );
 
@@ -189,9 +201,12 @@ function pendingActionsTable(PendingActions) {
                 request_groups.groups.push(data_selected[i]);
             }
             //console.log(request_groups.groups);
+            xhttp.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    location.reload();
+                }
+            };
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            location.reload();
-
         } );
         $('#length_btn2').click( function () {
             var length=table2.rows('.selected').data().length;
@@ -212,8 +227,12 @@ function pendingActionsTable(PendingActions) {
                 request_groups.groups.push(data_selected[i]);
             }
             console.log(request_groups.groups);
+            xhttp.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    location.reload();
+                }
+            };
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
-            location.reload();
         } );
     } );
 
