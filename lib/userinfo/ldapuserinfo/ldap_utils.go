@@ -216,7 +216,7 @@ func (u *UserInfoLDAPSource) DeleteGroup(groupnames []string) error {
 	return nil
 }
 
-//Adding an attritube called 'description' to a dn in Target Ldap --required
+//Adding an attritube called 'description' to a dn in Target Ldap
 func (u *UserInfoLDAPSource) AddAtributedescription(groupname string) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
@@ -584,8 +584,7 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo, 
 			log.Println(err)
 			return err
 		}
-	}
-	if accountType == GroupServiceAccount {
+	} else if accountType == GroupServiceAccount {
 		err := u.CreateGroupServiceAccount(groupinfo, serviceDN)
 		if err != nil {
 			log.Println(err)
