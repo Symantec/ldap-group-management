@@ -1,12 +1,14 @@
 package userinfo
 
 type GroupInfo struct {
-	Groupname   string
-	Description string
-	MemberUid   []string
-	Member      []string
-	Cn          string
-	Mail        string
+	Groupname     string
+	Description   string
+	MemberUid     []string
+	Member        []string
+	Cn            string
+	Mail          string
+	LoginShell    string
+	HomeDirectory string
 }
 
 type UserInfo interface {

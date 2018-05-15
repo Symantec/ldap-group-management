@@ -1000,7 +1000,9 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	var groupinfo userinfo.GroupInfo
 	accountType := r.PostFormValue("Service Account Type")
 	groupinfo.Groupname = r.PostFormValue("AccountName")
-	groupinfo.Mail = r.PostFormValue("Email Address")
+	groupinfo.Mail = r.PostFormValue("mail")
+	groupinfo.HomeDirectory = r.PostFormValue("homeDirectory")
+	groupinfo.LoginShell = r.PostFormValue("loginShell")
 
 	GroupExistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Groupname)
 	if err != nil {
