@@ -765,8 +765,6 @@ func (state *RuntimeState) addmemberstoGroupWebpageHandler(w http.ResponseWriter
 
 	generateHTML(w, response, "index", sidebarType, "addpeopletogroups")
 
-
-
 }
 
 func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *http.Request) {

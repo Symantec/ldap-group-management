@@ -80,12 +80,10 @@ func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail 
 	templ, err := texttemplate.New("mailbody").Parse(requestAccessMailTemplateText)
 	if err != nil {
 		log.Fatal(err)
-		return err
 	}
 	err = templ.Execute(wc, mailData)
 	if err != nil {
 		log.Fatal(err)
-		return err
 	}
 
 	return nil
@@ -164,12 +162,10 @@ func (state *RuntimeState) approveRequestemail(requesteduser string, otheruser s
 	templ, err := texttemplate.New("mailbody").Parse(requestApproveMailTemplateText)
 	if err != nil {
 		log.Fatal(err)
-		return err
 	}
 	err = templ.Execute(wc, mailData)
 	if err != nil {
 		log.Fatal(err)
-		return err
 	}
 
 	return nil
@@ -246,12 +242,10 @@ func (state *RuntimeState) RejectRequestemail(requesteduser string, otheruser st
 	templ, err := texttemplate.New("mailbody").Parse(requestRejectMailTemplateText)
 	if err != nil {
 		log.Fatal(err)
-		return err
 	}
 	err = templ.Execute(wc, mailData)
 	if err != nil {
 		log.Fatal(err)
-		return err
 	}
 
 	return nil
