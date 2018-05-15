@@ -137,7 +137,7 @@
                 request_groups.groups.push(data_selected[i][0]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
+            xhttp.onreadystatechange = ReloadOnSuccessOrAlert(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
 
@@ -154,7 +154,7 @@
                 request_groups.groups.push(data_selected[i][0]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
+            xhttp.onreadystatechange = ReloadOnSuccessOrAlert(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
 
@@ -171,7 +171,7 @@
                 request_groups.groups.push(data_selected[i][0]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
+            xhttp.onreadystatechange = ReloadOnSuccessOrAlert(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
     } );
@@ -209,7 +209,7 @@
                 request_groups.groups.push(data_selected[i]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
+            xhttp.onreadystatechange = ReloadOnSuccessOrAlert(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
         $('#length_btn2').click( function () {
@@ -229,11 +229,11 @@
                 request_groups.groups.push(data_selected[i]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
+            xhttp.onreadystatechange = ReloadOnSuccessOrAlert(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
     } );
-    function ActionTakenOnResponse(xhttp) {
+    function ReloadOnSuccessOrAlert(xhttp) {
         if (xhttp.readyState === 4 && xhttp.status === 200) {
             location.reload();
         }
