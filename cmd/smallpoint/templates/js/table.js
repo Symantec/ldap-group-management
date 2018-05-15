@@ -108,7 +108,7 @@ function RequestAccess(final_groupnames) {
                 request_groups.groups.push(result);
             }
             //console.log(request_groups.groups);
-            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
+            xhttp.onreadystatechange = ReloadOnSuccessOrAlert(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
 
@@ -127,7 +127,7 @@ function RequestAccess(final_groupnames) {
                 request_groups.groups.push(result);
             }
             //console.log(request_groups.groups);
-            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
+            xhttp.onreadystatechange = ReloadOnSuccessOrAlert(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
 
@@ -138,7 +138,6 @@ function RequestAccess(final_groupnames) {
             var xhttp = new XMLHttpRequest();   // new HttpRequest instance
             xhttp.open("POST", "/exitgroup");
             xhttp.setRequestHeader("Content-Type", "application/json");
-            //xhttp.setRequestHeader("X-CSRF-Token",Csrf_Token);
             var request_groups={};
             request_groups.groups=[];
             for(i=0;i<table.rows('.selected').data().length;i++){
@@ -147,7 +146,7 @@ function RequestAccess(final_groupnames) {
                 request_groups.groups.push(result);
             }
             //console.log(request_groups.groups);
-            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
+            xhttp.onreadystatechange = ReloadOnSuccessOrAlert(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
     } );
@@ -190,7 +189,7 @@ function pendingActionsTable(PendingActions) {
                 request_groups.groups.push(data_selected[i]);
             }
             //console.log(request_groups.groups);
-            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
+            xhttp.onreadystatechange = ReloadOnSuccessOrAlert(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
         $('#length_btn2').click( function () {
@@ -204,14 +203,13 @@ function pendingActionsTable(PendingActions) {
             var xhttp = new XMLHttpRequest();   // new HttpRequest instance
             xhttp.open("POST", "/approve-request");
             xhttp.setRequestHeader("Content-Type", "application/json");
-            // xhttp.setRequestHeader("X-CSRF-Token",Csrf_Token);
             var request_groups={};
             request_groups.groups=[];
             for(i=0;i<table2.rows('.selected').data().length;i++){
                 request_groups.groups.push(data_selected[i]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
+            xhttp.onreadystatechange = ReloadOnSuccessOrAlert(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
     } );
@@ -253,7 +251,7 @@ function datalist(groupnames) {
     }
 }
 
-function ActionTakenOnResponse(xhttp) {
+function ReloadOnSuccessOrAlert(xhttp) {
     if (xhttp.readyState === 4 && xhttp.status === 200) {
         location.reload();
     }
