@@ -44,14 +44,16 @@ function arrayPendingActions(PendingActions) {
 
 function parsestring(str){
     var pos2,pos1,res;
+    var nextindex=1;
     pos2 = str.lastIndexOf("<");
     pos1 = str.indexOf(">");
-    res = str.substring(pos1 + 1, pos2);
+    res = str.substring(pos1 + index, pos2);
     return res;
 }
 
 function Parsearray(array) {
-    console.log(array);
+    //console.log(array);
+    var nextindex=1;
     var result=[];
     var pos2,pos1,res;
     for(i=0;i<length;i++){
@@ -61,7 +63,7 @@ function Parsearray(array) {
         }
         pos2 = array[i].lastIndexOf("<");
         pos1 = array[i].indexOf(">");
-        res = array[i].substring(pos1 + 1, pos2);
+        res = array[i].substring(pos1 + nextindex, pos2);
         result[i]=res;
     }
     return result;
@@ -106,7 +108,7 @@ function RequestAccess(final_groupnames) {
                 request_groups.groups.push(result);
             }
             //console.log(request_groups.groups);
-            xhttp.onreadystatechange = xhttpstatechange(xhttp);
+            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
 
@@ -125,7 +127,7 @@ function RequestAccess(final_groupnames) {
                 request_groups.groups.push(result);
             }
             //console.log(request_groups.groups);
-            xhttp.onreadystatechange = xhttpstatechange(xhttp);
+            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
 
@@ -145,7 +147,7 @@ function RequestAccess(final_groupnames) {
                 request_groups.groups.push(result);
             }
             //console.log(request_groups.groups);
-            xhttp.onreadystatechange = xhttpstatechange(xhttp);
+            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
     } );
@@ -188,7 +190,7 @@ function pendingActionsTable(PendingActions) {
                 request_groups.groups.push(data_selected[i]);
             }
             //console.log(request_groups.groups);
-            xhttp.onreadystatechange = xhttpstatechange(xhttp);
+            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
         $('#length_btn2').click( function () {
@@ -209,7 +211,7 @@ function pendingActionsTable(PendingActions) {
                 request_groups.groups.push(data_selected[i]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = xhttpstatechange(xhttp);
+            xhttp.onreadystatechange = ActionTakenOnResponse(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
     } );
@@ -251,7 +253,7 @@ function datalist(groupnames) {
     }
 }
 
-function xhttpstatechange(xhttp) {
+function ActionTakenOnResponse(xhttp) {
     if (xhttp.readyState === 4 && xhttp.status === 200) {
         location.reload();
     }
