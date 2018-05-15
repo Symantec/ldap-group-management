@@ -267,14 +267,17 @@ function serviceAccountSelection(){
         document.getElementById("EmailAddress").style.display='none';
         document.getElementById("labelEmailAddress").style.display='none';
         document.getElementById("EmailAddress").disabled = true;
+        document.getElementById("EmailAddress").required=false;
 
         document.getElementById("labelhomeDirectory").style.display='none';
         document.getElementById("homeDirectory").style.display='none';
         document.getElementById("homeDirectory").disabled = true;
+        document.getElementById("EmailAddress").required=false;
 
         document.getElementById("labelloginShell").style.display='none';
         document.getElementById("loginShell").style.display='none';
         document.getElementById("loginShell").disabled = true;
+        document.getElementById("loginShell").required=false;
 
 
     }
@@ -283,13 +286,17 @@ function serviceAccountSelection(){
         document.getElementById("EmailAddress").style.display='inline';
         document.getElementById("labelEmailAddress").style.display='inline';
         document.getElementById("EmailAddress").disabled = false;
+        document.getElementById("EmailAddress").required=true;
 
         document.getElementById("labelhomeDirectory").style.display='inline';
         document.getElementById("homeDirectory").style.display='inline';
         document.getElementById("homeDirectory").disabled = false;
+        document.getElementById("homeDirectory").required=true;
 
         document.getElementById("labelloginShell").style.display='inline';
         document.getElementById("loginShell").style.display='inline';
         document.getElementById("loginShell").disabled = false;
+        document.getElementById("loginShell").required=true;
+
     }
 }
