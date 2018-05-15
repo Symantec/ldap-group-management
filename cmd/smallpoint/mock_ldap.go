@@ -315,54 +315,27 @@ func (m *MockLdap) GetEmailofusersingroup(groupname string) ([]string, error) {
 	}
 	return userEmail, nil
 }
-func (m *MockLdap) CreateServiceAccount(groupinfo userinfo.GroupInfo, accountType string) error {
 
-	serviceDN := m.CreateserviceDn(groupinfo.Groupname, accountType)
+func (m *MockLdap) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
 
-	if accountType == UserServiceAccount {
-		err := m.CreateUserServiceAccount(groupinfo, serviceDN)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-	}
-	if accountType == GroupServiceAccount {
-		err := m.CreateGroupServiceAccount(groupinfo, serviceDN)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-	} else {
-		return errors.New("accountType cannot be detected! " +
-			"Please Provide valid accountType (Group Service Account or User Service Account)")
-	}
-	return nil
-}
-
-func (m *MockLdap) CreateUserServiceAccount(groupinfo userinfo.GroupInfo, serviceDN string) error {
-
-	groupdn := m.CreateserviceDn(groupinfo.Groupname, serviceDN)
-	var group LdapServiceInfo
-	group.cn = groupinfo.Groupname
-	group.uid = groupinfo.Groupname
-	group.mail = groupinfo.Mail
-	group.objectClass = []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}
-	group.gidNumber, _ = m.GetmaximumGidnumber()
-	group.uidNumber, _ = m.GetmaximumUidnumber()
-	m.Services[groupdn] = group
-
-	return nil
-}
-
-func (m *MockLdap) CreateGroupServiceAccount(groupinfo userinfo.GroupInfo, serviceDN string) error {
-
-	groupdn := m.CreateserviceDn(groupinfo.Groupname, serviceDN)
+	gidNum, _ := m.GetmaximumGidnumber()
+	groupdn := m.CreateserviceDn(groupinfo.Groupname, GroupServiceAccount)
 	var group LdapServiceInfo
 	group.cn = groupinfo.Groupname
 	group.mail = groupinfo.Mail
 	group.objectClass = []string{"posixGroup", "top", "groupOfNames"}
-	group.gidNumber, _ = m.GetmaximumGidnumber()
+	group.gidNumber = gidNum
 	m.Services[groupdn] = group
+
+	userdn := m.CreateserviceDn(groupinfo.Groupname, UserServiceAccount)
+	var user LdapServiceInfo
+	user.cn = groupinfo.Groupname
+	user.uid = groupinfo.Groupname
+	user.mail = groupinfo.Mail
+	user.objectClass = []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}
+	user.gidNumber = gidNum
+	user.uidNumber, _ = m.GetmaximumUidnumber()
+	m.Services[userdn] = user
 
 	return nil
 }
