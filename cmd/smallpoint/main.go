@@ -91,7 +91,7 @@ const (
 	creategroupPath             = "/create_group/"
 	deletegroupPath             = "/delete_group/"
 	requestaccessPath           = "/requestaccess"
-	mygroupsPath                = "/mygroups/"
+	allLDAPgroupsPath           = "/allGroups"
 	pendingactionsPath          = "/pending-actions"
 	pendingrequestsPath         = "/pending-requests"
 	deleterequestsPath          = "/deleterequests"
@@ -185,9 +185,9 @@ func main() {
 	http.Handle(deletegroupPath, http.HandlerFunc(state.deleteGrouphandler))
 
 	http.Handle(requestaccessPath, http.HandlerFunc(state.requestAccessHandler))
-	http.Handle(indexPath, http.HandlerFunc(state.indexHandler))
-	http.Handle(authPath, simpleOidcAuth.Handler(http.HandlerFunc(state.indexHandler)))
-	http.Handle(mygroupsPath, http.HandlerFunc(state.mygroupsHandler))
+	http.Handle(indexPath, http.HandlerFunc(state.mygroupsHandler))
+	http.Handle(authPath, simpleOidcAuth.Handler(http.HandlerFunc(state.mygroupsHandler)))
+	http.Handle(allLDAPgroupsPath, http.HandlerFunc(state.indexHandler))
 	http.Handle(pendingactionsPath, http.HandlerFunc(state.pendingActions))
 	http.Handle(pendingrequestsPath, http.HandlerFunc(state.pendingRequests))
 	http.Handle(deleterequestsPath, http.HandlerFunc(state.deleteRequests))
