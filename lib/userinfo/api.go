@@ -54,11 +54,7 @@ type UserInfo interface {
 
 	GetEmailofusersingroup(groupname string) ([]string, error)
 
-	CreateServiceAccount(groupinfo GroupInfo, accountType string) error
-
-	CreateUserServiceAccount(groupinfo GroupInfo, serviceDN string) error
-
-	CreateGroupServiceAccount(groupinfo GroupInfo, serviceDN string) error
+	CreateServiceAccount(groupinfo GroupInfo) error
 
 	IsgroupAdminorNot(username string, groupname string) (bool, error)
 
