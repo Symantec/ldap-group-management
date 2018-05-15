@@ -48,6 +48,7 @@ func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail 
 	// Connect to the remote SMTP server.
 	c, err := smtp.Dial(state.Config.Base.SMTPserver)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	defer c.Close()
@@ -60,6 +61,7 @@ func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail 
 	// Send the email body.
 	wc, err := c.Data()
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	defer wc.Close()
@@ -128,6 +130,7 @@ func (state *RuntimeState) approveRequestemail(requesteduser string, otheruser s
 	// Connect to the remote SMTP server.
 	c, err := smtp.Dial(state.Config.Base.SMTPserver)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	defer c.Close()
@@ -140,6 +143,7 @@ func (state *RuntimeState) approveRequestemail(requesteduser string, otheruser s
 	// Send the email body.
 	wc, err := c.Data()
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	defer wc.Close()
@@ -206,6 +210,7 @@ func (state *RuntimeState) RejectRequestemail(requesteduser string, otheruser st
 	// Connect to the remote SMTP server.
 	c, err := smtp.Dial(state.Config.Base.SMTPserver)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	defer c.Close()
@@ -218,6 +223,7 @@ func (state *RuntimeState) RejectRequestemail(requesteduser string, otheruser st
 	// Send the email body.
 	wc, err := c.Data()
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	defer wc.Close()

@@ -169,12 +169,10 @@ func (m *MockLdap) GetgroupsofUser(username string) ([]string, error) {
 	return usergroups, nil
 }
 
-func (m *MockLdap) GetusersofaGroup(groupname string) ([][]string, error) {
-	var groupusers [][]string
+func (m *MockLdap) GetusersofaGroup(groupname string) ([]string, string, error) {
 	groupdn := m.CreategroupDn(groupname)
 	groupinfo := m.Groups[groupdn]
-	groupusers = append(groupusers, groupinfo.memberUid)
-	return groupusers, nil
+	return groupinfo.memberUid, groupinfo.description, nil
 }
 
 func (m *MockLdap) ParseSuperadmins() []string {
@@ -231,17 +229,18 @@ func (m *MockLdap) DeletemembersfromGroup(groupinfo userinfo.GroupInfo) error {
 	return nil
 }
 
-func (m *MockLdap) IsgroupmemberorNot(groupname string, username string) bool {
-	AllUsersinGroup, err := m.GetusersofaGroup(groupname)
+func (m *MockLdap) IsgroupmemberorNot(groupname string, username string) (bool, string, error) {
+	AllUsersinGroup, description, err := m.GetusersofaGroup(groupname)
 	if err != nil {
 		log.Println(err)
+		return false, "", err
 	}
-	for _, entry := range AllUsersinGroup[0] {
+	for _, entry := range AllUsersinGroup {
 		if entry == username {
-			return true
+			return true, description, nil
 		}
 	}
-	return false
+	return false, description, nil
 }
 
 func (m *MockLdap) GetDescriptionvalue(groupname string) (string, error) {
@@ -259,12 +258,13 @@ func (m *MockLdap) GetEmailofauser(username string) ([]string, error) {
 }
 
 func (m *MockLdap) GetEmailofusersingroup(groupname string) ([]string, error) {
-	groupUsers, err := m.GetusersofaGroup(groupname)
+	groupUsers, _, err := m.GetusersofaGroup(groupname)
 	if err != nil {
 		log.Println(err)
+		return nil, err
 	}
 	var userEmail []string
-	for _, entry := range groupUsers[0] {
+	for _, entry := range groupUsers {
 		value, err := m.GetEmailofauser(entry)
 		if err != nil {
 			return nil, err
@@ -286,4 +286,69 @@ func (m *MockLdap) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
 	m.Services[groupdn] = group
 
 	return nil
+}
+
+func (m *MockLdap) IsgroupAdminorNot(username string, groupname string) (bool, error) {
+	managedby, err := m.GetDescriptionvalue(groupname)
+	if managedby == "self-managed" {
+		Isgroupmember, _, err := m.IsgroupmemberorNot(groupname, username)
+		if !Isgroupmember && err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	Isgroupmember, _, err := m.IsgroupmemberorNot(managedby, username)
+	if !Isgroupmember && err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (m *MockLdap) UsernameExistsornot(username string) (bool, error) {
+
+	for _, entry := range m.Users {
+		uid := entry.uid
+		if uid == username {
+			return true, nil
+		}
+
+	}
+
+	return false, nil
+}
+
+func (m *MockLdap) GroupnameExistsornot(groupname string) (bool, string, error) {
+	for _, entry := range m.Groups {
+		uid := entry.cn
+		if uid == groupname {
+			return true, entry.description, nil
+		}
+
+	}
+
+	return false, "", nil
+}
+
+func (m *MockLdap) ServiceAccountExistsornot(groupname string) (bool, error) {
+	for _, entry := range m.Services {
+		uid := entry.cn
+		if uid == groupname {
+			return true, nil
+		}
+
+	}
+
+	return false, nil
+}
+
+func (m *MockLdap) GetGroupDN(groupname string) (string, error) {
+	for _, entry := range m.Groups {
+		cn := entry.cn
+		if cn == groupname {
+			return entry.dn, nil
+		}
+
+	}
+	return "", nil
 }

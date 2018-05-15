@@ -79,6 +79,17 @@ func (state *RuntimeState) GetgroupsofuserHandler(w http.ResponseWriter, r *http
 	var userGroups GetUserGroups
 
 	userGroups.UserName = params[0] //username is "cn" Attribute of a User
+	userExistsorNot, err := state.Userinfo.UsernameExistsornot(userGroups.UserName)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !userExistsorNot {
+		log.Println("username doesn't exist!")
+		http.Error(w, fmt.Sprint("username doesn't exist!"), http.StatusBadRequest)
+		return
+	}
 	UsersAllgroups, err := state.Userinfo.GetgroupsofUser(userGroups.UserName)
 	if err != nil {
 		log.Println(err)
@@ -113,9 +124,20 @@ func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http
 	var groupUsers GetGroupUsers
 
 	groupUsers.GroupName = params[0] //username is "cn" Attribute of a User
-	AllUsersinGroup, err := state.Userinfo.GetusersofaGroup(groupUsers.GroupName)
-	sort.Strings(AllUsersinGroup[0])
-	groupUsers.Groupusers = AllUsersinGroup[0]
+	groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupUsers.GroupName)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !groupnameExistsorNot {
+		log.Println("Group doesn't exist!")
+		http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
+		return
+	}
+	AllUsersinGroup, _, err := state.Userinfo.GetusersofaGroup(groupUsers.GroupName)
+	sort.Strings(AllUsersinGroup)
+	groupUsers.Groupusers = AllUsersinGroup
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
