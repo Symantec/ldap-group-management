@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
