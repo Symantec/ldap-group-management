@@ -137,11 +137,7 @@
                 request_groups.groups.push(data_selected[i][0]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = function() {
-                if (this.readyState === 4 && this.status === 200) {
-                    location.reload();
-                }
-            };
+            xhttp.onreadystatechange = xhttpstatechange(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
 
@@ -158,11 +154,7 @@
                 request_groups.groups.push(data_selected[i][0]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = function() {
-                if (this.readyState === 4 && this.status === 200) {
-                    location.reload();
-                }
-            };
+            xhttp.onreadystatechange = xhttpstatechange(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
 
@@ -179,11 +171,7 @@
                 request_groups.groups.push(data_selected[i][0]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = function() {
-                if (this.readyState === 4 && this.status === 200) {
-                    location.reload();
-                }
-            };
+            xhttp.onreadystatechange = xhttpstatechange(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
     } );
@@ -221,11 +209,7 @@
                 request_groups.groups.push(data_selected[i]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = function() {
-                if (this.readyState === 4 && this.status === 200) {
-                    location.reload();
-                }
-            };
+            xhttp.onreadystatechange = xhttpstatechange(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
         $('#length_btn2').click( function () {
@@ -245,15 +229,18 @@
                 request_groups.groups.push(data_selected[i]);
             }
             console.log(request_groups.groups);
-            xhttp.onreadystatechange = function() {
-                if (this.readyState === 4 && this.status === 200) {
-                    location.reload();
-                }
-            };
+            xhttp.onreadystatechange = xhttpstatechange(xhttp);
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
     } );
-
+    function xhttpstatechange(xhttp) {
+        if (xhttp.readyState === 4 && xhttp.status === 200) {
+            location.reload();
+        }
+        if(xhttp.status!==200){
+            alert("error occurred!");
+        }
+    }
 </script>
 
 

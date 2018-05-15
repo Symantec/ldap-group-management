@@ -87,7 +87,7 @@ func (state *RuntimeState) GetgroupsofuserHandler(w http.ResponseWriter, r *http
 	}
 	if !userExistsorNot {
 		log.Println("username doesn't exist!")
-		http.Error(w, fmt.Sprint("username doesn't exist!"), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprint("username doesn't exist!"), http.StatusBadRequest)
 		return
 	}
 	UsersAllgroups, err := state.Userinfo.GetgroupsofUser(userGroups.UserName)
@@ -132,7 +132,7 @@ func (state *RuntimeState) GetusersingroupHandler(w http.ResponseWriter, r *http
 	}
 	if !groupnameExistsorNot {
 		log.Println("Group doesn't exist!")
-		http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
 		return
 	}
 	AllUsersinGroup, _, err := state.Userinfo.GetusersofaGroup(groupUsers.GroupName)

@@ -380,10 +380,10 @@ func (u *UserInfoLDAPSource) GetmaximumGidnumber() (string, error) {
 	var max = 0
 	for _, entry := range sr.Entries {
 		gidnum := entry.GetAttributeValue("gidNumber")
-		value, _ := strconv.Atoi(gidnum)
-		//if err!=nil{
-		//	log.Println(err)
-		//}
+		value, err := strconv.Atoi(gidnum)
+		if err != nil {
+			log.Println(err)
+		}
 		if value > max {
 			max = value
 		}
