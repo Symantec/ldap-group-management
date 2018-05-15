@@ -998,7 +998,6 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		return
 	}
 	var groupinfo userinfo.GroupInfo
-	accountType := r.PostFormValue("Service Account Type")
 	groupinfo.Groupname = r.PostFormValue("AccountName")
 	groupinfo.Mail = r.PostFormValue("mail")
 	groupinfo.HomeDirectory = r.PostFormValue("homeDirectory")
@@ -1028,7 +1027,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		return
 	}
 
-	err = state.Userinfo.CreateServiceAccount(groupinfo, accountType)
+	err = state.Userinfo.CreateServiceAccount(groupinfo)
 
 	if err != nil {
 		log.Println(err)

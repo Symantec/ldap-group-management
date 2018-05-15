@@ -21,7 +21,7 @@ function array(groupnames) {//[["1","2"]]
         if(groupnames[i][1]==="self-managed") {
             groupname[1] ='<a title="click for groupinfo" href=/group_users/?groupname='+groupnames[i][0]+'>'+groupnames[i][1]+'</a>';
         }else{
-            groupname[1] ='<a title="click for groupinfo" href=/group_users/?groupname='+groupnames[i][0]+'>'+groupnames[i][1]+'</a>';;
+            groupname[1] ='<a title="click for groupinfo" href=/group_users/?groupname='+groupnames[i][0]+'>'+groupnames[i][1]+'</a>';
         }
         group_description[i]=groupname;
         groupname=[];
@@ -133,7 +133,6 @@ function RequestAccess(final_groupnames) {
         $('#btn_exitgroup').click( function () {
             //alert( table.rows('.selected').data().length +' row(s) selected' );
             var data_selected=table.rows('.selected').data();
-            //var Csrf_Token=document.getElementsByTagName("meta")["CSRF-Token"].getAttribute("content");
             var xhttp = new XMLHttpRequest();   // new HttpRequest instance
             xhttp.open("POST", "/exitgroup");
             xhttp.setRequestHeader("Content-Type", "application/json");
@@ -200,7 +199,6 @@ function pendingActionsTable(PendingActions) {
         $('#btn_approve').click( function () {
             //alert( table.rows('.selected').data().length +' row(s) selected' );
             var data_selected=table2.rows('.selected').data();
-            //var Csrf_Token=document.getElementsByTagName("meta")["CSRF-Token"].getAttribute("content");
             var xhttp = new XMLHttpRequest();   // new HttpRequest instance
             xhttp.open("POST", "/approve-request");
             xhttp.setRequestHeader("Content-Type", "application/json");
@@ -259,44 +257,5 @@ function xhttpstatechange(xhttp) {
     }
     if(xhttp.status!==200){
         alert("error occured!");
-    }
-}
-
-function serviceAccountSelection(){
-    if (document.getElementById('myselect').selectedIndex===0){
-        document.getElementById("EmailAddress").style.display='none';
-        document.getElementById("labelEmailAddress").style.display='none';
-        document.getElementById("EmailAddress").disabled = true;
-        document.getElementById("EmailAddress").required=false;
-
-        document.getElementById("labelhomeDirectory").style.display='none';
-        document.getElementById("homeDirectory").style.display='none';
-        document.getElementById("homeDirectory").disabled = true;
-        document.getElementById("EmailAddress").required=false;
-
-        document.getElementById("labelloginShell").style.display='none';
-        document.getElementById("loginShell").style.display='none';
-        document.getElementById("loginShell").disabled = true;
-        document.getElementById("loginShell").required=false;
-
-
-    }
-    if (document.getElementById('myselect').selectedIndex===1){
-
-        document.getElementById("EmailAddress").style.display='inline';
-        document.getElementById("labelEmailAddress").style.display='inline';
-        document.getElementById("EmailAddress").disabled = false;
-        document.getElementById("EmailAddress").required=true;
-
-        document.getElementById("labelhomeDirectory").style.display='inline';
-        document.getElementById("homeDirectory").style.display='inline';
-        document.getElementById("homeDirectory").disabled = false;
-        document.getElementById("homeDirectory").required=true;
-
-        document.getElementById("labelloginShell").style.display='inline';
-        document.getElementById("loginShell").style.display='inline';
-        document.getElementById("loginShell").disabled = false;
-        document.getElementById("loginShell").required=true;
-
     }
 }
