@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+const UserServiceAccount = "User Service Account"
+const GroupServiceAccount = "Group Service Account"
+
 type MockLdap struct {
 	Groups      map[string]LdapGroupInfo
 	Users       map[string]LdapUserInfo

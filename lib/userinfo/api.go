@@ -1,14 +1,13 @@
 package userinfo
 
 type GroupInfo struct {
-	Groupname     string
-	Description   string
-	MemberUid     []string
-	Member        []string
-	Cn            string
-	Mail          string
-	LoginShell    string
-	HomeDirectory string
+	Groupname   string
+	Description string
+	MemberUid   []string
+	Member      []string
+	Cn          string
+	Mail        string
+	LoginShell  string
 }
 
 type UserInfo interface {
@@ -70,5 +69,5 @@ type UserInfo interface {
 
 	GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error)
 
-	ManagedbyAttribute(groupnames []string) ([][]string, error)
+	GetGroupandManagedbyAttributeValue(groupnames []string) ([][]string, error)
 }

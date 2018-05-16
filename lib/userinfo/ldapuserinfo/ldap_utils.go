@@ -19,6 +19,7 @@ import (
 const ldapTimeoutSecs = 10
 const UserServiceAccount = "User Service Account"
 const GroupServiceAccount = "Group Service Account"
+const HomeDirectory = "/home/"
 
 type UserInfoLDAPSource struct {
 	BindUsername          string `yaml:"bind_username"`
@@ -423,7 +424,7 @@ func (u *UserInfoLDAPSource) GetmaximumUidnumber() (string, error) {
 	var max = 0
 	for _, entry := range sr.Entries {
 		uidnum := entry.GetAttributeValue("uidNumber")
-		value, _ := strconv.Atoi(uidnum)
+		value, err := strconv.Atoi(uidnum)
 		if err != nil {
 			log.Println(err)
 		}
@@ -607,7 +608,7 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 	serviceDN = u.CreateserviceDn(groupinfo.Groupname, UserServiceAccount)
 
 	user := ldap.NewAddRequest(serviceDN)
-	user.Attribute("objectClass", []string{"posixAccount", "person", "organizationalPerson", "inetOrgPerson", "shadowAccount", "top"})
+	user.Attribute("objectClass", []string{"posixAccount", "person", "ldapPublicKey", "organizationalPerson", "inetOrgPerson", "shadowAccount", "top"})
 	user.Attribute("cn", []string{groupinfo.Groupname})
 	user.Attribute("uid", []string{groupinfo.Groupname})
 	user.Attribute("gecos", []string{groupinfo.Groupname})
@@ -615,8 +616,9 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 	user.Attribute("displayName", []string{groupinfo.Groupname})
 	user.Attribute("sn", []string{groupinfo.Groupname})
 
-	user.Attribute("homeDirectory", []string{groupinfo.HomeDirectory})
+	user.Attribute("homeDirectory", []string{HomeDirectory + groupinfo.Groupname})
 	user.Attribute("loginShell", []string{groupinfo.LoginShell})
+	user.Attribute("sshPublicKey", []string{""})
 	user.Attribute("shadowExpire", []string{"-1"})
 	user.Attribute("shadowFlag", []string{"0"})
 	user.Attribute("shadowLastChange", []string{"15528"})
@@ -684,7 +686,7 @@ func (u *UserInfoLDAPSource) UsernameExistsornot(username string) (bool, error) 
 	}
 	if len(result.Entries) > 1 {
 		log.Println("duplicate entries!")
-		return false, errors.New("Multiple entries available! Contact the administration!")
+		return true, errors.New("Multiple entries available! Contact the administration!")
 	}
 	if username == result.Entries[0].GetAttributeValue("uid") {
 		return true, nil
@@ -718,10 +720,10 @@ func (u *UserInfoLDAPSource) GroupnameExistsornot(groupname string) (bool, strin
 	}
 	if len(result.Entries) > 1 {
 		log.Println("duplicate entries!")
-		return false, "", errors.New("Multiple entries available! Contact the administration!")
+		return true, "", errors.New("Multiple entries available! Contact the administration!")
 	}
 	if groupname != result.Entries[0].GetAttributeValue("cn") {
-		return false, "", nil
+		return false, "", errors.New("something wrong in ldapsearch!")
 	}
 
 	Groupmanagedby := result.Entries[0].GetAttributeValue(u.GroupManageAttribute)
@@ -753,14 +755,15 @@ func (u *UserInfoLDAPSource) ServiceAccountExistsornot(groupname string) (bool, 
 	}
 	if len(result.Entries) > 2 {
 		log.Println("duplicate entries!")
-		return false, "", errors.New("Multiple entries available! Contact the administration!")
+		return true, "", errors.New("Multiple entries available! Contact the administration!")
 	}
-	if groupname == result.Entries[0].GetAttributeValue("cn") {
-		return true, "", nil
+	if groupname != result.Entries[0].GetAttributeValue("cn") {
+		serviceAccountDN := result.Entries[0].DN
+		return false, serviceAccountDN, errors.New("something wrong in ldapsearch!")
 	}
 	serviceAccountDN := result.Entries[0].DN
 
-	return false, serviceAccountDN, nil
+	return true, serviceAccountDN, nil
 }
 
 func (u *UserInfoLDAPSource) GetGroupDN(groupname string) (string, error) {
@@ -845,12 +848,7 @@ func (u *UserInfoLDAPSource) GetallGroupsandDescription(grouddn string) ([][]str
 
 }
 
-func (u *UserInfoLDAPSource) ManagedbyAttribute(groupnames []string) ([][]string, error) {
-	conn, err := u.getTargetLDAPConnection()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
+func (u *UserInfoLDAPSource) GetGroupandManagedbyAttributeValue(groupnames []string) ([][]string, error) {
 
 	GroupandDescriptionPair, err := u.GetallGroupsandDescription(u.GroupSearchBaseDNs)
 	if err != nil {
