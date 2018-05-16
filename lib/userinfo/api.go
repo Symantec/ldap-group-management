@@ -1,5 +1,7 @@
 package userinfo
 
+type AccountType int
+
 type GroupInfo struct {
 	Groupname   string
 	Description string
@@ -17,7 +19,7 @@ type UserInfo interface {
 
 	CreategroupDn(groupname string) string
 
-	CreateserviceDn(groupname string, accountType string) string
+	CreateserviceDn(groupname string, a AccountType) string
 
 	CreateGroup(groupinfo GroupInfo) error
 
@@ -37,9 +39,9 @@ type UserInfo interface {
 
 	UserisadminOrNot(username string) bool
 
-	GetmaximumGidnumber() (string, error)
+	GetmaximumGidnumber(searchBaseDN string) (string, error)
 
-	GetmaximumUidnumber() (string, error)
+	GetmaximumUidnumber(searchBaseDN string) (string, error)
 
 	AddmemberstoExisting(groupinfo GroupInfo) error
 

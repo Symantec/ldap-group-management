@@ -17,9 +17,13 @@ import (
 )
 
 const ldapTimeoutSecs = 10
-const UserServiceAccount = "User Service Account"
-const GroupServiceAccount = "Group Service Account"
+
 const HomeDirectory = "/home/"
+
+const (
+	UserServiceAccount  userinfo.AccountType = 1
+	GroupServiceAccount userinfo.AccountType = 2
+)
 
 type UserInfoLDAPSource struct {
 	BindUsername          string `yaml:"bind_username"`
@@ -153,12 +157,12 @@ func (u *UserInfoLDAPSource) CreategroupDn(groupname string) string {
 
 }
 
-func (u *UserInfoLDAPSource) CreateserviceDn(groupname string, accountType string) string {
+func (u *UserInfoLDAPSource) CreateserviceDn(groupname string, a userinfo.AccountType) string {
 	var serviceDN string
-	if accountType == UserServiceAccount {
+	if a == UserServiceAccount {
 		serviceDN = "uid=" + groupname + "," + u.ServiceAccountBaseDNs
 	}
-	if accountType == GroupServiceAccount {
+	if a == GroupServiceAccount {
 		serviceDN = "cn=" + groupname + "," + u.ServiceAccountBaseDNs
 	}
 	return string(serviceDN)
@@ -174,7 +178,7 @@ func (u *UserInfoLDAPSource) CreateGroup(groupinfo userinfo.GroupInfo) error {
 	defer conn.Close()
 
 	entry := u.CreategroupDn(groupinfo.Groupname)
-	gidnum, err := u.GetmaximumGidnumber()
+	gidnum, err := u.GetmaximumGidnumber(u.GroupSearchBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -368,7 +372,7 @@ func (u *UserInfoLDAPSource) UserisadminOrNot(username string) bool {
 }
 
 //it helps to findout the current maximum gid number in ldaputil.
-func (u *UserInfoLDAPSource) GetmaximumGidnumber() (string, error) {
+func (u *UserInfoLDAPSource) GetmaximumGidnumber(searchBaseDN string) (string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
@@ -376,7 +380,7 @@ func (u *UserInfoLDAPSource) GetmaximumGidnumber() (string, error) {
 	}
 	defer conn.Close()
 	searchRequest := ldap.NewSearchRequest(
-		u.MainBaseDN,
+		searchBaseDN,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		"(&(gidNumber=*))",
 		[]string{"gidNumber"},
@@ -402,7 +406,7 @@ func (u *UserInfoLDAPSource) GetmaximumGidnumber() (string, error) {
 	return fmt.Sprint(max + 1), nil
 }
 
-func (u *UserInfoLDAPSource) GetmaximumUidnumber() (string, error) {
+func (u *UserInfoLDAPSource) GetmaximumUidnumber(searchBaseDN string) (string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
@@ -410,7 +414,7 @@ func (u *UserInfoLDAPSource) GetmaximumUidnumber() (string, error) {
 	}
 	defer conn.Close()
 	searchRequest := ldap.NewSearchRequest(
-		u.MainBaseDN,
+		searchBaseDN,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		"(&(uidNumber=*))",
 		[]string{"uidNumber"},
@@ -583,12 +587,12 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 	}
 	defer conn.Close()
 
-	gidnum, err := u.GetmaximumGidnumber()
+	gidnum, err := u.GetmaximumGidnumber(u.ServiceAccountBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	uidnum, err := u.GetmaximumUidnumber()
+	uidnum, err := u.GetmaximumUidnumber(u.ServiceAccountBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err

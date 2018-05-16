@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-const UserServiceAccount = "User Service Account"
-const GroupServiceAccount = "Group Service Account"
+const UserServiceAccount userinfo.AccountType = 1
+const GroupServiceAccount userinfo.AccountType= 2
 
 type MockLdap struct {
 	Groups      map[string]LdapGroupInfo
@@ -124,7 +124,7 @@ func (m *MockLdap) CreategroupDn(groupname string) string {
 
 }
 
-func (m *MockLdap) CreateserviceDn(groupname string, accountType string) string {
+func (m *MockLdap) CreateserviceDn(groupname string, accountType userinfo.AccountType) string {
 	var serviceDN string
 	if accountType == UserServiceAccount {
 		serviceDN = "uid=" + groupname + "," + LdapServiceDN
@@ -222,7 +222,7 @@ func (m *MockLdap) UserisadminOrNot(username string) bool {
 	return false
 }
 
-func (m *MockLdap) GetmaximumGidnumber() (string, error) {
+func (m *MockLdap) GetmaximumGidnumber(s string) (string, error) {
 	var max = 0
 	for _, value := range m.Groups {
 		gidnum, err := strconv.Atoi(value.gidNumber)
@@ -236,7 +236,7 @@ func (m *MockLdap) GetmaximumGidnumber() (string, error) {
 	return fmt.Sprint(max + 1), nil
 }
 
-func (m *MockLdap) GetmaximumUidnumber() (string, error) {
+func (m *MockLdap) GetmaximumUidnumber(s string) (string, error) {
 	var max = 0
 	for _, value := range m.Services {
 		uidnum, err := strconv.Atoi(value.uidNumber)
