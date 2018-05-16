@@ -187,7 +187,7 @@ func main() {
 	http.Handle(requestaccessPath, http.HandlerFunc(state.requestAccessHandler))
 	http.Handle(indexPath, http.HandlerFunc(state.mygroupsHandler))
 	http.Handle(authPath, simpleOidcAuth.Handler(http.HandlerFunc(state.mygroupsHandler)))
-	http.Handle(allLDAPgroupsPath, http.HandlerFunc(state.indexHandler))
+	http.Handle(allLDAPgroupsPath, http.HandlerFunc(state.allGroupsHandler))
 	http.Handle(pendingactionsPath, http.HandlerFunc(state.pendingActions))
 	http.Handle(pendingrequestsPath, http.HandlerFunc(state.pendingRequests))
 	http.Handle(deleterequestsPath, http.HandlerFunc(state.deleteRequests))
