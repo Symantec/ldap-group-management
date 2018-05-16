@@ -433,7 +433,7 @@ func (m *MockLdap) GetGroupsInfoOfUser(groupdn string, username string) ([][]str
 	return usergroupsinfo, nil
 }
 
-func (m *MockLdap) ManagedbyAttribute(groupnames []string) ([][]string, error) {
+func (m *MockLdap) GetGroupandManagedbyAttributeValue(groupnames []string) ([][]string, error) {
 	var UserGroupInfo [][]string
 	var groupcndescription []string
 	for _, eachgroup := range groupnames {
