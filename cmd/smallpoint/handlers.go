@@ -17,8 +17,6 @@ import (
 
 const postMethod = "POST"
 const getMethod = "GET"
-const UserServiceAccount = "User Service Account"
-const GroupServiceAccount = "Group Service Account"
 
 func checkCSRF(w http.ResponseWriter, r *http.Request) (bool, error) {
 	if r.Method != getMethod {
@@ -192,7 +190,7 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	groups, err := state.Userinfo.ManagedbyAttribute(groupnames)
+	groups, err := state.Userinfo.GetGroupandManagedbyAttributeValue(groupnames)
 	if err != nil {
 		log.Println(err)
 	}
@@ -1000,8 +998,13 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	var groupinfo userinfo.GroupInfo
 	groupinfo.Groupname = r.PostFormValue("AccountName")
 	groupinfo.Mail = r.PostFormValue("mail")
-	groupinfo.HomeDirectory = r.PostFormValue("homeDirectory")
 	groupinfo.LoginShell = r.PostFormValue("loginShell")
+
+	if !(groupinfo.LoginShell == "/bin/files") && !(groupinfo.LoginShell == "/bin/bash") {
+		log.Println("Bad request! Not an valid LoginShell value")
+		http.Error(w, fmt.Sprint("Bad request! Not an valid LoginShell value"), http.StatusBadRequest)
+		return
+	}
 
 	GroupExistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Groupname)
 	if err != nil {
