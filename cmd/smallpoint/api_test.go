@@ -9,21 +9,26 @@ import (
 )
 
 const (
-	usergroupsTest  = "/user_groups/?username=user1"
-	groupusersTest  = "/group_users/?groupname=group1"
-	cookievalueTest = "hellogroup1group2"
-	testusername    = "user1"
+	usergroupsTestPath = "/user_groups/?username=user1"
+	groupusersTestPath = "/group_users/?groupname=group1"
+	cookievalueTest    = "hellogroup1group2"
+	testusername       = "user1"
+	testdbpath         = "./test-sqlite3.db"
 )
 
 func createCookie() http.Cookie {
 	expiresAt := time.Now().Add(time.Hour * cookieExpirationHours)
 	cookie := http.Cookie{Name: cookieName, Value: cookievalueTest, Path: indexPath, Expires: expiresAt, HttpOnly: true, Secure: true}
-
 	return cookie
 }
 
 func Init() (RuntimeState, error) {
 	var state RuntimeState
+	state.Config.Base.StorageURL = testdbpath
+	err := initDB(&state)
+	if err != nil {
+		return state, err
+	}
 	mock := New()
 	state.Userinfo = mock
 	state.authcookies = make(map[string]cookieInfo)
@@ -33,7 +38,7 @@ func Init() (RuntimeState, error) {
 	return state, nil
 }
 
-func TestRuntimeState_GetallgroupsHandler(t *testing.T) {
+func TestRuntimeState_getallgroupsHandler(t *testing.T) {
 	state, err := Init()
 	if err != nil {
 		log.Println(err)
@@ -47,7 +52,7 @@ func TestRuntimeState_GetallgroupsHandler(t *testing.T) {
 	req.AddCookie(&cookie)
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.GetallgroupsHandler)
+	handler := http.HandlerFunc(state.getallgroupsHandler)
 
 	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
@@ -56,7 +61,7 @@ func TestRuntimeState_GetallgroupsHandler(t *testing.T) {
 			status, http.StatusOK)
 	}
 }
-func TestRuntimeState_GetusersingroupHandlerFail(t *testing.T) {
+func TestRuntimeState_getusersingroupHandlerFail(t *testing.T) {
 	state, err := Init()
 	if err != nil {
 		log.Println(err)
@@ -70,7 +75,7 @@ func TestRuntimeState_GetusersingroupHandlerFail(t *testing.T) {
 	req.AddCookie(&cookie)
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.GetusersingroupHandler)
+	handler := http.HandlerFunc(state.getusersingroupHandler)
 
 	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
@@ -81,14 +86,13 @@ func TestRuntimeState_GetusersingroupHandlerFail(t *testing.T) {
 
 }
 
-func TestRuntimeState_GetusersingroupHandlerSuccess(t *testing.T) {
+func TestRuntimeState_getusersingroupHandlerSuccess(t *testing.T) {
 	state, err := Init()
 	if err != nil {
 		log.Println(err)
 	}
 
-	req, err := http.NewRequest("GET", groupusersTest, nil)
-
+	req, err := http.NewRequest("GET", groupusersTestPath, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +100,7 @@ func TestRuntimeState_GetusersingroupHandlerSuccess(t *testing.T) {
 	req.AddCookie(&cookie)
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.GetusersingroupHandler)
+	handler := http.HandlerFunc(state.getusersingroupHandler)
 
 	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
@@ -107,7 +111,7 @@ func TestRuntimeState_GetusersingroupHandlerSuccess(t *testing.T) {
 
 }
 
-func TestRuntimeState_GetgroupsofuserHandlerFail(t *testing.T) {
+func TestRuntimeState_getgroupsofuserHandlerFail(t *testing.T) {
 	state, err := Init()
 	if err != nil {
 		log.Println(err)
@@ -121,7 +125,7 @@ func TestRuntimeState_GetgroupsofuserHandlerFail(t *testing.T) {
 	req.AddCookie(&cookie)
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.GetgroupsofuserHandler)
+	handler := http.HandlerFunc(state.getgroupsofuserHandler)
 
 	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
@@ -132,13 +136,13 @@ func TestRuntimeState_GetgroupsofuserHandlerFail(t *testing.T) {
 
 }
 
-func TestRuntimeState_GetgroupsofuserHandlerSuccess(t *testing.T) {
+func TestRuntimeState_getgroupsofuserHandlerSuccess(t *testing.T) {
 	state, err := Init()
 	if err != nil {
 		log.Println(err)
 	}
 
-	req, err := http.NewRequest("GET", usergroupsTest, nil)
+	req, err := http.NewRequest("GET", usergroupsTestPath, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +150,7 @@ func TestRuntimeState_GetgroupsofuserHandlerSuccess(t *testing.T) {
 	req.AddCookie(&cookie)
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.GetgroupsofuserHandler)
+	handler := http.HandlerFunc(state.getgroupsofuserHandler)
 
 	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
@@ -157,7 +161,7 @@ func TestRuntimeState_GetgroupsofuserHandlerSuccess(t *testing.T) {
 
 }
 
-func TestRuntimeState_GetallusersHandler(t *testing.T) {
+func TestRuntimeState_getallusersHandler(t *testing.T) {
 	state, err := Init()
 	if err != nil {
 		log.Println(err)
@@ -171,7 +175,7 @@ func TestRuntimeState_GetallusersHandler(t *testing.T) {
 	req.AddCookie(&cookie)
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.GetallusersHandler)
+	handler := http.HandlerFunc(state.getallusersHandler)
 
 	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.

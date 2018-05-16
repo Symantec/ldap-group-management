@@ -6,13 +6,17 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"errors"
 )
+
+const UserServiceAccount userinfo.AccountType = 1
+const GroupServiceAccount userinfo.AccountType= 2
 
 type MockLdap struct {
 	Groups      map[string]LdapGroupInfo
 	Users       map[string]LdapUserInfo
 	SuperAdmins string
-	Services    map[string]LdapGroupInfo
+	Services    map[string]LdapServiceInfo
 }
 
 type LdapGroupInfo struct {
@@ -34,6 +38,18 @@ type LdapUserInfo struct {
 	memberOf    []string
 	objectClass []string
 	uid         string
+	uidNumber   string
+	mail        string
+	cn          string
+	description string
+}
+type LdapServiceInfo struct {
+	dn          string
+	memberOf    []string
+	objectClass []string
+	uid         string
+	uidNumber   string
+	gidNumber   string
 	mail        string
 	cn          string
 	description string
@@ -44,7 +60,7 @@ func New() *MockLdap {
 	testldap.Groups = make(map[string]LdapGroupInfo)
 	testldap.Users = make(map[string]LdapUserInfo)
 	testldap.SuperAdmins = "user1,user2"
-	testldap.Services = make(map[string]LdapGroupInfo)
+	testldap.Services = make(map[string]LdapServiceInfo)
 
 	testldap.Groups["cn=group1,ou=groups,dc=mgmt,dc=example,dc=com"] = LdapGroupInfo{cn: "group1",
 		dn: "cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", gidNumber: "20001", description: "self-managed", objectClass: []string{"posixGroup", "top", "groupOfNames"},
@@ -65,6 +81,15 @@ func New() *MockLdap {
 		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com"},
 		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user1", cn: "user1", mail: "user2@example.com",
 	}
+
+	testldap.Services["cn=group1,ou=services,dc=mgmt,dc=example,dc=com"] = LdapServiceInfo{cn: "group1",
+		dn: "cn=group1,ou=services,dc=mgmt,dc=example,dc=com", gidNumber: "20010", mail: "group1@example.com", objectClass: []string{"posixGroup", "top", "groupOfNames"},
+	}
+
+	testldap.Services["uid=user2,ou=services,dc=mgmt,dc=example,dc=com"] = LdapServiceInfo{dn: "uid=user2,ou=people,dc=mgmt,dc=example,dc=com", uidNumber: "20009",
+		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user1", cn: "user1", mail: "user2@example.com",
+	}
+
 	return &testldap
 }
 
@@ -100,10 +125,15 @@ func (m *MockLdap) CreategroupDn(groupname string) string {
 
 }
 
-func (m *MockLdap) CreateserviceDn(groupname string) string {
-	serviceDN := "cn=" + groupname + "," + LdapServiceDN
-	return serviceDN
-
+func (m *MockLdap) CreateserviceDn(groupname string, accountType userinfo.AccountType) string {
+	var serviceDN string
+	if accountType == UserServiceAccount {
+		serviceDN = "uid=" + groupname + "," + LdapServiceDN
+	}
+	if accountType == GroupServiceAccount {
+		serviceDN = "cn=" + groupname + "," + LdapServiceDN
+	}
+	return string(serviceDN)
 }
 
 func (m *MockLdap) CreateGroup(groupinfo userinfo.GroupInfo) error {
@@ -113,7 +143,7 @@ func (m *MockLdap) CreateGroup(groupinfo userinfo.GroupInfo) error {
 	group.description = groupinfo.Description
 	group.memberUid = groupinfo.MemberUid
 	group.objectClass = []string{"posixGroup", "top", "groupOfNames"}
-	group.gidNumber, _ = m.GetmaximumGidnumber()
+	group.gidNumber, _ = m.GetmaximumGidnumber(LdapGroupDN)
 	m.Groups[groupdn] = group
 
 	return nil
@@ -193,15 +223,43 @@ func (m *MockLdap) UserisadminOrNot(username string) bool {
 	return false
 }
 
-func (m *MockLdap) GetmaximumGidnumber() (string, error) {
+func (m *MockLdap) GetmaximumGidnumber(s string) (string, error) {
 	var max = 0
-	for _, value := range m.Groups {
-		gidnum, err := strconv.Atoi(value.gidNumber)
+	if s==LdapGroupDN{
+		for _, value := range m.Groups {
+			gidnum, err := strconv.Atoi(value.gidNumber)
+			if err != nil {
+				return "", err
+			}
+			if gidnum > max {
+				max = gidnum
+			}
+		}
+		return fmt.Sprint(max + 1), nil
+	} else if s==LdapServiceDN{
+		for _, value := range m.Services {
+			gidnum, err := strconv.Atoi(value.gidNumber)
+			if err != nil {
+				return "", err
+			}
+			if gidnum > max {
+				max = gidnum
+			}
+		}
+		return fmt.Sprint(max + 1), nil
+	}
+	return "",errors.New("choose LdapGroupDN or LdapServiceDN")
+}
+
+func (m *MockLdap) GetmaximumUidnumber(s string) (string, error) {
+	var max = 0
+	for _, value := range m.Services {
+		uidnum, err := strconv.Atoi(value.uidNumber)
 		if err != nil {
 			return "", err
 		}
-		if gidnum > max {
-			max = gidnum
+		if uidnum > max {
+			max = uidnum
 		}
 	}
 	return fmt.Sprint(max + 1), nil
@@ -277,13 +335,24 @@ func (m *MockLdap) GetEmailofusersingroup(groupname string) ([]string, error) {
 
 func (m *MockLdap) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
 
-	groupdn := m.CreateserviceDn(groupinfo.Groupname)
-	var group LdapGroupInfo
+	gidNum, _ := m.GetmaximumGidnumber(LdapServiceDN)
+	groupdn := m.CreateserviceDn(groupinfo.Groupname, GroupServiceAccount)
+	var group LdapServiceInfo
 	group.cn = groupinfo.Groupname
-	group.description = groupinfo.Description
+	group.mail = groupinfo.Mail
 	group.objectClass = []string{"posixGroup", "top", "groupOfNames"}
-	group.gidNumber, _ = m.GetmaximumGidnumber()
+	group.gidNumber = gidNum
 	m.Services[groupdn] = group
+
+	userdn := m.CreateserviceDn(groupinfo.Groupname, UserServiceAccount)
+	var user LdapServiceInfo
+	user.cn = groupinfo.Groupname
+	user.uid = groupinfo.Groupname
+	user.mail = groupinfo.Mail
+	user.objectClass = []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}
+	user.gidNumber = gidNum
+	user.uidNumber, _ = m.GetmaximumUidnumber(LdapServiceDN)
+	m.Services[userdn] = user
 
 	return nil
 }
@@ -330,16 +399,16 @@ func (m *MockLdap) GroupnameExistsornot(groupname string) (bool, string, error) 
 	return false, "", nil
 }
 
-func (m *MockLdap) ServiceAccountExistsornot(groupname string) (bool, error) {
+func (m *MockLdap) ServiceAccountExistsornot(groupname string) (bool, string, error) {
 	for _, entry := range m.Services {
 		uid := entry.cn
 		if uid == groupname {
-			return true, nil
+
+			return true, entry.dn, nil
 		}
 
 	}
-
-	return false, nil
+	return false, "", nil
 }
 
 func (m *MockLdap) GetGroupDN(groupname string) (string, error) {
@@ -351,4 +420,46 @@ func (m *MockLdap) GetGroupDN(groupname string) (string, error) {
 
 	}
 	return "", nil
+}
+
+func (m *MockLdap) GetallGroupsandDescription(groupdn string) ([][]string, error) {
+	var groups [][]string
+	var eachGroup []string
+	for _, value := range m.Groups {
+		eachGroup = append(eachGroup, value.cn, value.description)
+		groups = append(groups, eachGroup)
+		eachGroup = nil
+	}
+
+	return groups, nil
+}
+
+func (m *MockLdap) GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error) {
+	var usergroupsinfo [][]string
+	var usergroups []string
+	userdn := m.CreateuserDn(username)
+	Userinfo := m.Users[userdn]
+	for _, groupdn := range Userinfo.memberOf {
+		Groupinfo := m.Groups[groupdn]
+		usergroups = append(usergroups, Groupinfo.cn, Groupinfo.description)
+		usergroupsinfo = append(usergroupsinfo, usergroups)
+		usergroups = nil
+	}
+	return usergroupsinfo, nil
+}
+
+func (m *MockLdap) GetGroupandManagedbyAttributeValue(groupnames []string) ([][]string, error) {
+	var UserGroupInfo [][]string
+	var groupcndescription []string
+	for _, eachgroup := range groupnames {
+		groupdescription, err := m.GetDescriptionvalue(eachgroup)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		groupcndescription = append(groupcndescription, eachgroup, groupdescription)
+		UserGroupInfo = append(UserGroupInfo, groupcndescription)
+		groupcndescription = nil
+	}
+	return UserGroupInfo, nil
 }

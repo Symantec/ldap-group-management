@@ -65,7 +65,7 @@ type GetGroupUsers struct {
 
 type Response struct {
 	UserName       string
-	Groups         []string
+	Groups         [][]string
 	Users          []string
 	PendingActions [][]string
 }
@@ -82,30 +82,37 @@ const (
 	cookieExpirationHours = 12
 	cookieName            = "smallpointauth"
 
-	allgroupsPath          = "/allgroups"
-	allusersPath           = "/allusers"
-	usergroupsPath         = "/user_groups/"
-	groupusersPath         = "/group_users/"
-	creategroupWebPagePath = "/create_group"
-	deletegroupWebPagePath = "/delete_group"
-	creategroupPath        = "/create_group/"
-	deletegroupPath        = "/delete_group/"
-	requestaccessPath      = "/requestaccess"
-	mygroupsPath           = "/mygroups/"
-	pendingactionsPath     = "/pending-actions"
-	pendingrequestsPath    = "/pending-requests"
-	deleterequestsPath     = "/deleterequests"
-	exitgroupPath          = "/exitgroup"
-	loginPath              = "/login"
-	approverequestPath     = "/approve-request"
-	rejectrequestPath      = "/reject-request"
-	addmembersPath         = "/addmembers"
-	indexPath              = "/"
-	authPath               = "/auth/oidcsimple/callback"
+	allgroupsPath               = "/allgroups"
+	allusersPath                = "/allusers"
+	usergroupsPath              = "/user_groups/"
+	groupusersPath              = "/group_users/"
+	creategroupWebPagePath      = "/create_group"
+	deletegroupWebPagePath      = "/delete_group"
+	creategroupPath             = "/create_group/"
+	deletegroupPath             = "/delete_group/"
+	requestaccessPath           = "/requestaccess"
+	allLDAPgroupsPath           = "/allGroups"
+	pendingactionsPath          = "/pending-actions"
+	pendingrequestsPath         = "/pending-requests"
+	deleterequestsPath          = "/deleterequests"
+	exitgroupPath               = "/exitgroup"
+	loginPath                   = "/login"
+	approverequestPath          = "/approve-request"
+	rejectrequestPath           = "/reject-request"
+	addmembersbuttonPath        = "/addmembers/"
+	addmembersPath              = "/addmembers"
+	deletemembersPath           = "/deletemembers"
+	deletemembersbuttonPath     = "/deletemembers/"
+	createServiceAccWebPagePath = "/create_serviceaccount"
+	createServiceAccountPath    = "/create_serviceaccount/"
+
+	indexPath = "/"
+	authPath  = "/auth/oidcsimple/callback"
 
 	templatesdirectoryPath = "templates"
 	cssPath                = "/css/"
 	imagesPath             = "/images/"
+	jsPath                 = "/js/"
 )
 
 //parses the config file
@@ -167,10 +174,10 @@ func main() {
 	}
 	authSource = simpleOidcAuth
 
-	http.Handle(allgroupsPath, http.HandlerFunc(state.GetallgroupsHandler))
-	http.Handle(allusersPath, http.HandlerFunc(state.GetallusersHandler))
-	http.Handle(usergroupsPath, http.HandlerFunc(state.GetgroupsofuserHandler))
-	http.Handle(groupusersPath, http.HandlerFunc(state.GetusersingroupHandler))
+	http.Handle(allgroupsPath, http.HandlerFunc(state.getallgroupsHandler))
+	http.Handle(allusersPath, http.HandlerFunc(state.getallusersHandler))
+	http.Handle(usergroupsPath, http.HandlerFunc(state.getgroupsofuserHandler))
+	http.Handle(groupusersPath, http.HandlerFunc(state.getusersingroupHandler))
 
 	http.Handle(creategroupWebPagePath, http.HandlerFunc(state.creategroupWebpageHandler))
 	http.Handle(deletegroupWebPagePath, http.HandlerFunc(state.deletegroupWebpageHandler))
@@ -178,21 +185,32 @@ func main() {
 	http.Handle(deletegroupPath, http.HandlerFunc(state.deleteGrouphandler))
 
 	http.Handle(requestaccessPath, http.HandlerFunc(state.requestAccessHandler))
-	http.Handle(indexPath, http.HandlerFunc(state.IndexHandler))
-	http.Handle(authPath, simpleOidcAuth.Handler(http.HandlerFunc(state.IndexHandler)))
-	http.Handle(mygroupsPath, http.HandlerFunc(state.MygroupsHandler))
+	http.Handle(indexPath, http.HandlerFunc(state.mygroupsHandler))
+	http.Handle(authPath, simpleOidcAuth.Handler(http.HandlerFunc(state.mygroupsHandler)))
+	http.Handle(allLDAPgroupsPath, http.HandlerFunc(state.allGroupsHandler))
 	http.Handle(pendingactionsPath, http.HandlerFunc(state.pendingActions))
 	http.Handle(pendingrequestsPath, http.HandlerFunc(state.pendingRequests))
 	http.Handle(deleterequestsPath, http.HandlerFunc(state.deleteRequests))
 	http.Handle(exitgroupPath, http.HandlerFunc(state.exitfromGroup))
 
-	http.Handle(loginPath, simpleOidcAuth.Handler(http.HandlerFunc(state.LoginHandler)))
+	http.Handle(loginPath, simpleOidcAuth.Handler(http.HandlerFunc(state.loginHandler)))
 
 	http.Handle(approverequestPath, http.HandlerFunc(state.approveHandler))
 	http.Handle(rejectrequestPath, http.HandlerFunc(state.rejectHandler))
 
+	http.Handle(addmembersPath, http.HandlerFunc(state.addmemberstoGroupWebpageHandler))
+	http.Handle(addmembersbuttonPath, http.HandlerFunc(state.addmemberstoExistingGroup))
+
+	http.Handle(deletemembersPath, http.HandlerFunc(state.deletemembersfromGroupWebpageHandler))
+	http.Handle(deletemembersbuttonPath, http.HandlerFunc(state.deletemembersfromExistingGroup))
+
+	http.Handle(createServiceAccWebPagePath, http.HandlerFunc(state.createserviceAccountPageHandler))
+	http.Handle(createServiceAccountPath, http.HandlerFunc(state.createServiceAccounthandler))
+
 	fs := http.FileServer(http.Dir(templatesdirectoryPath))
 	http.Handle(cssPath, fs)
 	http.Handle(imagesPath, fs)
+	http.Handle(jsPath, fs)
+
 	log.Fatal(http.ListenAndServeTLS(state.Config.Base.HttpAddress, state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename, nil))
 }
