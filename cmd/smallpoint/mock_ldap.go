@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"errors"
 )
 
 const UserServiceAccount userinfo.AccountType = 1
@@ -142,7 +143,7 @@ func (m *MockLdap) CreateGroup(groupinfo userinfo.GroupInfo) error {
 	group.description = groupinfo.Description
 	group.memberUid = groupinfo.MemberUid
 	group.objectClass = []string{"posixGroup", "top", "groupOfNames"}
-	group.gidNumber, _ = m.GetmaximumGidnumber()
+	group.gidNumber, _ = m.GetmaximumGidnumber(LdapGroupDN)
 	m.Groups[groupdn] = group
 
 	return nil
@@ -224,16 +225,30 @@ func (m *MockLdap) UserisadminOrNot(username string) bool {
 
 func (m *MockLdap) GetmaximumGidnumber(s string) (string, error) {
 	var max = 0
-	for _, value := range m.Groups {
-		gidnum, err := strconv.Atoi(value.gidNumber)
-		if err != nil {
-			return "", err
+	if s==LdapGroupDN{
+		for _, value := range m.Groups {
+			gidnum, err := strconv.Atoi(value.gidNumber)
+			if err != nil {
+				return "", err
+			}
+			if gidnum > max {
+				max = gidnum
+			}
 		}
-		if gidnum > max {
-			max = gidnum
+		return fmt.Sprint(max + 1), nil
+	} else if s==LdapServiceDN{
+		for _, value := range m.Services {
+			gidnum, err := strconv.Atoi(value.gidNumber)
+			if err != nil {
+				return "", err
+			}
+			if gidnum > max {
+				max = gidnum
+			}
 		}
+		return fmt.Sprint(max + 1), nil
 	}
-	return fmt.Sprint(max + 1), nil
+	return "",errors.New("choose LdapGroupDN or LdapServiceDN")
 }
 
 func (m *MockLdap) GetmaximumUidnumber(s string) (string, error) {
@@ -320,7 +335,7 @@ func (m *MockLdap) GetEmailofusersingroup(groupname string) ([]string, error) {
 
 func (m *MockLdap) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
 
-	gidNum, _ := m.GetmaximumGidnumber()
+	gidNum, _ := m.GetmaximumGidnumber(LdapServiceDN)
 	groupdn := m.CreateserviceDn(groupinfo.Groupname, GroupServiceAccount)
 	var group LdapServiceInfo
 	group.cn = groupinfo.Groupname
@@ -336,7 +351,7 @@ func (m *MockLdap) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
 	user.mail = groupinfo.Mail
 	user.objectClass = []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}
 	user.gidNumber = gidNum
-	user.uidNumber, _ = m.GetmaximumUidnumber()
+	user.uidNumber, _ = m.GetmaximumUidnumber(LdapServiceDN)
 	m.Services[userdn] = user
 
 	return nil
