@@ -47,7 +47,7 @@ function parsestring(str){
     var nextindex=1;
     pos2 = str.lastIndexOf("<");
     pos1 = str.indexOf(">");
-    res = str.substring(pos1 + index, pos2);
+    res = str.substring(pos1 + nextindex, pos2);
     return res;
 }
 
