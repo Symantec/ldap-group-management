@@ -64,10 +64,12 @@ type GetGroupUsers struct {
 }
 
 type Response struct {
-	UserName       string
-	Groups         [][]string
-	Users          []string
-	PendingActions [][]string
+	UserName            string
+	Groups              [][]string
+	Users               []string
+	PendingActions      [][]string
+	GroupName           string
+	GroupManagedbyValue string
 }
 
 var (
@@ -105,6 +107,8 @@ const (
 	deletemembersbuttonPath     = "/deletemembers/"
 	createServiceAccWebPagePath = "/create_serviceaccount"
 	createServiceAccountPath    = "/create_serviceaccount/"
+	joingroupPath               = "/join_group"
+	groupinfoPath               = "/group_info/"
 
 	indexPath = "/"
 	authPath  = "/auth/oidcsimple/callback"
@@ -206,6 +210,9 @@ func main() {
 
 	http.Handle(createServiceAccWebPagePath, http.HandlerFunc(state.createserviceAccountPageHandler))
 	http.Handle(createServiceAccountPath, http.HandlerFunc(state.createServiceAccounthandler))
+
+	http.Handle(joingroupPath, http.HandlerFunc(state.joinGroupHandler))
+	http.Handle(groupinfoPath, http.HandlerFunc(state.groupInfoWebpage))
 
 	fs := http.FileServer(http.Dir(templatesdirectoryPath))
 	http.Handle(cssPath, fs)
