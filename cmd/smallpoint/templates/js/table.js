@@ -359,9 +359,11 @@ function Group_Info(users) {
 function addmember_form_submit() {
 
     document.getElementById("form_modal_addmember").submit();
+
 }
 
 function removemember_form_submit() {
 
     document.getElementById("form_modal_removemember").submit();
+
 }
