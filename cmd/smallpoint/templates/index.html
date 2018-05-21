@@ -18,6 +18,8 @@
         @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css");
         @import url("https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css");
         @import url("https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css");
+        @import url("https://cdn.datatables.net/fixedcolumns/3.2.4/css/fixedColumns.dataTables.min.css");
+        @import url("https://cdn.datatables.net/select/1.2.5/css/select.dataTables.min.css");
     </style>
 
     <script src="https://code.jquery.com/jquery-3.3.1.js"
@@ -25,12 +27,13 @@
             crossorigin="anonymous"></script>
     <script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/select/1.2.5/js/dataTables.select.min.js"></script>
     <script type="text/javascript" src="/js/table.js"></script>
 
 
 </head>
 
-<body class="w3-light-grey" onload="Run_OnLoad({{.Groups}},{{.PendingActions}});">
+<body class="w3-light-grey" onload="Run_OnLoad({{.Groups}},{{.PendingActions}},{{.Users}});">
 
 <!-- Top container -->
 <div class="w3-bar w3-top w3-new-blue w3-large" style="z-index: 4">
