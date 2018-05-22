@@ -1106,7 +1106,7 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 
 	if groupandmanagedby[0][1] != "self-managed" && !groupexistsornot {
 		if !superAdmin {
-			groupinfowebpageType = "groupinfo_no_managedby_member&nomem"
+			groupinfowebpageType = "groupinfo_no_managedby_member_nomem"
 			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
 			return
 		}
