@@ -1,16 +1,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
 	"strconv"
 	"strings"
-	"errors"
 )
 
 const UserServiceAccount userinfo.AccountType = 1
-const GroupServiceAccount userinfo.AccountType= 2
+const GroupServiceAccount userinfo.AccountType = 2
 
 type MockLdap struct {
 	Groups      map[string]LdapGroupInfo
@@ -225,7 +225,7 @@ func (m *MockLdap) UserisadminOrNot(username string) bool {
 
 func (m *MockLdap) GetmaximumGidnumber(s string) (string, error) {
 	var max = 0
-	if s==LdapGroupDN{
+	if s == LdapGroupDN {
 		for _, value := range m.Groups {
 			gidnum, err := strconv.Atoi(value.gidNumber)
 			if err != nil {
@@ -236,7 +236,7 @@ func (m *MockLdap) GetmaximumGidnumber(s string) (string, error) {
 			}
 		}
 		return fmt.Sprint(max + 1), nil
-	} else if s==LdapServiceDN{
+	} else if s == LdapServiceDN {
 		for _, value := range m.Services {
 			gidnum, err := strconv.Atoi(value.gidNumber)
 			if err != nil {
@@ -248,7 +248,7 @@ func (m *MockLdap) GetmaximumGidnumber(s string) (string, error) {
 		}
 		return fmt.Sprint(max + 1), nil
 	}
-	return "",errors.New("choose LdapGroupDN or LdapServiceDN")
+	return "", errors.New("choose LdapGroupDN or LdapServiceDN")
 }
 
 func (m *MockLdap) GetmaximumUidnumber(s string) (string, error) {

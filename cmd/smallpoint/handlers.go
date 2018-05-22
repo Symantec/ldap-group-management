@@ -121,13 +121,12 @@ func (state *RuntimeState) allGroupsHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	Allgroups, err := state.Userinfo.GetallGroupsandDescription(state.Config.TargetLDAP.GroupSearchBaseDNs)
-
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	response := Response{username, Allgroups, nil, nil}
+	response := Response{username, Allgroups, nil, nil, "", ""}
 	//response.UserName=*userInfo.Username
 	if state.Userinfo.UserisadminOrNot(username) == true {
 		generateHTML(w, response, "index", "admins_sidebar", "groups")
@@ -149,7 +148,7 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	response := Response{username, userGroups, nil, nil}
+	response := Response{username, userGroups, nil, nil, "", ""}
 	sidebarType := "sidebar"
 
 	if state.Userinfo.UserisadminOrNot(response.UserName) {
@@ -180,7 +179,7 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		if Ismember {
-			err := deleteEntryInDB(groupname, username, state)
+			err := deleteEntryInDB(username, groupname, state)
 			if err != nil {
 				log.Println(err)
 				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -226,7 +225,7 @@ func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *h
 		return
 	}
 
-	response := Response{username, [][]string{Allgroups}, nil, nil}
+	response := Response{username, [][]string{Allgroups}, nil, nil, "", ""}
 
 	generateHTML(w, response, "index", "admins_sidebar", "create_group")
 
@@ -241,7 +240,7 @@ func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *h
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
-	response := Response{username, nil, nil, nil}
+	response := Response{username, nil, nil, nil, "", ""}
 
 	generateHTML(w, response, "index", "admins_sidebar", "delete_group")
 
@@ -257,6 +256,19 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 	if err != nil {
 		return
 	}
+
+	userExistsornot, err := state.Userinfo.UsernameExistsornot(username)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !userExistsornot {
+		log.Println("Bad request!")
+		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+		return
+	}
+
 	var out map[string][]string
 	err = json.NewDecoder(r.Body).Decode(&out)
 	if err != nil {
@@ -297,6 +309,17 @@ func (state *RuntimeState) deleteRequests(w http.ResponseWriter, r *http.Request
 	}
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
+		return
+	}
+	userExistsornot, err := state.Userinfo.UsernameExistsornot(username)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !userExistsornot {
+		log.Println("Bad request!")
+		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
 		return
 	}
 	var out map[string][]string
@@ -401,7 +424,7 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 			return
 		}
 		if Ismember {
-			err := deleteEntryInDB(groupName, user, state)
+			err := deleteEntryInDB(user, groupName, state)
 			if err != nil {
 				log.Println(err)
 				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -558,7 +581,7 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request)
 	//check if the entry still exists or not.
 	for _, entry := range out["groups"] {
 		entryExists := entryExistsorNot(entry[0], entry[1], state)
-		if entryExists {
+		if !entryExists {
 			log.Println("entry doesn't exist!")
 			http.Error(w, fmt.Sprintf("%s doesn't exist in DB! Refresh your page!", entry), http.StatusInternalServerError)
 			return
@@ -726,7 +749,7 @@ func (state *RuntimeState) addmemberstoGroupWebpageHandler(w http.ResponseWriter
 
 	sort.Strings(Allgroups)
 
-	response := Response{username, [][]string{Allgroups}, nil, nil}
+	response := Response{username, [][]string{Allgroups}, nil, nil, "", ""}
 
 	sidebarType := "sidebar"
 	if state.Userinfo.UserisadminOrNot(username) {
@@ -777,7 +800,7 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		}
 		if !userExistsornot {
 			log.Println("Bad request!")
-			http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+			http.Error(w, fmt.Sprint("Bad request! Username doesn't exist!", member), http.StatusBadRequest)
 			return
 		}
 		IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member)
@@ -818,7 +841,7 @@ func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseW
 
 	sort.Strings(Allgroups)
 
-	response := Response{username, [][]string{Allgroups}, nil, nil}
+	response := Response{username, [][]string{Allgroups}, nil, nil, "", ""}
 
 	sidebarType := "sidebar"
 	if state.Userinfo.UserisadminOrNot(username) {
@@ -837,9 +860,6 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
-	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 	}
 
 	err = r.ParseForm()
@@ -915,7 +935,7 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 		return
 	}
 
-	response := Response{username, [][]string{Allgroups}, nil, nil}
+	response := Response{username, [][]string{Allgroups}, nil, nil, "", ""}
 
 	generateHTML(w, response, "index", "admins_sidebar", "create_service_account")
 
@@ -1013,4 +1033,114 @@ func (state *RuntimeState) isGroupAdmin(w http.ResponseWriter, username string, 
 		return errors.New("you are not authorized to make changes to this group!")
 	}
 	return nil
+}
+
+func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Request) {
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+
+	q := r.URL.Query()
+	params, ok := q["groupname"]
+	if !ok {
+		log.Println("couldn't parse the URL")
+		http.Error(w, "couldn't parse the URL", http.StatusInternalServerError)
+		return
+	}
+	var response Response
+
+	groupName := params[0] //username is "cn" Attribute of a User
+	groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupName)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !groupnameExistsorNot {
+		log.Println("Group doesn't exist!")
+		http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
+		return
+	}
+	AllUsersinGroup, managedby, err := state.Userinfo.GetusersofaGroup(groupName)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	sort.Strings(AllUsersinGroup)
+	//response.Users = AllUsersinGroup
+	response = Response{username, nil, AllUsersinGroup, nil, groupName, managedby}
+	superAdmin := state.Userinfo.UserisadminOrNot(username)
+	sidebarType := "sidebar"
+	if superAdmin {
+		sidebarType = "admins_sidebar"
+	}
+	groupandmanagedby, err := state.Userinfo.GetGroupandManagedbyAttributeValue([]string{groupName})
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
+		return
+	}
+	groupexistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupandmanagedby[0][1])
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
+		return
+	}
+
+	groupinfowebpageType := "groupinfo_member"
+
+	IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
+		return
+	}
+	IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, groupName)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
+	if groupandmanagedby[0][1] != "self-managed" && !groupexistsornot {
+		if !superAdmin {
+			groupinfowebpageType = "groupinfo_no_managedby_member_nomem"
+			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			return
+		}
+
+		if IsgroupMember {
+			groupinfowebpageType = "groupinfo_member_admin"
+			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			return
+
+		} else {
+			groupinfowebpageType = "groupinfo_nonmember_admin"
+			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			return
+
+		}
+	}
+
+	if IsgroupMember {
+		if IsgroupAdmin || superAdmin {
+			groupinfowebpageType = "groupinfo_member_admin"
+			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+
+		} else {
+			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+		}
+
+	} else {
+		if IsgroupAdmin || superAdmin {
+			groupinfowebpageType = "groupinfo_nonmember_admin"
+			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+		} else {
+			groupinfowebpageType = "groupinfo_nonmember"
+			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+
+		}
+	}
 }

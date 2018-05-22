@@ -1,0 +1,96 @@
+{{ define "content"}}
+
+
+<!-- Header -->
+<!-- Header -->
+<header class="w3-container" style="padding-top:12px">
+    <h4><b><i class="fa fa-group"></i>Group Name:<strong id="groupname_member">{{.GroupName}}</strong></b></h4>
+    <br>
+    <br>
+    <h4><b>Group Managed Attribute:<strong id="group_managedby">{{.GroupManagedbyValue}}</strong></b></h4>
+</header>
+
+<div class="w3-panel">
+    <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn" data-toggle="modal" data-target="#myModalAddMember">Add Members</button>
+    <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn" data-toggle="modal" data-target="#myModalRemoveMembers">Remove Members</button>
+    <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn" data-toggle="modal" data-target="#myModal_joingroup">Join Group</button>
+
+    <div class="modal fade" id="myModalAddMember" role="dialog">
+        <div class="modal-dialog">
+
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"></button>
+                    <h4 class="modal-title">Please enter the names (separated by comma (,)) of those whom you want to add to this  group?</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="form_modal_addmember" action="/addmembers/?username={{.UserName}}" method="POST">
+                        GroupName: <input name="groupname" required type="text" value="{{.GroupName}}" readonly><br/>
+                        Members  : <textarea name="members" required="required" type="text" style="margin: 0;height: 89px;width: 402px;"></textarea><br/>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default"  onclick="addmember_form_submit()" id="btn_form_modal_addmember" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="myModalRemoveMembers" role="dialog">
+        <div class="modal-dialog">
+
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"></button>
+                    <h4 class="modal-title"><p>Please enter the names (separated by comma (,)) of those whom you want to remove from group?</p></h4>
+                </div>
+                <div class="modal-body">
+                    <form id="form_modal_removemember" action="/deletemembers/?username={{.UserName}}" method="POST">
+                        GroupName: <input name="groupname" required type="text" value="{{.GroupName}}" readonly><br/>
+                        Members  : <textarea name="members" required="required" type="text" style="margin: 0;height: 89px;width: 402px;"></textarea><br/>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" onclick="removemember_form_submit()" id="btn_form_modal_removemember" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="myModal_joingroup" role="dialog">
+        <div class="modal-dialog">
+
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"></button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to join this group?</p>
+                    <form id="form_modal_joingroup" action="/addmembers/?username={{.UserName}}" method="POST">
+                        GroupName: <input name="groupname" id="join_admin" type="text" value="{{.GroupName}}" required readonly><br/>
+                        Username : <input name="members" required="required" value="{{.UserName}}" type="text" readonly><br/>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" id="btn_joingroup_admin" onclick="joingroup_admin()" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <table class="w3-table w3-striped w3-white" id="table_groupinfo">
+
+    </table>
+
+
+</div>
+
+{{ end }}
