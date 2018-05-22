@@ -340,20 +340,6 @@ function Group_Info(users) {
         xhttp.onreadystatechange = function(){ReloadOnSuccessOrAlert(xhttp);};
         xhttp.send(JSON.stringify({groups:request_groups.groups}));
     } );
-
-
-    $('#btn_joingroup_admin').click( function () {
-        var data_selected=document.getElementById('join_admin').value;
-        var xhttp = new XMLHttpRequest();   // new HttpRequest instance
-        xhttp.open("POST", "/join_group");
-        xhttp.setRequestHeader("Content-Type", "application/json");
-        var request_groups={};
-        request_groups.groups=[];
-        request_groups.groups.push(data_selected);
-        //console.log(request_groups.groups);
-        xhttp.onreadystatechange = function(){ReloadOnSuccessOrAlert(xhttp);};
-        xhttp.send(JSON.stringify({groups:request_groups.groups}));
-    } );
 }
 
 function addmember_form_submit() {
@@ -365,5 +351,11 @@ function addmember_form_submit() {
 function removemember_form_submit() {
 
     document.getElementById("form_modal_removemember").submit();
+
+}
+
+function joingroup_admin(){
+
+    document.getElementById("form_modal_joingroup").submit();
 
 }
