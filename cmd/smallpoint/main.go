@@ -211,7 +211,6 @@ func main() {
 	http.Handle(createServiceAccWebPagePath, http.HandlerFunc(state.createserviceAccountPageHandler))
 	http.Handle(createServiceAccountPath, http.HandlerFunc(state.createServiceAccounthandler))
 
-	http.Handle(joingroupPath, http.HandlerFunc(state.joinGroupHandler))
 	http.Handle(groupinfoPath, http.HandlerFunc(state.groupInfoWebpage))
 
 	fs := http.FileServer(http.Dir(templatesdirectoryPath))

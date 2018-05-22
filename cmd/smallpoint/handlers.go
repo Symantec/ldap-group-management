@@ -126,7 +126,6 @@ func (state *RuntimeState) allGroupsHandler(w http.ResponseWriter, r *http.Reque
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println(Allgroups)
 	response := Response{username, Allgroups, nil, nil, "", ""}
 	//response.UserName=*userInfo.Username
 	if state.Userinfo.UserisadminOrNot(username) == true {
@@ -1106,28 +1105,22 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 	}
 
 	if groupandmanagedby[0][1] != "self-managed" && !groupexistsornot {
+		if !superAdmin {
+			groupinfowebpageType = "groupinfo_no_managedby_member&nomem"
+			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			return
+		}
+
 		if IsgroupMember {
-			if superAdmin {
-				groupinfowebpageType = "groupinfo_member_admin"
-				generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
-				return
-			} else {
-				groupinfowebpageType = "groupinfo_no_managedby_member"
-				generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
-				return
+			groupinfowebpageType = "groupinfo_member_admin"
+			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			return
 
-			}
 		} else {
-			if superAdmin {
-				groupinfowebpageType = "groupinfo_nonmember_admin"
-				generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
-				return
-			} else {
-				groupinfowebpageType = "groupinfo_no_managedby_nonmember"
-				generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
-				return
+			groupinfowebpageType = "groupinfo_nonmember_admin"
+			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			return
 
-			}
 		}
 	}
 
@@ -1150,96 +1143,4 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 
 		}
 	}
-}
-
-func (state *RuntimeState) joinGroupHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
-		return
-	}
-	username, err := state.GetRemoteUserName(w, r)
-	if err != nil {
-		return
-	}
-
-	userExistsornot, err := state.Userinfo.UsernameExistsornot(username)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	if !userExistsornot {
-		log.Println("Bad request! username doesn't exist.")
-		http.Error(w, fmt.Sprint("Bad request! username doesn't exist."), http.StatusBadRequest)
-		return
-	}
-
-	var out map[string][]string
-	err = json.NewDecoder(r.Body).Decode(&out)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	//log.Println(out)
-	//fmt.Print(out["groups"])
-	if len(out["groups"]) > 1 {
-		log.Println("Bad request!")
-		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
-		return
-	}
-	fmt.Println(out["groups"][0])
-	err = state.groupExistsorNot(w, out["groups"][0])
-	if err != nil {
-		return
-	}
-	groupName := out["groups"][0]
-
-	IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
-		return
-	}
-
-	if IsgroupMember {
-		log.Println("Bad request!")
-		http.Error(w, fmt.Sprint("Bad request! Already the member of the group"), http.StatusBadRequest)
-		return
-	}
-
-	IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, groupName)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-
-	superAdmin := state.Userinfo.UserisadminOrNot(username)
-
-	if IsgroupAdmin || superAdmin {
-		var groupinfo userinfo.GroupInfo
-		groupinfo.Groupname = groupName
-		groupinfo.MemberUid = append(groupinfo.MemberUid, username)
-		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(username))
-		err := state.Userinfo.AddmemberstoExisting(groupinfo)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-
-	} else {
-		log.Println("Bad request!")
-		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
-		return
-	}
-	err = deleteEntryInDB(username, groupName, state)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
 }
