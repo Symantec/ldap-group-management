@@ -72,12 +72,13 @@
                 </div>
                 <div class="modal-body">
                     <p>Are you sure you want to join this group?</p>
-                        GroupName: <input name="groupname" id="join_admin" type="text" value="{{.GroupName}}" readonly><br/>
+                    <form id="form_modal_joingroup" action="/addmembers/?username={{.UserName}}" method="POST">
+                        GroupName: <input name="groupname" id="join_admin" type="text" value="{{.GroupName}}" required readonly><br/>
                         Username : <input name="members" required="required" value="{{.UserName}}" type="text" readonly><br/>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" id="btn_joingroup_admin" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" id="btn_joingroup_admin" onclick="joingroup_admin()" data-dismiss="modal">Confirm</button>
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                 </div>
             </div>
