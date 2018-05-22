@@ -777,7 +777,6 @@ func (u *UserInfoLDAPSource) GroupnameExistsornot(groupname string) (bool, strin
 	}
 	defer conn.Close()
 
-	//Attributes := []string{"cn"}
 	searchrequest := ldap.NewSearchRequest(u.GroupSearchBaseDNs, ldap.ScopeWholeSubtree,
 		ldap.NeverDerefAliases, 0, 0, false, "(&(cn="+groupname+")(objectClass=posixGroup))",
 		nil, nil)
