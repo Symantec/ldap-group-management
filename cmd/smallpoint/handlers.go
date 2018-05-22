@@ -121,12 +121,12 @@ func (state *RuntimeState) allGroupsHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	Allgroups, err := state.Userinfo.GetallGroupsandDescription(state.Config.TargetLDAP.GroupSearchBaseDNs)
-
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
+	fmt.Println(Allgroups)
 	response := Response{username, Allgroups, nil, nil, "", ""}
 	//response.UserName=*userInfo.Username
 	if state.Userinfo.UserisadminOrNot(username) == true {
@@ -801,7 +801,7 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		}
 		if !userExistsornot {
 			log.Println("Bad request!")
-			http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+			http.Error(w, fmt.Sprint("Bad request! Username doesn't exist!", member), http.StatusBadRequest)
 			return
 		}
 		IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member)
@@ -1077,8 +1077,21 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 	if superAdmin {
 		sidebarType = "admins_sidebar"
 	}
+	groupandmanagedby, err := state.Userinfo.GetGroupandManagedbyAttributeValue([]string{groupName})
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
+		return
+	}
+	groupexistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupandmanagedby[0][1])
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
+		return
+	}
 
 	groupinfowebpageType := "groupinfo_member"
+
 	IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
 	if err != nil {
 		log.Println(err)
@@ -1090,6 +1103,32 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
+	}
+
+	if groupandmanagedby[0][1] != "self-managed" && !groupexistsornot {
+		if IsgroupMember {
+			if superAdmin {
+				groupinfowebpageType = "groupinfo_member_admin"
+				generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+				return
+			} else {
+				groupinfowebpageType = "groupinfo_no_managedby_member"
+				generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+				return
+
+			}
+		} else {
+			if superAdmin {
+				groupinfowebpageType = "groupinfo_nonmember_admin"
+				generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+				return
+			} else {
+				groupinfowebpageType = "groupinfo_no_managedby_nonmember"
+				generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+				return
+
+			}
+		}
 	}
 
 	if IsgroupMember {
@@ -1130,8 +1169,8 @@ func (state *RuntimeState) joinGroupHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if !userExistsornot {
-		log.Println("Bad request!")
-		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+		log.Println("Bad request! username doesn't exist.")
+		http.Error(w, fmt.Sprint("Bad request! username doesn't exist."), http.StatusBadRequest)
 		return
 	}
 
@@ -1149,6 +1188,7 @@ func (state *RuntimeState) joinGroupHandler(w http.ResponseWriter, r *http.Reque
 		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
 		return
 	}
+	fmt.Println(out["groups"][0])
 	err = state.groupExistsorNot(w, out["groups"][0])
 	if err != nil {
 		return
