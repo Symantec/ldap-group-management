@@ -13,7 +13,7 @@ type GroupInfo struct {
 }
 
 type UserInfo interface {
-	GetallUsers() (map[string]string, error)
+	GetallUsers() (map[string]string, []string, error)
 
 	CreateuserDn(username string) string
 
