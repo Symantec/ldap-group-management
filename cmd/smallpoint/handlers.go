@@ -224,7 +224,7 @@ func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *h
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
-	_, Allusers, err := state.Userinfo.GetallUsers()
+	Allusers, err := state.Userinfo.GetallUsers()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -764,7 +764,7 @@ func (state *RuntimeState) addmemberstoGroupWebpageHandler(w http.ResponseWriter
 
 	sort.Strings(Allgroups)
 
-	_, Allusers, err := state.Userinfo.GetallUsers()
+	Allusers, err := state.Userinfo.GetallUsers()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -862,7 +862,7 @@ func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseW
 
 	sort.Strings(Allgroups)
 
-	_, Allusers, err := state.Userinfo.GetallUsers()
+	Allusers, err := state.Userinfo.GetallUsers()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -1099,7 +1099,7 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 	}
 	sort.Strings(AllUsersinGroup)
 
-	_, Allusers, err := state.Userinfo.GetallUsers()
+	Allusers, err := state.Userinfo.GetallUsers()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)

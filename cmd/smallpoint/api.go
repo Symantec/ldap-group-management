@@ -43,7 +43,7 @@ func (state *RuntimeState) getallusersHandler(w http.ResponseWriter, r *http.Req
 
 	var AllUsersTargetLdap GetUsers
 
-	AllUsers, _, err := state.Userinfo.GetallUsers()
+	AllUsers, err := state.Userinfo.GetallUsers()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -51,7 +51,7 @@ func (state *RuntimeState) getallusersHandler(w http.ResponseWriter, r *http.Req
 
 	}
 
-	for k := range AllUsers {
+	for _, k := range AllUsers {
 		AllUsersTargetLdap.Users = append(AllUsersTargetLdap.Users, k)
 	}
 

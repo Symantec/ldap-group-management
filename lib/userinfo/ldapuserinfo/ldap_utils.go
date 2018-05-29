@@ -136,16 +136,15 @@ func (u *UserInfoLDAPSource) getTargetLDAPConnection() (*ldap.Conn, error) {
 }
 
 //Get all ldaputil users and put that in map ---required
-func (u *UserInfoLDAPSource) GetallUsers() (map[string]string, []string, error) {
+func (u *UserInfoLDAPSource) GetallUsers() ([]string, error) {
 
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
-		return nil, nil, err
+		return nil, err
 	}
 	defer conn.Close()
 
-	AllUsersinLdap := make(map[string]string)
 	var AllUsers []string
 	Attributes := []string{"uid"}
 	searchrequest := ldap.NewSearchRequest(u.UserSearchBaseDNs, ldap.ScopeWholeSubtree,
@@ -153,20 +152,19 @@ func (u *UserInfoLDAPSource) GetallUsers() (map[string]string, []string, error) 
 	result, err := conn.Search(searchrequest)
 	if err != nil {
 		log.Println(err)
-		return nil, nil, err
+		return nil, err
 	}
 
 	if len(result.Entries) == 0 {
 		log.Println("No records found")
-		return nil, nil, errors.New("No records found")
+		return nil, errors.New("No records found")
 	}
 	for _, entry := range result.Entries {
 		uid := entry.GetAttributeValue("uid")
 		AllUsers = append(AllUsers, uid)
-		AllUsersinLdap[uid] = uid
 	}
 
-	return AllUsersinLdap, AllUsers, nil
+	return AllUsers, nil
 }
 
 //To build a user base DN using uid only for Target LDAP.
