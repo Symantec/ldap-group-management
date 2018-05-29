@@ -104,14 +104,16 @@ func removeElements(s []string, r []string) []string {
 	return s
 }
 
-func (m *MockLdap) GetallUsers() (map[string]string, error) {
+func (m *MockLdap) GetallUsers() (map[string]string, []string, error) {
 	users := make(map[string]string)
+	var allusers []string
 	for _, value := range m.Users {
 		uid := value.uid
+		allusers = append(allusers, value.uid)
 		users[uid] = value.uid
 	}
 
-	return users, nil
+	return users, allusers, nil
 }
 
 func (m *MockLdap) CreateuserDn(username string) string {
