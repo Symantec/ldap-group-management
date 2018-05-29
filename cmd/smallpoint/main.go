@@ -70,6 +70,7 @@ type Response struct {
 	PendingActions      [][]string
 	GroupName           string
 	GroupManagedbyValue string
+	GroupUsers          []string
 }
 
 var (
@@ -107,7 +108,6 @@ const (
 	deletemembersbuttonPath     = "/deletemembers/"
 	createServiceAccWebPagePath = "/create_serviceaccount"
 	createServiceAccountPath    = "/create_serviceaccount/"
-	joingroupPath               = "/join_group"
 	groupinfoPath               = "/group_info/"
 
 	indexPath = "/"

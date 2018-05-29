@@ -126,7 +126,7 @@ func (state *RuntimeState) allGroupsHandler(w http.ResponseWriter, r *http.Reque
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	response := Response{username, Allgroups, nil, nil, "", ""}
+	response := Response{username, Allgroups, nil, nil, "", "", nil}
 	//response.UserName=*userInfo.Username
 	if state.Userinfo.UserisadminOrNot(username) == true {
 		generateHTML(w, response, "index", "admins_sidebar", "groups")
@@ -148,7 +148,7 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	response := Response{username, userGroups, nil, nil, "", ""}
+	response := Response{username, userGroups, nil, nil, "", "", nil}
 	sidebarType := "sidebar"
 
 	if state.Userinfo.UserisadminOrNot(response.UserName) {
@@ -224,8 +224,14 @@ func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *h
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
+	_, Allusers, err := state.Userinfo.GetallUsers()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
 
-	response := Response{username, [][]string{Allgroups}, nil, nil, "", ""}
+	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
 
 	generateHTML(w, response, "index", "admins_sidebar", "create_group")
 
@@ -240,7 +246,16 @@ func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *h
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
-	response := Response{username, nil, nil, nil, "", ""}
+	Allgroups, err := state.Userinfo.GetallGroups()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
+	sort.Strings(Allgroups)
+
+	response := Response{username, [][]string{Allgroups}, nil, nil, "", "", nil}
 
 	generateHTML(w, response, "index", "admins_sidebar", "delete_group")
 
@@ -749,7 +764,13 @@ func (state *RuntimeState) addmemberstoGroupWebpageHandler(w http.ResponseWriter
 
 	sort.Strings(Allgroups)
 
-	response := Response{username, [][]string{Allgroups}, nil, nil, "", ""}
+	_, Allusers, err := state.Userinfo.GetallUsers()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
 
 	sidebarType := "sidebar"
 	if state.Userinfo.UserisadminOrNot(username) {
@@ -841,7 +862,14 @@ func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseW
 
 	sort.Strings(Allgroups)
 
-	response := Response{username, [][]string{Allgroups}, nil, nil, "", ""}
+	_, Allusers, err := state.Userinfo.GetallUsers()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
+	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
 
 	sidebarType := "sidebar"
 	if state.Userinfo.UserisadminOrNot(username) {
@@ -872,6 +900,8 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	var groupinfo userinfo.GroupInfo
 	groupinfo.Groupname = r.PostFormValue("groupname")
 	members := r.PostFormValue("members")
+	log.Println("delete these members", members)
+	log.Println("now continue")
 	//check if groupname given by user exists or not
 	err = state.groupExistsorNot(w, groupinfo.Groupname)
 	if err != nil {
@@ -882,7 +912,6 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		return
 	}
 
-	//check if given member exists or not and see if he is already a groupmember if yes continue.
 	for _, member := range strings.Split(members, ",") {
 		userExistsornot, err := state.Userinfo.UsernameExistsornot(member)
 		if err != nil {
@@ -901,7 +930,7 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
-		if IsgroupMember {
+		if !IsgroupMember {
 			continue
 		}
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
@@ -935,7 +964,7 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 		return
 	}
 
-	response := Response{username, [][]string{Allgroups}, nil, nil, "", ""}
+	response := Response{username, [][]string{Allgroups}, nil, nil, "", "", nil}
 
 	generateHTML(w, response, "index", "admins_sidebar", "create_service_account")
 
@@ -1069,8 +1098,16 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	sort.Strings(AllUsersinGroup)
+
+	_, Allusers, err := state.Userinfo.GetallUsers()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
 	//response.Users = AllUsersinGroup
-	response = Response{username, nil, AllUsersinGroup, nil, groupName, managedby}
+	response = Response{username, nil, Allusers, nil, groupName, managedby, AllUsersinGroup}
 	superAdmin := state.Userinfo.UserisadminOrNot(username)
 	sidebarType := "sidebar"
 	if superAdmin {
