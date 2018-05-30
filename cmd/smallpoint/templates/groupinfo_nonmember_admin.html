@@ -25,10 +25,15 @@
                     <h4 class="modal-title">Please enter the names (separated by comma (,)) of those whom you want to add to this  group?</h4>
                 </div>
                 <div class="modal-body">
-                    <form id="form_modal_addmember" action="/addmembers/?username={{.UserName}}" method="POST">
-                        GroupName: <input name="groupname" required type="text" value="{{.GroupName}}" readonly><br/>
-                        Members  : <textarea name="members" required="required" type="text" style="margin: 0;height: 89px;width: 402px;"></textarea><br/>
+                    <form id="form_modal_addmember" action="/addmembers/?username={{.UserName}}" method="POST" autocomplete="off">
+                        GroupName: <input autocomplete="off" name="groupname" required type="text" value="{{.GroupName}}" readonly><br/>
+                        <input autocomplete="off" class='group_members' id='group_members' name="members" required="required" type="hidden" readonly/><br/>
                     </form>
+                    <div class='suggestion'>
+                    </div>
+                    Members  : <input autocomplete="off" class="members" id='cg_members' oninput="groupadd_members()" list="select_members" name="members" type="text"/>
+                    <datalist class="select_memberslist" id="select_members">
+                    </datalist>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default"  onclick="addmember_form_submit()" id="btn_form_modal_addmember" data-dismiss="modal">Confirm</button>
@@ -49,9 +54,14 @@
                 </div>
                 <div class="modal-body">
                     <form id="form_modal_removemember" action="/deletemembers/?username={{.UserName}}" method="POST">
-                        GroupName: <input name="groupname" required type="text" value="{{.GroupName}}" readonly><br/>
-                        Members  : <textarea name="members" required="required" type="text" style="margin: 0;height: 89px;width: 402px;"></textarea><br/>
+                        GroupName: <input autocomplete="off" name="groupname" required type="text" value="{{.GroupName}}" readonly><br/>
+                        <input autocomplete="off" class="group_removemembers" id='group_removemembers' name="members" required="required" type="hidden" readonly/><br/>
                     </form>
+                    <div class='suggestion_removemembers'>
+                    </div>
+                    Members  : <input autocomplete="off" class="remove_members" id='cg_members_remove' oninput="groupremove_members()" list="select_members" name="members" type="text"/>
+                    <datalist class="select_memberslist" id="select_members">
+                    </datalist>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" onclick="removemember_form_submit()" id="btn_form_modal_removemember" data-dismiss="modal">Confirm</button>
@@ -73,8 +83,8 @@
                 <div class="modal-body">
                     <p>Are you sure you want to join this group?</p>
                     <form id="form_modal_joingroup" action="/addmembers/?username={{.UserName}}" method="POST">
-                        GroupName: <input name="groupname" id="join_admin" type="text" value="{{.GroupName}}" required readonly><br/>
-                        Username : <input name="members" required="required" value="{{.UserName}}" type="text" readonly><br/>
+                        GroupName: <input autocomplete="off" name="groupname" id="join_admin" type="text" value="{{.GroupName}}" required readonly><br/>
+                        Username : <input autocomplete="off" name="members" required="required" value="{{.UserName}}" type="text" readonly><br/>
                     </form>
                 </div>
                 <div class="modal-footer">

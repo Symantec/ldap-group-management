@@ -1,10 +1,9 @@
-function Run_OnLoad(groupnames,PendingActions,Users) {
+function Run_OnLoad(groupnames,PendingActions,Users,Allusers) {
     if (groupnames!=null){
 
         var final_groupnames=array(groupnames);
         RequestAccess(final_groupnames);
         datalist(groupnames[0]);
-        return;
     }
     if(PendingActions!=null){
         var pending_actions=arrayPendingActions(PendingActions);
@@ -13,6 +12,9 @@ function Run_OnLoad(groupnames,PendingActions,Users) {
     if(Users!=null){
         var usernames=arrayUsers(Users);
         Group_Info(usernames);
+    }
+    if(Allusers!=null){
+        list_members(Allusers);
     }
 
 }
@@ -27,6 +29,7 @@ function arrayUsers(Users) {
     }
     return user_names;//=[[][][][]]
 }
+
 function array(groupnames) {//[["1","2"]]
     var groupname=[];
     var group_description=[];
@@ -68,7 +71,6 @@ function parsestring(str){
 }
 
 function Parsearray(array) {
-    //console.log(array);
     var result=[];
     var pos2,pos1,res;
     for(i=0;i<length;i++){
@@ -125,12 +127,9 @@ function RequestAccess(final_groupnames) {
             var request_groups={};
             request_groups.groups=[];
             for(i=0;i<table.rows('.selected').data().length;i++){
-                //data_selected[i]=Parsearray(data_selected[i]);
                 result=parsestring(data_selected[i][1]);
-                //console.log(result);
                 request_groups.groups.push(result);
             }
-            //console.log(request_groups.groups);
             xhttp.onreadystatechange = function(){ReloadOnSuccessOrAlert(xhttp);};
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
@@ -146,10 +145,8 @@ function RequestAccess(final_groupnames) {
             request_groups.groups=[];
             for(i=0;i<table.rows('.selected').data().length;i++){
                 result=parsestring(data_selected[i][1]);
-                //console.log(result);
                 request_groups.groups.push(result);
             }
-            //console.log(request_groups.groups);
             xhttp.onreadystatechange = function(){ReloadOnSuccessOrAlert(xhttp);};
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
@@ -165,10 +162,8 @@ function RequestAccess(final_groupnames) {
             request_groups.groups=[];
             for(i=0;i<table.rows('.selected').data().length;i++){
                 result=parsestring(data_selected[i][1]);
-                //console.log(result);
                 request_groups.groups.push(result);
             }
-            //console.log(request_groups.groups);
             xhttp.onreadystatechange = function(){ReloadOnSuccessOrAlert(xhttp);};
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
@@ -223,7 +218,6 @@ function pendingActionsTable(PendingActions) {
                 request_groups.groups.push(result);
                 result=[];
             }
-            //console.log(request_groups.groups);
             xhttp.onreadystatechange = function(){ReloadOnSuccessOrAlert(xhttp);};
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
@@ -233,7 +227,6 @@ function pendingActionsTable(PendingActions) {
         });
 
         $('#btn_approve').click( function () {
-            //alert( table.rows('.selected').data().length +' row(s) selected' );
             var data_selected=table2.rows('.selected').data();
             var xhttp = new XMLHttpRequest();   // new HttpRequest instance
             xhttp.open("POST", "/approve-request");
@@ -248,7 +241,6 @@ function pendingActionsTable(PendingActions) {
                 request_groups.groups.push(result);
                 result=[];
             }
-            console.log(request_groups.groups);
             xhttp.onreadystatechange = function(){ReloadOnSuccessOrAlert(xhttp);};
             xhttp.send(JSON.stringify({groups:request_groups.groups}));
         } );
@@ -287,7 +279,13 @@ function sidebar_close() {
 
 function datalist(groupnames) {
     for(i=0;i<groupnames.length;i++){
-        $('#select_groups').append("<option value='" + groupnames[i] + "'>"+groupnames[i]+"</option>");
+        $('#select_groups').append("<option id='option-"+groupnames[i]+"' value='" + groupnames[i] + "'>"+groupnames[i]+"</option>");
+    }
+}
+
+function list_members(users){
+    for(i=0;i<users.length;i++){
+        $('#select_members').append("<option id='option-"+users[i]+"' value='" + users[i] + "'>"+users[i]+"</option>");
     }
 }
 
@@ -322,7 +320,6 @@ function Group_Info(users) {
         var request_groups={};
         request_groups.groups=[];
         request_groups.groups.push(groupname);
-        //console.log(request_groups.groups);
         xhttp.onreadystatechange = function(){ReloadOnSuccessOrAlert(xhttp);};
         xhttp.send(JSON.stringify({groups:request_groups.groups}));
     } );
@@ -336,26 +333,229 @@ function Group_Info(users) {
         var request_groups={};
         request_groups.groups=[];
         request_groups.groups.push(data_selected);
-        //console.log(request_groups.groups);
         xhttp.onreadystatechange = function(){ReloadOnSuccessOrAlert(xhttp);};
         xhttp.send(JSON.stringify({groups:request_groups.groups}));
     } );
 }
 
 function addmember_form_submit() {
-
-    document.getElementById("form_modal_addmember").submit();
+    var val=refractor_members();
+    if (val===1) {
+        document.getElementById("form_modal_addmember").submit();
+    }else {
+        alert("error occured!");
+    }
 
 }
 
 function removemember_form_submit() {
-
-    document.getElementById("form_modal_removemember").submit();
-
+    var val=refractor_removemembers();
+    if (val===1) {
+        document.getElementById("form_modal_removemember").submit();
+    }else {
+        alert("error occured!");
+    }
 }
 
 function joingroup_admin(){
 
     document.getElementById("form_modal_joingroup").submit();
 
+}
+
+function creategroup_form_submit() {
+    var val=refractor_members();
+    if (val===1) {
+        document.getElementById("form_create_group").submit();
+    }else {
+        alert("error occured!");
+    }
+}
+
+function deletegroup_form_submit() {
+
+    var val=refractor_groupnames();
+    if (val===1){
+        document.getElementById("form_delete_group").submit();
+    }else {
+        alert("error occured!");
+    }
+}
+
+function addpeopletogroup_form_submit() {
+    var val=refractor_members();
+    if (val===1) {
+        document.getElementById("form_addpeople_togroup").submit();
+    }else {
+        alert("error occured!");
+    }
+}
+
+function deletemembers_fromgroup_form_submit() {
+    var val=refractor_members();
+    if (val===1) {
+        document.getElementById("form_deletemembers_fromgroup").submit();
+    }else {
+        alert("error occured!");
+    }
+}
+
+function group_groupname(){
+
+    var val = document.getElementById("cg_groupname").value;
+    var select=document.getElementById('select_groups').value;
+
+    $('#group_groupname').val(val);
+    $('#group_managedby').val(select);
+
+}
+
+function groupadd_members() {
+    var val = document.getElementById("cg_members").value;
+    var opts = document.getElementById('select_members').childNodes;
+    for (var i = 0; i < opts.length; i++) {
+        if (opts[i].value === val) {
+            members_func(opts[i].value);
+            break;
+        }
+    }
+}
+
+
+
+function members_func(value) {
+    $(document).ready(function() {
+        $('input.members').val('');
+
+        var optionid="option-"+value;
+        var name=value;
+
+        $('option.'+optionid).remove();
+        $("div.suggestion").append($('<div class="borderbox" id='+value+'><b>' + value +
+            '</b><button type="button" onclick="closebox('+"'"+name+"'"+')" class="close" aria-label="Close">\n' +
+            '  <span  aria-hidden="true">&times;</span>\n' +
+            '</button></div>'));
+        var str='';
+        $("div.suggestion div b").each(function () {
+            str += $(this).text() + ",";
+        });
+
+        $('#group_members').val(str);
+    });
+}
+
+function closebox(id) {
+
+
+    $('datalist.select_memberslist').append("<option id='option-"+name+"' value='" +name+ "'>"+name+"</option>");
+
+    $('datalist.select_groupslist').append("<option id='option-"+name+"' value='" +name+ "'>"+name+"</option>");
+
+    document.getElementById(id).remove();
+}
+
+function refractor_members() {
+    var val=document.getElementById("group_members").value;
+    var length=val.length;
+    if (val[length-1]===","){
+        var res = val.substring(0, length-1);
+        $('input.group_members').val(res);
+        return 1;
+    }
+    return 0;
+}
+
+function refractor_groupnames() {
+    var val=document.getElementById("group_names").value;
+    var length=val.length;
+    if (val[length-1]===","){
+        var res = val.substring(0, length-1);
+        $('input.group_names').val(res);
+        return 1;
+    }
+    return 0;
+}
+function delete_groups() {
+    var val = document.getElementById("cg_groupnames").value;
+    var opts = document.getElementById('select_groups').childNodes;
+    for (var i = 0; i < opts.length; i++) {
+        if (opts[i].value === val) {
+            deletegroups_func(opts[i].value);
+            break;
+        }
+    }
+}
+
+function deletegroups_func(value) {
+    $(document).ready(function() {
+        $('input.groupnames').val('');
+
+        var optionid="option-"+value;
+        var name=value;
+
+        document.getElementById(optionid).remove();
+
+        $("div.suggestion").append($('<div class="borderbox" id='+value+'><b>' + value +
+            '</b><button type="button" onclick="closebox('+"'"+name+"'"+')" class="close" aria-label="Close">\n' +
+            '  <span  aria-hidden="true">&times;</span>\n' +
+            '</button></div>'));
+        var str='';
+        $("div.suggestion div b").each(function () {
+            str += $(this).text() + ",";
+        });
+
+        $('#group_names').val(str);
+    });
+}
+
+//for remove members modal
+function groupremove_members() {
+    var val = document.getElementById("cg_members_remove").value;
+    var opts = document.getElementById('select_members').childNodes;
+    for (var i = 0; i < opts.length; i++) {
+        if (opts[i].value === val) {
+            members_removemodal(opts[i].value);
+            break;
+        }
+    }
+}
+
+function members_removemodal(value) {
+    $(document).ready(function() {
+        $('input.remove_members').val('');
+
+        var optionid="option-"+value;
+        var name=value;
+
+        document.getElementById(optionid).remove();
+
+        $("div.suggestion_removemembers").append($('<div class="borderbox" id='+value+'><b>' + value +
+            '</b><button type="button" onclick="closebox_remove('+"'"+name+"'"+')" class="close" aria-label="Close">\n' +
+            '  <span  aria-hidden="true">&times;</span>\n' +
+            '</button></div>'));
+        var str='';
+        $("div.suggestion_removemembers div b").each(function () {
+            str += $(this).text() + ",";
+        });
+
+        $('#group_removemembers').val(str);
+    });
+}
+
+function closebox_remove(id) {
+
+    $('datalist.select_memberslist').append("<option id='option-"+id+"' value='" +id+ "'>"+id+"</option>");
+
+    document.getElementById(id).remove();
+}
+
+function refractor_removemembers() {
+    var val=document.getElementById("group_removemembers").value;
+    var length=val.length;
+    if (val[length-1]===","){
+        var res = val.substring(0, length-1);
+        $('input.group_removemembers').val(res);
+        return 1;
+    }
+    return 0;
 }

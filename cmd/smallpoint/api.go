@@ -51,7 +51,7 @@ func (state *RuntimeState) getallusersHandler(w http.ResponseWriter, r *http.Req
 
 	}
 
-	for k := range AllUsers {
+	for _, k := range AllUsers {
 		AllUsersTargetLdap.Users = append(AllUsersTargetLdap.Users, k)
 	}
 
