@@ -16,7 +16,7 @@ const profileDBFilename = "requests.sqlite3"
 func initDB(state *RuntimeState) (err error) {
 
 	storageURL := state.Config.Base.StorageURL
-	if strings.HasPrefix(storageURL, "./") {
+	if storageURL == "" {
 		storageURL = "sqlite:"
 	}
 	splitString := strings.SplitN(storageURL, ":", 2)
