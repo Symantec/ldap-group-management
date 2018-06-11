@@ -13,7 +13,7 @@ const (
 	groupusersTestPath = "/group_users/?groupname=group1"
 	cookievalueTest    = "hellogroup1group2"
 	testusername       = "user1"
-	testdbpath         = "./test-sqlite3.db"
+	testdbpath         = "sqlite:./test-sqlite3.db"
 )
 
 func createCookie() http.Cookie {
