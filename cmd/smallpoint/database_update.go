@@ -75,7 +75,7 @@ func initDBPostgres(state *RuntimeState) (err error) {
 		sqlStmt := `create table if not exists pending_requests (id SERIAL PRIMARY KEY, username text not null, groupname text not null, time_stamp int not null);`
 		_, err = state.db.Exec(sqlStmt)
 		if err != nil {
-			log.Print("init postgres err: %s: %q\n", err, sqlStmt)
+			log.Printf("init postgres err: %s: %q\n", err, sqlStmt)
 			return err
 		}
 	}
