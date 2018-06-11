@@ -30,7 +30,7 @@ func initDB(state *RuntimeState) (err error) {
 	switch splitString[0] {
 	case "sqlite":
 		log.Print("doing sqlite")
-		return initDBSQlite(state)
+		return initDBSQlite(state, splitString[1])
 	case "postgresql":
 		log.Print("doing postgres")
 		return initDBPostgres(state)
@@ -45,9 +45,9 @@ func initDB(state *RuntimeState) (err error) {
 }
 
 
-func initDBSQlite(state *RuntimeState) (err error) {
+func initDBSQlite(state *RuntimeState, db string) (err error) {
 	state.dbType = "sqlite3"
-	state.db, err = sql.Open("sqlite3", state.Config.Base.StorageURL)
+	state.db, err = sql.Open("sqlite3", db)
 	if err != nil {
 		return err
 	}
