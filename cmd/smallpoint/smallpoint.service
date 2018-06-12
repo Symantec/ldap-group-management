@@ -5,7 +5,6 @@ After=network.target
 [Service]
 PermissionsStartOnly=true
 ExecStartPre=/usr/sbin/setcap cap_net_bind_service=+ep /usr/sbin/smallpoint
-WorkingDirectory=/etc/smallpoint
 ExecStart=/usr/sbin/smallpoint -config /etc/smallpoint/config.yml 
 Restart=always
 RestartSec=20

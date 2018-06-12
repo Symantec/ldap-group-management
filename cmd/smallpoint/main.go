@@ -113,10 +113,10 @@ const (
 	indexPath = "/"
 	authPath  = "/auth/oidcsimple/callback"
 
-	templatesdirectoryPath = "templates"
-	cssPath                = "/css/"
-	imagesPath             = "/images/"
-	jsPath                 = "/js/"
+	templatesdirectoryPath = "/etc/smallpoint/templates"
+	cssPath                = "/etc/smallpoint/templates/css/"
+	imagesPath             = "/etc/smallpoint/templates/images/"
+	jsPath                 = "/etc/smallpoint/templates/js/"
 )
 
 //parses the config file
