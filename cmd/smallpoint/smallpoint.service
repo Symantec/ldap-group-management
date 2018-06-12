@@ -1,14 +1,16 @@
 [Unit]
 Description=Smallpoint LDAP group management service
-ConditionPathExists=/usr/sbin/smallpoint/smallpoint
 After=network.target
 
 [Service]
 PermissionsStartOnly=true
-WorkingDirectory=/usr/sbin/smallpoint
-ExecStart=/usr/sbin/smallpoint/smallpoint
+ExecStartPre=/usr/sbin/setcap cap_net_bind_service=+ep /usr/sbin/smallpoint
+WorkingDirectory=/etc/smallpoint
+ExecStart=/usr/sbin/smallpoint -config /etc/smallpoint/config.yml 
 Restart=always
 RestartSec=20
+User=nobody
+Group=nobody
 
 [Install]
 WantedBy=multi-user.target
