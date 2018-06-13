@@ -312,7 +312,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		sidebarType = "admins_sidebar"
 	}
 	w.WriteHeader(http.StatusOK)
-	generateHTML(w, Response{UserName: username}, "index", sidebarType, "Accessrequestsent")
+	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", sidebarType, "Accessrequestsent")
 
 }
 
