@@ -2,12 +2,12 @@ package main
 
 import (
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
-	_ "github.com/lib/pq"
-	"log"
-	"time"
-	"strings"
 	"errors"
+	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
+	"log"
+	"strings"
+	"time"
 )
 
 const profileDBFilename = "requests.sqlite3"
@@ -30,10 +30,10 @@ func initDB(state *RuntimeState) (err error) {
 	switch splitString[0] {
 	case "sqlite":
 		log.Print("doing sqlite")
-		return initDBSQlite(state,splitString[1])
+		return initDBSQlite(state, splitString[1])
 	case "postgresql":
 		log.Print("doing postgres")
-		return initDBPostgres(state,splitString[1])
+		return initDBPostgres(state, splitString[1])
 	default:
 		log.Print("invalid storage url string")
 		err := errors.New("Bad storage url string")
@@ -43,7 +43,6 @@ func initDB(state *RuntimeState) (err error) {
 	err = errors.New("invalid state")
 	return err
 }
-
 
 func initDBSQlite(state *RuntimeState, db string) (err error) {
 	state.dbType = "sqlite"
@@ -62,7 +61,6 @@ func initDBSQlite(state *RuntimeState, db string) (err error) {
 
 	return nil
 }
-
 
 func initDBPostgres(state *RuntimeState, db string) (err error) {
 	state.dbType = "postgres"
@@ -83,13 +81,11 @@ func initDBPostgres(state *RuntimeState, db string) (err error) {
 	return nil
 }
 
-
 //insert a request into DB
-var insertRequestStmt = map[string]string {
-	"sqlite": "insert into pending_requests(username, groupname, time_stamp) values (?,?,?);",
+var insertRequestStmt = map[string]string{
+	"sqlite":   "insert into pending_requests(username, groupname, time_stamp) values (?,?,?);",
 	"postgres": "insert into pending_requests(username, groupname, time_stamp) values ($1,$2,$3);",
 }
-
 
 func insertRequestInDB(username string, groupnames []string, state *RuntimeState) error {
 
@@ -119,14 +115,11 @@ func insertRequestInDB(username string, groupnames []string, state *RuntimeState
 	return nil
 }
 
-
-
 //delete the request after approved or declined
-var deleteEntryStmt = map[string]string {
-	"sqlite": "delete from pending_requests where username= ? and groupname= ?;",
+var deleteEntryStmt = map[string]string{
+	"sqlite":   "delete from pending_requests where username= ? and groupname= ?;",
 	"postgres": "delete from pending_requests where username=$1 and groupname= $2;",
 }
-
 
 func deleteEntryInDB(username string, groupname string, state *RuntimeState) error {
 
@@ -146,11 +139,10 @@ func deleteEntryInDB(username string, groupname string, state *RuntimeState) err
 }
 
 //deleting all groups in DB which are deleted from Target LDAP
-var deleteEntryofGroupsStmt = map[string]string {
-	"sqlite": "delete from pending_requests where groupname= ?;",
+var deleteEntryofGroupsStmt = map[string]string{
+	"sqlite":   "delete from pending_requests where groupname= ?;",
 	"postgres": "delete from pending_requests where groupname= $1;",
 }
-
 
 func deleteEntryofGroupsInDB(groupnames []string, state *RuntimeState) error {
 
@@ -172,11 +164,10 @@ func deleteEntryofGroupsInDB(groupnames []string, state *RuntimeState) error {
 }
 
 //Search for a particular request made by a user (or) a group. (for my_pending_actions)
-var findrequestsofUserStmt = map[string]string {
-	"sqlite": "select groupname from pending_requests where username=?;",
+var findrequestsofUserStmt = map[string]string{
+	"sqlite":   "select groupname from pending_requests where username=?;",
 	"postgres": "select groupname from pending_requests where username=$1;",
 }
-
 
 func findrequestsofUserinDB(username string, state *RuntimeState) ([]string, bool, error) {
 	stmtText := findrequestsofUserStmt[state.dbType]
@@ -210,11 +201,10 @@ func findrequestsofUserinDB(username string, state *RuntimeState) ([]string, boo
 }
 
 //looks in the DB if the entry already exists or not
-var entryExistsorNotStmt = map[string]string {
-	"sqlite": "select * from pending_requests where username=? and groupname=?;",
+var entryExistsorNotStmt = map[string]string{
+	"sqlite":   "select * from pending_requests where username=? and groupname=?;",
 	"postgres": "select * from pending_requests where username=$1 and groupname=$2;",
 }
-
 
 func entryExistsorNot(username string, groupname string, state *RuntimeState) bool {
 	stmtText := entryExistsorNotStmt[state.dbType]
@@ -242,11 +232,10 @@ func entryExistsorNot(username string, groupname string, state *RuntimeState) bo
 }
 
 //(username,groupname) get whole db entries.
-var getDBentriesStmt = map[string]string {
-	"sqlite": "select username,groupname from pending_requests;",
+var getDBentriesStmt = map[string]string{
+	"sqlite":   "select username,groupname from pending_requests;",
 	"postgres": "select username,groupname from pending_requests;",
 }
-
 
 func getDBentries(state *RuntimeState) ([][]string, error) {
 	stmtText := getDBentriesStmt[state.dbType]

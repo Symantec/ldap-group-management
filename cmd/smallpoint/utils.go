@@ -3,10 +3,9 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"net/http"
 	"log"
+	"net/http"
 )
-
 
 // parse HTML templates and pass in a list of file names, and get a template
 
