@@ -129,10 +129,10 @@ func (state *RuntimeState) allGroupsHandler(w http.ResponseWriter, r *http.Reque
 	response := Response{username, Allgroups, nil, nil, "", "", nil}
 	//response.UserName=*userInfo.Username
 	if state.Userinfo.UserisadminOrNot(username) == true {
-		generateHTML(w, response, "index", "admins_sidebar", "groups")
+		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groups")
 
 	} else {
-		generateHTML(w, response, "index", "sidebar", "groups")
+		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "sidebar", "groups")
 	}
 }
 
@@ -155,7 +155,7 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 		sidebarType = "admins_sidebar"
 	}
 
-	generateHTML(w, response, "index", sidebarType, "my_groups")
+	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "my_groups")
 }
 
 //user's pending requests
@@ -200,10 +200,10 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Reques
 		sidebarType = "admins_sidebar"
 	}
 	if groupnames == nil {
-		generateHTML(w, response, "index", sidebarType, "no_pending_requests")
+		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "no_pending_requests")
 
 	} else {
-		generateHTML(w, response, "index", sidebarType, "pending_requests")
+		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "pending_requests")
 
 	}
 }
@@ -233,7 +233,7 @@ func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *h
 
 	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
 
-	generateHTML(w, response, "index", "admins_sidebar", "create_group")
+	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "create_group")
 
 }
 
@@ -257,7 +257,7 @@ func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *h
 
 	response := Response{username, [][]string{Allgroups}, nil, nil, "", "", nil}
 
-	generateHTML(w, response, "index", "admins_sidebar", "delete_group")
+	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "delete_group")
 
 }
 
@@ -467,10 +467,10 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 	}
 
 	if response.PendingActions == nil {
-		generateHTML(w, response, "index", sidebarType, "no_pending_actions")
+		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "no_pending_actions")
 
 	} else {
-		generateHTML(w, response, "index", sidebarType, "pending_actions")
+		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "pending_actions")
 
 	}
 }
@@ -691,7 +691,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
 		return
 	}
-	generateHTML(w, Response{UserName: username}, "index", "admins_sidebar", "groupcreation_success")
+	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groupcreation_success")
 }
 
 //Delete groups handler --required
@@ -745,7 +745,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	generateHTML(w, Response{UserName: username}, "index", "admins_sidebar", "groupdeletion_success")
+	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groupdeletion_success")
 
 }
 
@@ -777,7 +777,7 @@ func (state *RuntimeState) addmemberstoGroupWebpageHandler(w http.ResponseWriter
 		sidebarType = "admins_sidebar"
 	}
 
-	generateHTML(w, response, "index", sidebarType, "addpeopletogroups")
+	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "addpeopletogroups")
 
 }
 
@@ -843,7 +843,7 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	generateHTML(w, Response{UserName: username}, "index", "admins_sidebar", "addpeopletogroup_success")
+	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "addpeopletogroup_success")
 
 }
 
@@ -876,7 +876,7 @@ func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseW
 		sidebarType = "admins_sidebar"
 	}
 
-	generateHTML(w, response, "index", sidebarType, "deletemembersfromgroup")
+	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "deletemembersfromgroup")
 
 }
 
@@ -943,7 +943,7 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	generateHTML(w, Response{UserName: username}, "index", "admins_sidebar", "deletemembersfromgroup_success")
+	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "deletemembersfromgroup_success")
 
 }
 
@@ -966,7 +966,7 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 
 	response := Response{username, [][]string{Allgroups}, nil, nil, "", "", nil}
 
-	generateHTML(w, response, "index", "admins_sidebar", "create_service_account")
+	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "create_service_account")
 
 }
 
@@ -1031,7 +1031,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
 		return
 	}
-	generateHTML(w, Response{UserName: username}, "index", "admins_sidebar", "serviceacc_creation_success")
+	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "serviceacc_creation_success")
 }
 
 func (state *RuntimeState) groupExistsorNot(w http.ResponseWriter, groupname string) error {
@@ -1144,18 +1144,18 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 	if groupandmanagedby[0][1] != "self-managed" && !groupexistsornot {
 		if !superAdmin {
 			groupinfowebpageType = "groupinfo_no_managedby_member_nomem"
-			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
 			return
 		}
 
 		if IsgroupMember {
 			groupinfowebpageType = "groupinfo_member_admin"
-			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
 			return
 
 		} else {
 			groupinfowebpageType = "groupinfo_nonmember_admin"
-			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
 			return
 
 		}
@@ -1164,19 +1164,19 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 	if IsgroupMember {
 		if IsgroupAdmin || superAdmin {
 			groupinfowebpageType = "groupinfo_member_admin"
-			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
 
 		} else {
-			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
 		}
 
 	} else {
 		if IsgroupAdmin || superAdmin {
 			groupinfowebpageType = "groupinfo_nonmember_admin"
-			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
 		} else {
 			groupinfowebpageType = "groupinfo_nonmember"
-			generateHTML(w, response, "index", sidebarType, groupinfowebpageType)
+			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
 
 		}
 	}

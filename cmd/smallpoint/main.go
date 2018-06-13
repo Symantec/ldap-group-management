@@ -22,6 +22,7 @@ type baseConfig struct {
 	TLSKeyFilename        string `yaml:"tls_key_filename"`
 	StorageURL            string `yaml:"storage_url"`
 	OpenIDCConfigFilename string `yaml:"openidc_config_filename"`
+	TemplatesPath         string `yaml:"templates_path"`
 	SMTPserver            string `yaml:"smtp_server"`
 	SmtpSenderAddress     string `yaml:"smtp_sender_address"`
 }
@@ -110,13 +111,11 @@ const (
 	createServiceAccountPath    = "/create_serviceaccount/"
 	groupinfoPath               = "/group_info/"
 
-	indexPath = "/"
-	authPath  = "/auth/oidcsimple/callback"
-
-	templatesdirectoryPath = "templates"
-	cssPath                = "/css/"
-	imagesPath             = "/images/"
-	jsPath                 = "/js/"
+	indexPath  = "/"
+	authPath   = "/auth/oidcsimple/callback"
+	cssPath    = "/css/"
+	imagesPath = "/images/"
+	jsPath     = "/js/"
 )
 
 //parses the config file
@@ -213,7 +212,7 @@ func main() {
 
 	http.Handle(groupinfoPath, http.HandlerFunc(state.groupInfoWebpage))
 
-	fs := http.FileServer(http.Dir(templatesdirectoryPath))
+	fs := http.FileServer(http.Dir(state.Config.Base.TemplatesPath))
 	http.Handle(cssPath, fs)
 	http.Handle(imagesPath, fs)
 	http.Handle(jsPath, fs)
