@@ -14,7 +14,6 @@ func generateHTML(w http.ResponseWriter, data interface{}, templatespath string,
 	for _, file := range filenames {
 		files = append(files, fmt.Sprintf("%s/%s.html", templatespath, file))
 	}
-	log.Print(files)
 	templates := template.Must(template.ParseFiles(files...))
 	templates.ExecuteTemplate(w, "index", data)
 }
