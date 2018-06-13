@@ -22,6 +22,7 @@ type baseConfig struct {
 	TLSKeyFilename        string `yaml:"tls_key_filename"`
 	StorageURL            string `yaml:"storage_url"`
 	OpenIDCConfigFilename string `yaml:"openidc_config_filename"`
+	TemplatesURL          string `yaml:"templates_url"`
 	SMTPserver            string `yaml:"smtp_server"`
 	SmtpSenderAddress     string `yaml:"smtp_sender_address"`
 }
@@ -78,6 +79,9 @@ var (
 	//tpl *template.Template
 	//debug          = flag.Bool("debug", false, "enable debugging output")
 	authSource *authhandler.SimpleOIDCAuth
+	csspath string
+	imagespath string
+	jspath string
 )
 
 const (
@@ -112,11 +116,10 @@ const (
 
 	indexPath = "/"
 	authPath  = "/auth/oidcsimple/callback"
+	cssPath                = "/css/"
+	imagesPath             = "/images/"
+	jsPath                 = "/js/"
 
-	templatesdirectoryPath = "/etc/smallpoint/templates"
-	cssPath                = "/etc/smallpoint/templates/css/"
-	imagesPath             = "/etc/smallpoint/templates/images/"
-	jsPath                 = "/etc/smallpoint/templates/js/"
 )
 
 //parses the config file
@@ -213,10 +216,13 @@ func main() {
 
 	http.Handle(groupinfoPath, http.HandlerFunc(state.groupInfoWebpage))
 
-	fs := http.FileServer(http.Dir(templatesdirectoryPath))
-	http.Handle(cssPath, fs)
-	http.Handle(imagesPath, fs)
-	http.Handle(jsPath, fs)
+	fs := http.FileServer(http.Dir(state.Config.Base.TemplatesURL))
+	csspath = state.Config.Base.TemplatesURL + cssPath
+	imagespath = state.Config.Base.TemplatesURL + imagesPath
+	jspath = state.Config.Base.TemplatesURL + jsPath
+	http.Handle(csspath, fs)
+	http.Handle(imagespath, fs)
+	http.Handle(jspath, fs)
 
 	log.Fatal(http.ListenAndServeTLS(state.Config.Base.HttpAddress, state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename, nil))
 }

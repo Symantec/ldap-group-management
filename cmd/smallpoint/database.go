@@ -30,10 +30,10 @@ func initDB(state *RuntimeState) (err error) {
 	switch splitString[0] {
 	case "sqlite":
 		log.Print("doing sqlite")
-		return initDBSQlite(state, splitString[1])
+		return initDBSQlite(state,splitString[1])
 	case "postgresql":
 		log.Print("doing postgres")
-		return initDBPostgres(state)
+		return initDBPostgres(state,splitString[1])
 	default:
 		log.Print("invalid storage url string")
 		err := errors.New("Bad storage url string")
@@ -46,7 +46,7 @@ func initDB(state *RuntimeState) (err error) {
 
 
 func initDBSQlite(state *RuntimeState, db string) (err error) {
-	state.dbType = "sqlite3"
+	state.dbType = "sqlite"
 	state.db, err = sql.Open("sqlite3", db)
 	if err != nil {
 		return err
@@ -64,9 +64,9 @@ func initDBSQlite(state *RuntimeState, db string) (err error) {
 }
 
 
-func initDBPostgres(state *RuntimeState) (err error) {
+func initDBPostgres(state *RuntimeState, db string) (err error) {
 	state.dbType = "postgres"
-	state.db, err = sql.Open("postgres", state.Config.Base.StorageURL)
+	state.db, err = sql.Open("postgres", db)
 	if err != nil {
 		return err
 	}
