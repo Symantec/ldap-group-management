@@ -20,5 +20,5 @@ clean:
 	go clean
 	rm -f $(BINARY_NAME)
 
-get-deps:
+deps:
 	go get -t ./...
