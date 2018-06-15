@@ -278,6 +278,7 @@ function sidebar_close() {
 }
 
 function datalist(groupnames) {
+    groupnames.sort()
     for(i=0;i<groupnames.length;i++){
         $('#select_groups').append("<option id='option-"+groupnames[i]+"' value='" + groupnames[i] + "'>"+groupnames[i]+"</option>");
     }
