@@ -22,3 +22,17 @@ clean:
 
 deps:
 	go get -t ./...
+
+${BINARY}-${VERSION}.tar.gz:
+	mkdir ${BINARY}-${VERSION}
+	rsync -av --exclude="config.yml" --exclude="*.pem" --exclude="*.out" lib/ ${BINARY}-${VERSION}/lib/
+	rsync -av --exclude="config.yml" --exclude="*.pem" --exclude="*.out" --exclude="*.key" cmd/ ${BINARY}-${VERSION}/cmd/
+	rsync -av --exclude="config.yml" --exclude="*.pem" --exclude="*.out" misc/ ${BINARY}-${VERSION}/misc/
+	cp LICENSE Makefile smallpoint.spec README.md ${BINARY}-${VERSION}/
+	tar -cvzf ${BINARY}-${VERSION}.tar.gz ${BINARY}-${VERSION}/
+	rm -rf ${BINARY}-${VERSION}/
+
+rpm:	${BINARY}-${VERSION}.tar.gz
+	rpmbuild -ta ${BINARY}-${VERSION}.tar.gz
+
+tar:	${BINARY}-${VERSION}.tar.gz
