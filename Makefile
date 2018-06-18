@@ -6,12 +6,12 @@ GOPATH ?= $(HOME)/go
 BINARY=smallpoint
 
 # These are the values we want to pass for Version and BuildTime
-VERSION=0.1.0
+VERSION=0.1.1
 
 all: test build
 
 build:
-	cd $(GOPATH)/src; go install -ldflags "-X main.Version=${VERSION}" github.com/Symantec/ldap-group-management/cmd/*
+	cd $(GOPATH)/src; go install -ldflags "-X main.Version=${VERSION}" github_smallpoint/ldap-group-management/cmd/*
 
 test:
 	go test -v ./...

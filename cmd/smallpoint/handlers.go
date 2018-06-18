@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
+	"log/syslog"
 	"net/http"
 	"net/url"
 	"sort"
@@ -407,6 +408,15 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 			return
+		} else {
+			//start to log
+			sysLog, err := syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
+			defer sysLog.Close()
+			if err != nil {
+				log.Println("Syslog records failed")
+			} else {
+				sysLog.Write([]byte(fmt.Sprintf("%s"+" exited from Group "+"%s", username, entry)))
+			}
 		}
 	}
 	w.WriteHeader(http.StatusOK)
@@ -547,6 +557,15 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			err := state.Userinfo.AddmemberstoExisting(groupinfo)
 			if err != nil {
 				log.Println(err)
+			} else {
+				//start to log
+				sysLog, err := syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
+				defer sysLog.Close()
+				if err != nil {
+					log.Println("Syslog records failed")
+				} else {
+					sysLog.Write([]byte(fmt.Sprintf("%s"+" joined Group "+"%s"+" approved by "+"%s", entry[0], entry[1], username)))
+				}
 			}
 			err = deleteEntryInDB(entry[0], entry[1], state)
 			if err != nil {
@@ -690,6 +709,18 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		log.Println(err)
 		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
 		return
+	} else {
+		//start to log
+		sysLog, err := syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
+		defer sysLog.Close()
+		if err != nil {
+			log.Println("Syslog records failed")
+		} else {
+			sysLog.Write([]byte(fmt.Sprintf("Group "+"%s"+" was created by "+"%s", groupinfo.Groupname, username)))
+			for _, member := range strings.Split(members, ",") {
+				sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
+			}
+		}
 	}
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groupcreation_success")
 }
@@ -738,6 +769,17 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		log.Println(err)
 		http.Error(w, "error occurred! May be there is no such group!", http.StatusInternalServerError)
 		return
+	} else {
+		//start to log
+		sysLog, err := syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
+		defer sysLog.Close()
+		if err != nil {
+			log.Println("Syslog records failed")
+		} else {
+			for _, eachGroup := range groupnames {
+				sysLog.Write([]byte(fmt.Sprintf("Group "+"%s"+" was deleted by "+"%s", eachGroup, username)))
+			}
+		}
 	}
 	err = deleteEntryofGroupsInDB(groupnames, state)
 	if err != nil {
@@ -842,6 +884,17 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
+	} else {
+		//start to log
+		sysLog, err := syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
+		defer sysLog.Close()
+		if err != nil {
+			log.Println("Syslog records failed")
+		} else {
+			for _, member := range strings.Split(members, ",") {
+				sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
+			}
+		}
 	}
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "addpeopletogroup_success")
 
@@ -942,6 +995,17 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
+	} else {
+		//start to log
+		sysLog, err := syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
+		defer sysLog.Close()
+		if err != nil {
+			log.Println("Syslog records failed")
+		} else {
+			for _, member := range strings.Split(members, ",") {
+				sysLog.Write([]byte(fmt.Sprintf("%s"+" was deleted from Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
+			}
+		}
 	}
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "deletemembersfromgroup_success")
 
@@ -1030,6 +1094,15 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		log.Println(err)
 		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
 		return
+	} else {
+		//start to log
+		sysLog, err := syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
+		defer sysLog.Close()
+		if err != nil {
+			log.Println("Syslog records failed")
+		} else {
+			sysLog.Write([]byte(fmt.Sprintf("Service account "+"%s"+" was created by "+"%s", groupinfo.Groupname, username)))
+		}
 	}
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "serviceacc_creation_success")
 }
