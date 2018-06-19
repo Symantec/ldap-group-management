@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
+	"log/syslog"
 	"net/http"
 	"os"
 	"sync"
@@ -41,6 +42,7 @@ type RuntimeState struct {
 	Userinfo    userinfo.UserInfo
 	authcookies map[string]cookieInfo
 	cookiemutex sync.Mutex
+	sysLog      *syslog.Writer
 }
 
 type cookieInfo struct {
@@ -185,6 +187,12 @@ func main() {
 	}
 	authSource = simpleOidcAuth
 
+	//start to log
+	state.sysLog, err = syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
+	if err != nil {
+		log.Fatalf("System log failed")
+	}
+	defer state.sysLog.Close()
 	http.Handle(allgroupsPath, http.HandlerFunc(state.getallgroupsHandler))
 	http.Handle(allusersPath, http.HandlerFunc(state.getallusersHandler))
 	http.Handle(usergroupsPath, http.HandlerFunc(state.getgroupsofuserHandler))
@@ -224,6 +232,5 @@ func main() {
 	http.Handle(cssPath, fs)
 	http.Handle(imagesPath, fs)
 	http.Handle(jsPath, fs)
-
 	log.Fatal(http.ListenAndServeTLS(state.Config.Base.HttpAddress, state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename, nil))
 }

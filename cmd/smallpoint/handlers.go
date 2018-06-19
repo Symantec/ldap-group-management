@@ -408,6 +408,7 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 			return
 		}
+		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" exited from Group "+"%s", username, entry)))
 	}
 	w.WriteHeader(http.StatusOK)
 
@@ -525,7 +526,6 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
-
 	//entry:[user group]
 	for _, entry := range userPair {
 		Isgroupmember, _, err := state.Userinfo.IsgroupmemberorNot(entry[1], entry[0])
@@ -548,6 +548,8 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			if err != nil {
 				log.Println(err)
 			}
+
+			state.sysLog.Write([]byte(fmt.Sprintf("%s"+" joined Group "+"%s"+" approved by "+"%s", entry[0], entry[1], username)))
 			err = deleteEntryInDB(entry[0], entry[1], state)
 			if err != nil {
 				fmt.Println("error here!")
@@ -691,6 +693,10 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
 		return
 	}
+	state.sysLog.Write([]byte(fmt.Sprintf("Group "+"%s"+" was created by "+"%s", groupinfo.Groupname, username)))
+	for _, member := range strings.Split(members, ",") {
+		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
+	}
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groupcreation_success")
 }
 
@@ -738,6 +744,9 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		log.Println(err)
 		http.Error(w, "error occurred! May be there is no such group!", http.StatusInternalServerError)
 		return
+	}
+	for _, eachGroup := range groupnames {
+		state.sysLog.Write([]byte(fmt.Sprintf("Group "+"%s"+" was deleted by "+"%s", eachGroup, username)))
 	}
 	err = deleteEntryofGroupsInDB(groupnames, state)
 	if err != nil {
@@ -843,6 +852,9 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
+	for _, member := range strings.Split(members, ",") {
+		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
+	}
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "addpeopletogroup_success")
 
 }
@@ -943,6 +955,9 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
+	for _, member := range strings.Split(members, ",") {
+		state.sysLog.Write([]byte(fmt.Sprintf("%s was deleted from Group %s by %s", member, groupinfo.Groupname, username)))
+	}
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "deletemembersfromgroup_success")
 
 }
@@ -1031,6 +1046,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
 		return
 	}
+	state.sysLog.Write([]byte(fmt.Sprintf("Service account "+"%s"+" was created by "+"%s", groupinfo.Groupname, username)))
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "serviceacc_creation_success")
 }
 
