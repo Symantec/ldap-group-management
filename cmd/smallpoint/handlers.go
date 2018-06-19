@@ -401,6 +401,7 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 	var groupinfo userinfo.GroupInfo
 	groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(username))
 	groupinfo.MemberUid = append(groupinfo.MemberUid, username)
+	sysLog, err_log := syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
 	for _, entry := range out["groups"] {
 		groupinfo.Groupname = entry
 		err = state.Userinfo.DeletemembersfromGroup(groupinfo)
@@ -410,15 +411,14 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 			return
 		} else {
 			//start to log
-			sysLog, err := syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
-			defer sysLog.Close()
-			if err != nil {
+			if err_log != nil {
 				log.Println("Syslog records failed")
 			} else {
 				sysLog.Write([]byte(fmt.Sprintf("%s"+" exited from Group "+"%s", username, entry)))
 			}
 		}
 	}
+	sysLog.Close()
 	w.WriteHeader(http.StatusOK)
 
 }
@@ -535,7 +535,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
-
+	sysLog, err_log := syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
 	//entry:[user group]
 	for _, entry := range userPair {
 		Isgroupmember, _, err := state.Userinfo.IsgroupmemberorNot(entry[1], entry[0])
@@ -559,9 +559,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 				log.Println(err)
 			} else {
 				//start to log
-				sysLog, err := syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
-				defer sysLog.Close()
-				if err != nil {
+				if err_log != nil {
 					log.Println("Syslog records failed")
 				} else {
 					sysLog.Write([]byte(fmt.Sprintf("%s"+" joined Group "+"%s"+" approved by "+"%s", entry[0], entry[1], username)))
@@ -574,6 +572,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			}
 		}
 	}
+	sysLog.Close()
 	go state.sendApproveemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
 	w.WriteHeader(http.StatusOK)
 
