@@ -190,7 +190,7 @@ func main() {
 	//start to log
 	state.sysLog, err = syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
 	if err != nil {
-		log.Fatalf(fmt.Sprintf(err))
+		log.Fatalf("System log failed")
 	}
 	defer state.sysLog.Close()
 	http.Handle(allgroupsPath, http.HandlerFunc(state.getallgroupsHandler))
