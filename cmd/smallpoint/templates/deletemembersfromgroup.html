@@ -11,18 +11,20 @@
             <tr>
                 <td>Group Name</td>
                 <td>
-                    <input list="select_groups" id="cg_groupname" oninput="group_groupname()" required name="groupname" type="text">
-                    <datalist id="select_groups">
-                    </datalist><br/>
-                </td>
+		    <form id="group_name_delete_members" method="POST" action="/deletemembers/?listmembers">
+                    	<input list="select_groups" id="dm_group_name" oninput="dm_groupname()" required name="groupname" type="text">
+                    	<datalist id="select_groups">
+                    	</datalist><br/>
+		    </form>
+		</td>
             </tr>
             <tr>
                 <td>Members</td>
                 <td>
                     <div class='suggestion'>
                     </div>
-                    <input class="members" id='cg_members' oninput="groupadd_members()" list="select_members" name="members" type="text"/>
-                    <datalist class="select_memberslist" id="select_members">
+                    <input class="members" id='cg_members' oninput="dm_members()" list="select_dm_members" name="members" type="text"/>
+                    <datalist class="select_memberslist" id="select_dm_members">
                     </datalist>
                 </td>
             </tr>

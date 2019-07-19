@@ -30,7 +30,7 @@
                     </form>
                     <div class='suggestion'>
                     </div>
-                    Members  : <input class="members" id='cg_members' oninput="groupadd_members()" list="select_members" name="members" type="text"/>
+                    Members  : <input autocomplete="off" class="members" id='cg_members' oninput="groupadd_members()" list="select_members" name="members" type="text"/>
                     <datalist class="select_memberslist" id="select_members">
                     </datalist>
                 </div>
@@ -58,8 +58,8 @@
                     </form>
                     <div class='suggestion_removemembers'>
                     </div>
-                    Members  : <input autocomplete="off" class="remove_members" id='cg_members_remove' oninput="groupremove_members()" list="select_members" name="members" type="text"/>
-                    <datalist class="select_memberslist" id="select_members">
+                    Members  : <input autocomplete="off" class="remove_members" id='cg_members_remove' oninput="groupremove_members()" list="select_members_remove" name="members" type="text"/>
+                    <datalist class="select_memberslist" id="select_members_remove">
                     </datalist>
                 </div>
                 <div class="modal-footer">

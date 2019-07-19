@@ -27,7 +27,7 @@ func (state *RuntimeState) SendRequestemail(username string, groupnames []string
 			}
 			state.SuccessRequestemail(username, usersEmail, entry, remoteAddr, userAgent)
 		} else {
-			usersEmail, err := state.Userinfo.GetEmailofusersingroup(entry)
+			usersEmail, err := state.Userinfo.GetEmailofusersingroup(description)
 			if err != nil {
 				log.Println(err)
 				return err
@@ -39,8 +39,9 @@ func (state *RuntimeState) SendRequestemail(username string, groupnames []string
 	return nil
 }
 
-const requestAccessMailTemplateText = `Subject: Requesting access for group {{.Groupname}}
-User {{.RequestedUser}} has requested access for group {{.Groupname}} (from {{.RemoteAddr}} ({{.Browser}} {{.OS}} ))`
+const requestAccessMailTemplateText = `Subject: Request access to group {{.Groupname}}
+User {{.RequestedUser}} requested access to group {{.Groupname}} (from {{.RemoteAddr}})
+Please take a review at https://ae15-smallpoint.phx2.symcpe.net/pending-actions`
 
 //send email for requesting access to a group
 func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail []string,
@@ -93,8 +94,8 @@ func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail 
 
 ////Approve email  start.....//////
 
-const requestApproveMailTemplateText = `Subject: Regarding access for group {{.Groupname}}
-User {{.OtherUser}} has Approved access to user {{.RequestedUser}} for group {{.Groupname}} (from {{.RemoteAddr}} ({{.Browser}} {{.OS}} ))`
+const requestApproveMailTemplateText = `Subject: Approve access to group {{.Groupname}}
+User {{.OtherUser}} approved user {{.RequestedUser}}'s access request to group {{.Groupname}} (from {{.RemoteAddr}})`
 
 //send approve email
 func (state *RuntimeState) sendApproveemail(username string,
@@ -118,6 +119,34 @@ func (state *RuntimeState) sendApproveemail(username string,
 		if err != nil {
 			log.Println(err)
 			return err
+		}
+		description, err := state.Userinfo.GetDescriptionvalue(entry[1])
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		if description == "self-managed" {
+			other_users_email, err := state.Userinfo.GetEmailofusersingroup(entry[1])
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+			err = state.approveRequestemail(requesteduser, username, other_users_email, entry[1], remoteAddr, userAgent)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+		} else {
+			other_users_email, err := state.Userinfo.GetEmailofusersingroup(description)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+			err = state.approveRequestemail(requesteduser, username, other_users_email, entry[1], remoteAddr, userAgent)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 		targetAddress = nil
 	}
@@ -174,8 +203,8 @@ func (state *RuntimeState) approveRequestemail(requesteduser string, otheruser s
 ////Approve email  end.....//////
 
 ////Reject email  start.....//////
-const requestRejectMailTemplateText = `Subject: Regarding access for group {{.Groupname}}
-User {{.OtherUser}} has Rejected access to user {{.RequestedUser}} for group {{.Groupname}} (from {{.RemoteAddr}} ({{.Browser}} {{.OS}} ))`
+const requestRejectMailTemplateText = `Subject: Rejected access to group {{.Groupname}}
+User {{.OtherUser}} rejected user {{.RequestedUser}}'s access request to group {{.Groupname}} (from {{.RemoteAddr}})`
 
 //send reject email
 func (state *RuntimeState) sendRejectemail(username string, userPair [][]string,
@@ -199,6 +228,34 @@ func (state *RuntimeState) sendRejectemail(username string, userPair [][]string,
 		if err != nil {
 			log.Println(err)
 			return err
+		}
+		description, err := state.Userinfo.GetDescriptionvalue(entry[1])
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		if description == "self-managed" {
+			other_users_email, err := state.Userinfo.GetEmailofusersingroup(entry[1])
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+			err = state.RejectRequestemail(requesteduser, username, other_users_email, entry[1], remoteAddr, userAgent)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+		} else {
+			other_users_email, err := state.Userinfo.GetEmailofusersingroup(description)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+			err = state.RejectRequestemail(requesteduser, username, other_users_email, entry[1], remoteAddr, userAgent)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 		targetAddress = nil
 	}

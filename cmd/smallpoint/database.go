@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
@@ -10,7 +11,10 @@ import (
 	"time"
 )
 
-const profileDBFilename = "requests.sqlite3"
+const (
+	profileDBFilename = "requests.sqlite3"
+	DB_Port           = "5432"
+)
 
 //Initialsing database -- There are two cases for the database, one is sqlite and the other one is postgrep
 func initDB(state *RuntimeState) (err error) {
@@ -64,11 +68,18 @@ func initDBSQlite(state *RuntimeState, db string) (err error) {
 
 func initDBPostgres(state *RuntimeState, db string) (err error) {
 	state.dbType = "postgres"
-	state.db, err = sql.Open("postgres", db)
+	dnsStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
+		state.Config.Base.DB_Username, state.Config.Base.DB_Password, db, DB_Port, state.Config.Base.DB_Name,
+	)
+
+	// Use db to perform SQL operations on database
+	state.db, err = sql.Open("postgres", dnsStr)
 	if err != nil {
-		return err
+		fmt.Println("Cannot open db")
+		log.Println(err)
 	}
-	/// This should be changed to take care of DB schema
+
+	// This should be changed to take care of DB schema
 	if true {
 		sqlStmt := `create table if not exists pending_requests (id SERIAL PRIMARY KEY, username text not null, groupname text not null, time_stamp int not null);`
 		_, err = state.db.Exec(sqlStmt)

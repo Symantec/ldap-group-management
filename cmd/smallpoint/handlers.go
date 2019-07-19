@@ -93,6 +93,14 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 		http.Error(w, fmt.Sprint(err), http.StatusUnauthorized)
 		return "", err
 	}
+
+	//If having a verified cert, no need for cookies
+	if r.TLS != nil {
+		if len(r.TLS.VerifiedChains) > 0 {
+			clientName := r.TLS.VerifiedChains[0][0].Subject.CommonName
+			return clientName, nil
+		}
+	}
 	remoteCookie, err := r.Cookie(cookieName)
 	if err != nil {
 		log.Println(err)
@@ -127,13 +135,29 @@ func (state *RuntimeState) allGroupsHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	response := Response{username, Allgroups, nil, nil, "", "", nil}
-	//response.UserName=*userInfo.Username
-	if state.Userinfo.UserisadminOrNot(username) == true {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groups")
+	returnAcceptType := state.getPreferredAcceptType(r)
+	switch returnAcceptType {
+	case "text/html":
+		//response.UserName=*userInfo.Username
+		if state.Userinfo.UserisadminOrNot(username) == true {
+			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groups")
 
-	} else {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "sidebar", "groups")
+		} else {
+			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "sidebar", "groups")
+		}
+	default:
+		b, err := json.MarshalIndent(response, "", " ")
+		if err != nil {
+			log.Printf("Failed marshal %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
+			return
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			log.Printf("Incomplete write %v", err)
+		}
 	}
+	return
 }
 
 //User Groups page
@@ -493,7 +517,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	//log.Println(out)
+
 	//log.Println(out["groups"])//[[username1,groupname1][username2,groupname2]]
 	var userPair = out["groups"]
 	//entry:[username1 groupname1]
@@ -580,8 +604,6 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	//log.Println(out)
-	//fmt.Print(out["groups"])//[[username1,groupname1][username2,groupname2]]
 	//this handler just deletes requests from the DB, so check if the user is authorized to reject or not.
 	for _, entry := range out["groups"] {
 		IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, entry[1])
@@ -912,54 +934,73 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	var groupinfo userinfo.GroupInfo
 	groupinfo.Groupname = r.PostFormValue("groupname")
 	members := r.PostFormValue("members")
-	log.Println("delete these members", members)
-	log.Println("now continue")
-	//check if groupname given by user exists or not
-	err = state.groupExistsorNot(w, groupinfo.Groupname)
-	if err != nil {
-		return
-	}
-	err = state.isGroupAdmin(w, username, groupinfo.Groupname)
-	if err != nil {
-		return
-	}
-
-	for _, member := range strings.Split(members, ",") {
-		userExistsornot, err := state.Userinfo.UsernameExistsornot(member)
+	if members == "" {
+		AllUsersinGroup, managedby, err := state.Userinfo.GetusersofaGroup(groupinfo.Groupname)
+		Allgroups, err := state.Userinfo.GetallGroups()
 		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
-		if !userExistsornot {
-			log.Println("Bad request!")
-			http.Error(w, fmt.Sprint("Bad request! Check if the usernames exists or not!"), http.StatusBadRequest)
+		sort.Strings(Allgroups)
+
+		response := Response{username, [][]string{Allgroups}, nil, nil, groupinfo.Groupname, managedby, AllUsersinGroup}
+		sidebarType := "sidebar"
+		superAdmin := state.Userinfo.UserisadminOrNot(username)
+		if superAdmin {
+			sidebarType = "admins_sidebar"
+		}
+		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "deletemembersfromgroup")
+	} else {
+		log.Println("delete these members", members)
+		log.Println("now continue")
+		//check if groupname given by user exists or not
+		err = state.groupExistsorNot(w, groupinfo.Groupname)
+		if err != nil {
 			return
 		}
-		IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member)
+		err = state.isGroupAdmin(w, username, groupinfo.Groupname)
+		if err != nil {
+			return
+		}
+
+		for _, member := range strings.Split(members, ",") {
+			userExistsornot, err := state.Userinfo.UsernameExistsornot(member)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				return
+			}
+			if !userExistsornot {
+				log.Println("Bad request!")
+				http.Error(w, fmt.Sprint("Bad request! Check if the usernames exists or not!"), http.StatusBadRequest)
+				return
+			}
+			IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				return
+			}
+			if !IsgroupMember {
+				continue
+			}
+			groupinfo.MemberUid = append(groupinfo.MemberUid, member)
+			groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
+		}
+
+		err = state.Userinfo.DeletemembersfromGroup(groupinfo)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
-		if !IsgroupMember {
-			continue
+		for _, member := range strings.Split(members, ",") {
+			state.sysLog.Write([]byte(fmt.Sprintf("%s was deleted from Group %s by %s", member, groupinfo.Groupname, username)))
 		}
-		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
-		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
-	}
+		generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "deletemembersfromgroup_success")
 
-	err = state.Userinfo.DeletemembersfromGroup(groupinfo)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
 	}
-	for _, member := range strings.Split(members, ",") {
-		state.sysLog.Write([]byte(fmt.Sprintf("%s was deleted from Group %s by %s", member, groupinfo.Groupname, username)))
-	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "deletemembersfromgroup_success")
-
 }
 
 func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter, r *http.Request) {
@@ -1196,4 +1237,79 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 
 		}
 	}
+}
+
+func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, r *http.Request) {
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+
+	Allgroups, err := state.Userinfo.GetallGroups()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
+	sort.Strings(Allgroups)
+
+	Allusers, err := state.Userinfo.GetallUsers()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
+	if !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
+
+	sidebarType := "sidebar"
+	if state.Userinfo.UserisadminOrNot(username) {
+		sidebarType = "admins_sidebar"
+	}
+
+	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "changeownership")
+
+}
+
+func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		return
+	}
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+
+	err = r.ParseForm()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	groups := strings.Split(r.PostFormValue("groupnames"), ",")
+	managegroup := r.PostFormValue("managegroup")
+	//check if given member exists or not and see if he is already a groupmember if yes continue.
+	for _, group := range groups[:len(groups)-1] {
+		groupinfo := userinfo.GroupInfo{}
+		groupinfo.Groupname = group
+		err = state.groupExistsorNot(w, groupinfo.Groupname)
+		if err != nil {
+			return
+		}
+		err = state.Userinfo.ChangeDescription(group, managegroup)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		state.sysLog.Write([]byte(fmt.Sprintf("Group %s is managed by %s now, this change was made by %s.", group, managegroup, username)))
+	}
+	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "changeownership_success")
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"strings"
 )
 
 //All handlers and API endpoints starts from here.
@@ -26,12 +27,28 @@ func (state *RuntimeState) getallgroupsHandler(w http.ResponseWriter, r *http.Re
 	}
 	sort.Strings(Allgroups)
 	AllGroupsTargetLdap.AllGroups = Allgroups
-	err = json.NewEncoder(w).Encode(AllGroupsTargetLdap)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
+	returnAcceptType := state.getPreferredAcceptType(r)
+	switch returnAcceptType {
+	case "text/html":
+		err = json.NewEncoder(w).Encode(AllGroupsTargetLdap)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	default:
+		b, err := json.MarshalIndent(Allgroups, "", " ")
+		if err != nil {
+			log.Printf("Failed marshal %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
+			return
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			log.Printf("Incomplete write? %v", err)
+		}
 	}
+	return
 }
 
 //Display all users in Target LDAP --required
@@ -44,6 +61,7 @@ func (state *RuntimeState) getallusersHandler(w http.ResponseWriter, r *http.Req
 	var AllUsersTargetLdap GetUsers
 
 	AllUsers, err := state.Userinfo.GetallUsers()
+	sort.Strings(AllUsers)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -54,13 +72,29 @@ func (state *RuntimeState) getallusersHandler(w http.ResponseWriter, r *http.Req
 	for _, k := range AllUsers {
 		AllUsersTargetLdap.Users = append(AllUsersTargetLdap.Users, k)
 	}
+	returnAcceptType := state.getPreferredAcceptType(r)
+	switch returnAcceptType {
+	case "text/html":
+		err = json.NewEncoder(w).Encode(AllUsersTargetLdap)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	default:
+		b, err := json.MarshalIndent(AllUsersTargetLdap, "", "  ")
+		if err != nil {
+			log.Printf("Failed marshal %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
+			return
 
-	err = json.NewEncoder(w).Encode(AllUsersTargetLdap)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			log.Printf("Incomplete write? %v", err)
+		}
 	}
+	return
 }
 
 //Displays all Groups of a User. --required
@@ -98,13 +132,29 @@ func (state *RuntimeState) getgroupsofuserHandler(w http.ResponseWriter, r *http
 	}
 	sort.Strings(UsersAllgroups)
 	userGroups.UserGroups = UsersAllgroups
+	returnAcceptType := state.getPreferredAcceptType(r)
+	switch returnAcceptType {
+	case "text/html":
+		err = json.NewEncoder(w).Encode(userGroups)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	default:
+		b, err := json.MarshalIndent(userGroups, "", "  ")
+		if err != nil {
+			log.Printf("Failed marshal %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
+			return
 
-	err = json.NewEncoder(w).Encode(userGroups)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			log.Printf("Incomplete write? %v", err)
+		}
 	}
+	return
 }
 
 //Displays All Users in a Group --required
@@ -143,11 +193,41 @@ func (state *RuntimeState) getusersingroupHandler(w http.ResponseWriter, r *http
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	err = json.NewEncoder(w).Encode(groupUsers)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
+	returnAcceptType := state.getPreferredAcceptType(r)
+	switch returnAcceptType {
+	case "text/html":
+		err = json.NewEncoder(w).Encode(groupUsers)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	default:
+		b, err := json.MarshalIndent(groupUsers, "", "  ")
+		if err != nil {
+			log.Printf("Failed marshal %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
+			return
 
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			log.Printf("Incomplete write? %v", err)
+		}
+	}
+	return
+}
+
+func (state *RuntimeState) getPreferredAcceptType(r *http.Request) string {
+	preferredAcceptType := "application/json"
+	acceptHeader, ok := r.Header["Accept"]
+	if ok {
+		for _, acceptValue := range acceptHeader {
+			if strings.Contains(acceptValue, "text/html") {
+				log.Println(2, "Got it  %+v", acceptValue)
+				preferredAcceptType = "text/html"
+			}
+		}
+	}
+	return preferredAcceptType
 }
