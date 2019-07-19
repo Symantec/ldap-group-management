@@ -307,6 +307,29 @@ func (u *UserInfoLDAPSource) DeleteDescription(groupnames []string) error {
 	return nil
 }
 
+//Change group description --required
+func (u *UserInfoLDAPSource) ChangeDescription(groupname string, managegroup string) error {
+	conn, err := u.getTargetLDAPConnection()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer conn.Close()
+	entry, err := u.GetGroupDN(groupname)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	modify := ldap.NewModifyRequest(entry)
+	modify.Replace("description", []string{managegroup})
+	err = conn.Modify(modify)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
 //function to get all the groups in Target ldaputil and put it in array --required
 func (u *UserInfoLDAPSource) GetallGroups() ([]string, error) {
 	conn, err := u.getTargetLDAPConnection()
