@@ -17,6 +17,7 @@ import (
 )
 
 const ldapTimeoutSecs = 10
+const pageSearchSize = 1024
 
 const HomeDirectory = "/home/"
 const objectClassgroupofNames = "groupOfNames"
@@ -149,7 +150,7 @@ func (u *UserInfoLDAPSource) GetallUsers() ([]string, error) {
 	Attributes := []string{"uid"}
 	searchrequest := ldap.NewSearchRequest(u.UserSearchBaseDNs, ldap.ScopeWholeSubtree,
 		ldap.NeverDerefAliases, 0, 0, false, u.UserSearchFilter, Attributes, nil)
-	result, err := conn.Search(searchrequest)
+	result, err := conn.SearchWithPaging(searchrequest, pageSearchSize)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -319,7 +320,7 @@ func (u *UserInfoLDAPSource) GetallGroups() ([]string, error) {
 	var AllGroups []string
 	searchrequest := ldap.NewSearchRequest(u.GroupSearchBaseDNs, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, u.GroupSearchFilter, []string{"cn"}, nil)
-	result, err := conn.Search(searchrequest)
+	result, err := conn.SearchWithPaging(searchrequest, pageSearchSize)
 	if err != nil {
 		log.Println(err)
 		return nil, err
