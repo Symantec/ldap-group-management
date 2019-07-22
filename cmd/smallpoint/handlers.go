@@ -250,7 +250,7 @@ func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *h
 	}
 	Allusers, err := state.Userinfo.GetallUsers()
 	if err != nil {
-		log.Println(err)
+		log.Printf("creategroupWebpageHandler, GetallUser err: %s", err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
