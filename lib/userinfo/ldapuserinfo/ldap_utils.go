@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -28,17 +29,23 @@ const (
 )
 
 type UserInfoLDAPSource struct {
-	BindUsername          string `yaml:"bind_username"`
-	BindPassword          string `yaml:"bind_password"`
-	LDAPTargetURLs        string `yaml:"ldap_target_urls"`
-	UserSearchBaseDNs     string `yaml:"user_search_base_dns"`
-	UserSearchFilter      string `yaml:"user_search_filter"`
-	GroupSearchBaseDNs    string `yaml:"group_search_base_dns"`
-	GroupSearchFilter     string `yaml:"group_search_filter"`
-	Admins                string `yaml:"super_admins"`
-	ServiceAccountBaseDNs string `yaml:"service_search_base_dns"`
-	MainBaseDN            string `yaml:"Main_base_dns"`
-	GroupManageAttribute  string `yaml:"group_Manage_Attribute"`
+	BindUsername             string `yaml:"bind_username"`
+	BindPassword             string `yaml:"bind_password"`
+	LDAPTargetURLs           string `yaml:"ldap_target_urls"`
+	UserSearchBaseDNs        string `yaml:"user_search_base_dns"`
+	UserSearchFilter         string `yaml:"user_search_filter"`
+	GroupSearchBaseDNs       string `yaml:"group_search_base_dns"`
+	GroupSearchFilter        string `yaml:"group_search_filter"`
+	Admins                   string `yaml:"super_admins"`
+	ServiceAccountBaseDNs    string `yaml:"service_search_base_dns"`
+	MainBaseDN               string `yaml:"Main_base_dns"`
+	GroupManageAttribute     string `yaml:"group_Manage_Attribute"`
+	allUsersRWLock           sync.RWMutex
+	allUsersCacheValue       []string
+	allUsersCacheExpiration  time.Time
+	allGroupsMutex           sync.Mutex
+	allGroupsCacheValue      []string
+	allGroupsCacheExpiration time.Time
 }
 
 func (u *UserInfoLDAPSource) objectClassExistsorNot(groupname string, objectclass string) (bool, error) {
@@ -137,7 +144,7 @@ func (u *UserInfoLDAPSource) getTargetLDAPConnection() (*ldap.Conn, error) {
 }
 
 //Get all ldaputil users and put that in map ---required
-func (u *UserInfoLDAPSource) GetallUsers() ([]string, error) {
+func (u *UserInfoLDAPSource) GetallUsersNonCached() ([]string, error) {
 
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
@@ -150,7 +157,10 @@ func (u *UserInfoLDAPSource) GetallUsers() ([]string, error) {
 	Attributes := []string{"uid"}
 	searchrequest := ldap.NewSearchRequest(u.UserSearchBaseDNs, ldap.ScopeWholeSubtree,
 		ldap.NeverDerefAliases, 0, 0, false, u.UserSearchFilter, Attributes, nil)
+	t0 := time.Now()
 	result, err := conn.SearchWithPaging(searchrequest, pageSearchSize)
+	t1 := time.Now()
+	log.Printf("GetallUsers search Took %v to run", t1.Sub(t0))
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -166,6 +176,24 @@ func (u *UserInfoLDAPSource) GetallUsers() ([]string, error) {
 	}
 
 	return AllUsers, nil
+}
+
+const allUsersCacheDuration = time.Second * 60
+
+func (u *UserInfoLDAPSource) GetallUsers() ([]string, error) {
+	u.allUsersRWLock.Lock()
+	defer u.allUsersRWLock.Unlock()
+	if u.allUsersCacheExpiration.After(time.Now()) {
+		allUsers := u.allUsersCacheValue
+		return allUsers, nil
+	}
+	allUsers, err := u.GetallUsersNonCached()
+	if err != nil {
+		return nil, err
+	}
+	u.allUsersCacheValue = allUsers
+	u.allUsersCacheExpiration = time.Now().Add(allUsersCacheDuration)
+	return allUsers, nil
 }
 
 //To build a user base DN using uid only for Target LDAP.
@@ -332,7 +360,7 @@ func (u *UserInfoLDAPSource) ChangeDescription(groupname string, managegroup str
 }
 
 //function to get all the groups in Target ldaputil and put it in array --required
-func (u *UserInfoLDAPSource) GetallGroups() ([]string, error) {
+func (u *UserInfoLDAPSource) getallGroupsNonCached() ([]string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
@@ -343,15 +371,36 @@ func (u *UserInfoLDAPSource) GetallGroups() ([]string, error) {
 	var AllGroups []string
 	searchrequest := ldap.NewSearchRequest(u.GroupSearchBaseDNs, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, u.GroupSearchFilter, []string{"cn"}, nil)
+	t0 := time.Now()
 	result, err := conn.SearchWithPaging(searchrequest, pageSearchSize)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
+	t1 := time.Now()
+	log.Printf("GetAllGroups: search Took %v to run", t1.Sub(t0))
 	for _, entry := range result.Entries {
 		AllGroups = append(AllGroups, entry.GetAttributeValue("cn"))
 	}
 	return AllGroups, nil
+}
+
+const allGroupsCacheDuration = time.Second * 30
+
+func (u *UserInfoLDAPSource) GetallGroups() ([]string, error) {
+
+	u.allGroupsMutex.Lock()
+	defer u.allGroupsMutex.Unlock()
+	if u.allGroupsCacheExpiration.After(time.Now()) {
+		return u.allGroupsCacheValue, nil
+	}
+	allGroups, err := u.getallGroupsNonCached()
+	if err != nil {
+		return nil, err
+	}
+	u.allGroupsCacheValue = allGroups
+	u.allGroupsCacheExpiration = time.Now().Add(allGroupsCacheDuration)
+	return allGroups, nil
 }
 
 // GetGroupsOfUser returns the all groups of a user. --required
@@ -907,7 +956,7 @@ func (u *UserInfoLDAPSource) GetGroupsInfoOfUser(groupdn string, username string
 		groupdn,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		"(&(memberUid="+username+" ))",
-		nil, //memberOf (if searching other way around using usersdn instead of groupdn)
+		[]string{"dn", "cn", u.GroupManageAttribute},
 		nil,
 	)
 	sr, err := conn.Search(searchRequest)
