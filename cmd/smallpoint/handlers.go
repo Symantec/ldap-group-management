@@ -179,6 +179,7 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 		sidebarType = "admins_sidebar"
 	}
 
+	w.Header().Set("Cache-Control", "private, max-age=30")
 	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "my_groups")
 }
 
@@ -335,7 +336,6 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 	if state.Userinfo.UserisadminOrNot(username) == true {
 		sidebarType = "admins_sidebar"
 	}
-	w.WriteHeader(http.StatusOK)
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", sidebarType, "Accessrequestsent")
 
 }
@@ -1245,27 +1245,23 @@ func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, 
 		return
 	}
 
+	t0 := time.Now()
 	Allgroups, err := state.Userinfo.GetallGroups()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
+	t1 := time.Now()
+	log.Printf("GetAllGroups Took %v to run", t1.Sub(t0))
 
 	sort.Strings(Allgroups)
-
-	Allusers, err := state.Userinfo.GetallUsers()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
 
 	if !state.Userinfo.UserisadminOrNot(username) {
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
-
+	var Allusers []string
 	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
 
 	sidebarType := "sidebar"
@@ -1284,6 +1280,10 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 	}
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
+		return
+	}
+	if !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
 		return
 	}
 

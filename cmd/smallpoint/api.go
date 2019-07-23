@@ -28,6 +28,7 @@ func (state *RuntimeState) getallgroupsHandler(w http.ResponseWriter, r *http.Re
 	sort.Strings(Allgroups)
 	AllGroupsTargetLdap.AllGroups = Allgroups
 	returnAcceptType := state.getPreferredAcceptType(r)
+	// TODO: @SLR9511: why is done this way?... please revisit
 	switch returnAcceptType {
 	case "text/html":
 		err = json.NewEncoder(w).Encode(AllGroupsTargetLdap)
@@ -72,6 +73,7 @@ func (state *RuntimeState) getallusersHandler(w http.ResponseWriter, r *http.Req
 	for _, k := range AllUsers {
 		AllUsersTargetLdap.Users = append(AllUsersTargetLdap.Users, k)
 	}
+	// TODO: @SLR9511: why is done this way?... please revisit
 	returnAcceptType := state.getPreferredAcceptType(r)
 	switch returnAcceptType {
 	case "text/html":
@@ -132,6 +134,7 @@ func (state *RuntimeState) getgroupsofuserHandler(w http.ResponseWriter, r *http
 	}
 	sort.Strings(UsersAllgroups)
 	userGroups.UserGroups = UsersAllgroups
+	// TODO: @SLR9511: why is done this way?... please revisit
 	returnAcceptType := state.getPreferredAcceptType(r)
 	switch returnAcceptType {
 	case "text/html":
@@ -193,6 +196,7 @@ func (state *RuntimeState) getusersingroupHandler(w http.ResponseWriter, r *http
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
+	//// TODO: @SLR9511: why is done this way?... please revisit
 	returnAcceptType := state.getPreferredAcceptType(r)
 	switch returnAcceptType {
 	case "text/html":
@@ -224,7 +228,6 @@ func (state *RuntimeState) getPreferredAcceptType(r *http.Request) string {
 	if ok {
 		for _, acceptValue := range acceptHeader {
 			if strings.Contains(acceptValue, "text/html") {
-				log.Println(2, "Got it  %+v", acceptValue)
 				preferredAcceptType = "text/html"
 			}
 		}
