@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -46,6 +47,20 @@ type UserInfoLDAPSource struct {
 	allGroupsMutex           sync.Mutex
 	allGroupsCacheValue      []string
 	allGroupsCacheExpiration time.Time
+}
+
+func extractCNFromDNString(input []string) (output []string, err error) {
+	re := regexp.MustCompile("^cn=([^,]+),.*")
+	for _, dn := range input {
+		matches := re.FindStringSubmatch(dn)
+		if len(matches) == 2 {
+			output = append(output, matches[1])
+		} else {
+			//log.Printf("dn='%s' matches=%v", dn, matches)
+			output = append(output, dn)
+		}
+	}
+	return output, nil
 }
 
 func (u *UserInfoLDAPSource) objectClassExistsorNot(groupname string, objectclass string) (bool, error) {
@@ -239,10 +254,24 @@ func (u *UserInfoLDAPSource) CreateGroup(groupinfo userinfo.GroupInfo) error {
 		log.Println(err)
 		return err
 	}
+
+	var managerAttributeValue string
+	switch strings.ToLower(u.GroupManageAttribute) {
+	case "owner":
+		managerDN, err := u.GetGroupDN(groupinfo.Description)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		managerAttributeValue = managerDN
+	default:
+		managerAttributeValue = groupinfo.Description
+	}
+
 	group := ldap.NewAddRequest(entry)
 	group.Attribute("objectClass", []string{"posixGroup", "top", "groupOfNames"})
 	group.Attribute("cn", []string{groupinfo.Groupname})
-	group.Attribute(u.GroupManageAttribute, []string{groupinfo.Description})
+	group.Attribute(u.GroupManageAttribute, []string{managerAttributeValue})
 	group.Attribute("member", groupinfo.Member)
 	group.Attribute("memberUid", groupinfo.MemberUid)
 	group.Attribute("gidNumber", []string{gidnum})
@@ -251,6 +280,8 @@ func (u *UserInfoLDAPSource) CreateGroup(groupinfo userinfo.GroupInfo) error {
 		log.Println(err)
 		return err
 	}
+	log.Printf("Created new group (%+v)?", groupinfo)
+
 	return nil
 }
 
@@ -326,7 +357,7 @@ func (u *UserInfoLDAPSource) DeleteDescription(groupnames []string) error {
 
 		modify := ldap.NewModifyRequest(entry)
 
-		modify.Delete("description", []string{"created by Midpoint"})
+		modify.Delete(u.GroupManageAttribute, []string{"created by Midpoint"})
 		err := conn.Modify(modify)
 		if err != nil {
 			log.Println(err)
@@ -349,8 +380,21 @@ func (u *UserInfoLDAPSource) ChangeDescription(groupname string, managegroup str
 		log.Println(err)
 		return err
 	}
+	var attributeValue string
+	switch strings.ToLower(u.GroupManageAttribute) {
+	case "owner":
+		managerDN, err := u.GetGroupDN(managegroup)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		attributeValue = managerDN
+	default:
+		attributeValue = managegroup
+	}
+	log.Printf("attributeValue=%s", attributeValue)
 	modify := ldap.NewModifyRequest(entry)
-	modify.Replace("description", []string{managegroup})
+	modify.Replace(u.GroupManageAttribute, []string{attributeValue})
 	err = conn.Modify(modify)
 	if err != nil {
 		log.Println(err)
@@ -645,7 +689,7 @@ func (u *UserInfoLDAPSource) GetDescriptionvalue(groupname string) (string, erro
 		u.GroupSearchBaseDNs,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		"(&(cn="+groupname+" )(objectClass=posixGroup))",
-		nil,
+		[]string{u.GroupManageAttribute, "cn"},
 		nil,
 	)
 	sr, err := conn.Search(searchRequest)
@@ -662,6 +706,18 @@ func (u *UserInfoLDAPSource) GetDescriptionvalue(groupname string) (string, erro
 		return "", nil
 	}
 	GroupmanagedbyValue := sr.Entries[0].GetAttributeValue(u.GroupManageAttribute)
+	switch strings.ToLower(u.GroupManageAttribute) {
+	case "owner":
+		groupCN, err := extractCNFromDNString([]string{GroupmanagedbyValue})
+		if err != nil {
+			log.Println(err)
+			return "", err
+		}
+		GroupmanagedbyValue = groupCN[0]
+	default:
+		GroupmanagedbyValue = GroupmanagedbyValue
+	}
+	log.Printf("groupmanagedbyValue=%s", GroupmanagedbyValue)
 
 	return GroupmanagedbyValue, nil
 }
@@ -784,6 +840,7 @@ func (u *UserInfoLDAPSource) IsgroupAdminorNot(username string, groupname string
 		log.Println(err)
 		return false, err
 	}
+
 	//check if user is admin (super admin)
 	if u.UserisadminOrNot(username) {
 		return true, nil
@@ -988,7 +1045,20 @@ func (u *UserInfoLDAPSource) GetallGroupsandDescription(grouddn string) ([][]str
 		return nil, err
 	}
 	for _, entry := range result.Entries {
-		Groupattributes = append(Groupattributes, entry.GetAttributeValue("cn"), entry.GetAttributeValue(u.GroupManageAttribute))
+		managerValue := entry.GetAttributeValue(u.GroupManageAttribute)
+		switch strings.ToLower(u.GroupManageAttribute) {
+		case "owner":
+			groupCN, err := extractCNFromDNString([]string{managerValue})
+			if err != nil {
+				log.Println(err)
+				return nil, err
+			}
+			managerValue = groupCN[0]
+		default:
+			managerValue = managerValue
+		}
+
+		Groupattributes = append(Groupattributes, entry.GetAttributeValue("cn"), managerValue)
 		GroupandDescriptionPair = append(GroupandDescriptionPair, Groupattributes)
 		Groupattributes = nil
 	}

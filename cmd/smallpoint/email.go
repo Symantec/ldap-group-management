@@ -39,9 +39,10 @@ func (state *RuntimeState) SendRequestemail(username string, groupnames []string
 	return nil
 }
 
+// TODO: @SLR9511: The Hostname should be a param, please servisit
 const requestAccessMailTemplateText = `Subject: Request access to group {{.Groupname}}
 User {{.RequestedUser}} requested access to group {{.Groupname}} (from {{.RemoteAddr}})
-Please take a review at https://ae15-smallpoint.phx2.symcpe.net/pending-actions`
+Please take a review at https://small-point.example.com/pending-actions`
 
 //send email for requesting access to a group
 func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail []string,
@@ -120,33 +121,23 @@ func (state *RuntimeState) sendApproveemail(username string,
 			log.Println(err)
 			return err
 		}
-		description, err := state.Userinfo.GetDescriptionvalue(entry[1])
+		managerGroupName, err := state.Userinfo.GetDescriptionvalue(entry[1])
 		if err != nil {
 			log.Println(err)
 			return err
 		}
-		if description == "self-managed" {
-			other_users_email, err := state.Userinfo.GetEmailofusersingroup(entry[1])
-			if err != nil {
-				log.Println(err)
-				return err
-			}
-			err = state.approveRequestemail(requesteduser, username, other_users_email, entry[1], remoteAddr, userAgent)
-			if err != nil {
-				log.Println(err)
-				return err
-			}
-		} else {
-			other_users_email, err := state.Userinfo.GetEmailofusersingroup(description)
-			if err != nil {
-				log.Println(err)
-				return err
-			}
-			err = state.approveRequestemail(requesteduser, username, other_users_email, entry[1], remoteAddr, userAgent)
-			if err != nil {
-				log.Println(err)
-				return err
-			}
+		if managerGroupName == "self-managed" {
+			managerGroupName = entry[1]
+		}
+		otherUsersMail, err := state.Userinfo.GetEmailofusersingroup(managerGroupName)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		err = state.approveRequestemail(requesteduser, username, otherUsersMail, entry[1], remoteAddr, userAgent)
+		if err != nil {
+			log.Println(err)
+			return err
 		}
 		targetAddress = nil
 	}

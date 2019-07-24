@@ -1114,7 +1114,7 @@ func (state *RuntimeState) isGroupAdmin(w http.ResponseWriter, username string, 
 		return err
 	}
 	if !IsgroupAdmin && !state.Userinfo.UserisadminOrNot(username) {
-		log.Println("you are not authorized!", username)
+		log.Printf("isGroupAdmin: authorization failed for %s on group %s!", username, groupname)
 		http.Error(w, fmt.Sprint("you are not authorized to make changes to this group!"), http.StatusBadRequest)
 		return errors.New("you are not authorized to make changes to this group!")
 	}
