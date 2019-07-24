@@ -934,6 +934,7 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	var groupinfo userinfo.GroupInfo
 	groupinfo.Groupname = r.PostFormValue("groupname")
 	members := r.PostFormValue("members")
+	////// TODO: @SLR9511: why is done this way?... please revisit
 	if members == "" {
 		AllUsersinGroup, managedby, err := state.Userinfo.GetusersofaGroup(groupinfo.Groupname)
 		Allgroups, err := state.Userinfo.GetallGroups()
@@ -951,56 +952,56 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 			sidebarType = "admins_sidebar"
 		}
 		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "deletemembersfromgroup")
-	} else {
-		log.Println("delete these members", members)
-		log.Println("now continue")
-		//check if groupname given by user exists or not
-		err = state.groupExistsorNot(w, groupinfo.Groupname)
-		if err != nil {
-			return
-		}
-		err = state.isGroupAdmin(w, username, groupinfo.Groupname)
-		if err != nil {
-			return
-		}
+		return
+	}
+	log.Println("delete these members", members)
+	log.Println("now continue")
+	//check if groupname given by user exists or not
+	err = state.groupExistsorNot(w, groupinfo.Groupname)
+	if err != nil {
+		return
+	}
+	err = state.isGroupAdmin(w, username, groupinfo.Groupname)
+	if err != nil {
+		return
+	}
 
-		for _, member := range strings.Split(members, ",") {
-			userExistsornot, err := state.Userinfo.UsernameExistsornot(member)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-				return
-			}
-			if !userExistsornot {
-				log.Println("Bad request!")
-				http.Error(w, fmt.Sprint("Bad request! Check if the usernames exists or not!"), http.StatusBadRequest)
-				return
-			}
-			IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-				return
-			}
-			if !IsgroupMember {
-				continue
-			}
-			groupinfo.MemberUid = append(groupinfo.MemberUid, member)
-			groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
-		}
-
-		err = state.Userinfo.DeletemembersfromGroup(groupinfo)
+	for _, member := range strings.Split(members, ",") {
+		userExistsornot, err := state.Userinfo.UsernameExistsornot(member)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
-		for _, member := range strings.Split(members, ",") {
-			state.sysLog.Write([]byte(fmt.Sprintf("%s was deleted from Group %s by %s", member, groupinfo.Groupname, username)))
+		if !userExistsornot {
+			log.Println("Bad request!")
+			http.Error(w, fmt.Sprint("Bad request! Check if the usernames exists or not!"), http.StatusBadRequest)
+			return
 		}
-		generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "deletemembersfromgroup_success")
-
+		IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupinfo.Groupname, member)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		if !IsgroupMember {
+			continue
+		}
+		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
+		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
 	}
+
+	err = state.Userinfo.DeletemembersfromGroup(groupinfo)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	for _, member := range strings.Split(members, ",") {
+		state.sysLog.Write([]byte(fmt.Sprintf("%s was deleted from Group %s by %s", member, groupinfo.Groupname, username)))
+	}
+	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "deletemembersfromgroup_success")
+
 }
 
 func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter, r *http.Request) {
