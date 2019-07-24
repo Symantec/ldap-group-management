@@ -30,9 +30,6 @@ type baseConfig struct {
 	SMTPserver            string `yaml:"smtp_server"`
 	SmtpSenderAddress     string `yaml:"smtp_sender_address"`
 	ClientCAFilename      string `yaml:"client_ca_filename"`
-	DB_Username           string `yaml:db_username`
-	DB_Password           string `yaml:db_password`
-	DB_Name               string `yaml:db_name`
 }
 
 type AppConfigFile struct {
