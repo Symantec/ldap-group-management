@@ -33,7 +33,7 @@ func initDB(state *RuntimeState) (err error) {
 		return initDBSQlite(state, splitString[1])
 	case "postgresql":
 		log.Print("doing postgres")
-		return initDBPostgres(state, splitString[1])
+		return initDBPostgres(state, storageURL)
 	default:
 		log.Print("invalid storage url string")
 		err := errors.New("Bad storage url string")
@@ -68,6 +68,7 @@ func initDBPostgres(state *RuntimeState, db string) (err error) {
 	if err != nil {
 		return err
 	}
+	log.Printf("post open")
 	/// This should be changed to take care of DB schema
 	if true {
 		sqlStmt := `create table if not exists pending_requests (id SERIAL PRIMARY KEY, username text not null, groupname text not null, time_stamp int not null);`

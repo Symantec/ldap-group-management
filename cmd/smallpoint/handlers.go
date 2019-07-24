@@ -93,6 +93,14 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 		http.Error(w, fmt.Sprint(err), http.StatusUnauthorized)
 		return "", err
 	}
+
+	//If having a verified cert, no need for cookies
+	if r.TLS != nil {
+		if len(r.TLS.VerifiedChains) > 0 {
+			clientName := r.TLS.VerifiedChains[0][0].Subject.CommonName
+			return clientName, nil
+		}
+	}
 	remoteCookie, err := r.Cookie(cookieName)
 	if err != nil {
 		log.Println(err)
@@ -127,13 +135,29 @@ func (state *RuntimeState) allGroupsHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	response := Response{username, Allgroups, nil, nil, "", "", nil}
-	//response.UserName=*userInfo.Username
-	if state.Userinfo.UserisadminOrNot(username) == true {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groups")
+	returnAcceptType := state.getPreferredAcceptType(r)
+	switch returnAcceptType {
+	case "text/html":
+		//response.UserName=*userInfo.Username
+		if state.Userinfo.UserisadminOrNot(username) == true {
+			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groups")
 
-	} else {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "sidebar", "groups")
+		} else {
+			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "sidebar", "groups")
+		}
+	default:
+		b, err := json.MarshalIndent(response, "", " ")
+		if err != nil {
+			log.Printf("Failed marshal %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
+			return
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			log.Printf("Incomplete write %v", err)
+		}
 	}
+	return
 }
 
 //User Groups page
@@ -155,6 +179,7 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 		sidebarType = "admins_sidebar"
 	}
 
+	w.Header().Set("Cache-Control", "private, max-age=30")
 	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "my_groups")
 }
 
@@ -311,7 +336,6 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 	if state.Userinfo.UserisadminOrNot(username) == true {
 		sidebarType = "admins_sidebar"
 	}
-	w.WriteHeader(http.StatusOK)
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", sidebarType, "Accessrequestsent")
 
 }
@@ -493,7 +517,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	//log.Println(out)
+
 	//log.Println(out["groups"])//[[username1,groupname1][username2,groupname2]]
 	var userPair = out["groups"]
 	//entry:[username1 groupname1]
@@ -580,8 +604,6 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	//log.Println(out)
-	//fmt.Print(out["groups"])//[[username1,groupname1][username2,groupname2]]
 	//this handler just deletes requests from the DB, so check if the user is authorized to reject or not.
 	for _, entry := range out["groups"] {
 		IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, entry[1])
@@ -912,6 +934,26 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	var groupinfo userinfo.GroupInfo
 	groupinfo.Groupname = r.PostFormValue("groupname")
 	members := r.PostFormValue("members")
+	////// TODO: @SLR9511: why is done this way?... please revisit
+	if members == "" {
+		AllUsersinGroup, managedby, err := state.Userinfo.GetusersofaGroup(groupinfo.Groupname)
+		Allgroups, err := state.Userinfo.GetallGroups()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		sort.Strings(Allgroups)
+
+		response := Response{username, [][]string{Allgroups}, nil, nil, groupinfo.Groupname, managedby, AllUsersinGroup}
+		sidebarType := "sidebar"
+		superAdmin := state.Userinfo.UserisadminOrNot(username)
+		if superAdmin {
+			sidebarType = "admins_sidebar"
+		}
+		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "deletemembersfromgroup")
+		return
+	}
 	log.Println("delete these members", members)
 	log.Println("now continue")
 	//check if groupname given by user exists or not
@@ -1073,7 +1115,7 @@ func (state *RuntimeState) isGroupAdmin(w http.ResponseWriter, username string, 
 		return err
 	}
 	if !IsgroupAdmin && !state.Userinfo.UserisadminOrNot(username) {
-		log.Println("you are not authorized!", username)
+		log.Printf("isGroupAdmin: authorization failed for %s on group %s!", username, groupname)
 		http.Error(w, fmt.Sprint("you are not authorized to make changes to this group!"), http.StatusBadRequest)
 		return errors.New("you are not authorized to make changes to this group!")
 	}
@@ -1196,4 +1238,79 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 
 		}
 	}
+}
+
+func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, r *http.Request) {
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+
+	t0 := time.Now()
+	Allgroups, err := state.Userinfo.GetallGroups()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	t1 := time.Now()
+	log.Printf("GetAllGroups Took %v to run", t1.Sub(t0))
+
+	sort.Strings(Allgroups)
+
+	if !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		return
+	}
+	var Allusers []string
+	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
+
+	sidebarType := "sidebar"
+	if state.Userinfo.UserisadminOrNot(username) {
+		sidebarType = "admins_sidebar"
+	}
+
+	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "changeownership")
+
+}
+
+func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		return
+	}
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+	if !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err = r.ParseForm()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	groups := strings.Split(r.PostFormValue("groupnames"), ",")
+	managegroup := r.PostFormValue("managegroup")
+	//check if given member exists or not and see if he is already a groupmember if yes continue.
+	for _, group := range groups[:len(groups)-1] {
+		groupinfo := userinfo.GroupInfo{}
+		groupinfo.Groupname = group
+		err = state.groupExistsorNot(w, groupinfo.Groupname)
+		if err != nil {
+			return
+		}
+		err = state.Userinfo.ChangeDescription(group, managegroup)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		state.sysLog.Write([]byte(fmt.Sprintf("Group %s is managed by %s now, this change was made by %s.", group, managegroup, username)))
+	}
+	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "changeownership_success")
 }

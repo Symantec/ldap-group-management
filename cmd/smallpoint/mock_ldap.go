@@ -462,3 +462,7 @@ func (m *MockLdap) GetGroupandManagedbyAttributeValue(groupnames []string) ([][]
 	}
 	return UserGroupInfo, nil
 }
+
+func (m *MockLdap) ChangeDescription(groupname string, managegroup string) error {
+	return nil
+}

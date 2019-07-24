@@ -1,4 +1,4 @@
-function Run_OnLoad(groupnames,PendingActions,Users,Allusers) {
+function Run_OnLoad(groupnames,PendingActions,Users,Allusers,onegroup) {
     if (groupnames!=null){
 
         var final_groupnames=array(groupnames);
@@ -15,6 +15,9 @@ function Run_OnLoad(groupnames,PendingActions,Users,Allusers) {
     }
     if(Allusers!=null){
         list_members(Allusers);
+    }
+    if(onegroup!=null && Users != null){
+    	show_groupname(onegroup, Users);
     }
 
 }
@@ -278,13 +281,14 @@ function sidebar_close() {
 }
 
 function datalist(groupnames) {
-    groupnames.sort()
+    groupnames.sort();
     for(i=0;i<groupnames.length;i++){
         $('#select_groups').append("<option id='option-"+groupnames[i]+"' value='" + groupnames[i] + "'>"+groupnames[i]+"</option>");
     }
 }
 
 function list_members(users){
+    users.sort();
     for(i=0;i<users.length;i++){
         $('#select_members').append("<option id='option-"+users[i]+"' value='" + users[i] + "'>"+users[i]+"</option>");
     }
@@ -310,6 +314,9 @@ function Group_Info(users) {
                 {title:"Members of the group"}
             ]
         } );
+	for (i=0;i<users.length;i++){
+	    $('#select_members_remove').append("<option id='option-"+users[i]+"' value='" + users[i] + "'>"+users[i]+"</option>");
+	}
     } );
 
     //exitgroup button
@@ -559,4 +566,55 @@ function refractor_removemembers() {
         return 1;
     }
     return 0;
+}
+
+function listgroup_regexp() {
+    $(document).ready(function() {
+        var select = document.getElementById('select_groups').childNodes;
+        var regexp = new RegExp(document.getElementById("group_regexp").value);
+        var output = '';
+        for (var i = 1; i < select.length; i++) {
+            if (select[i].value.match(regexp)) {
+                output += select[i].value + '\n';
+            }
+        }
+        if (output.length < 1) {
+            document.getElementById('listgroups_output').value = "No matched groups";
+        } else {
+            document.getElementById('listgroups_output').value = output;
+        }
+        $('#group_members').val(output.replace(/\n/g,','));
+    });
+}
+
+function dm_groupname() {
+    var val = document.getElementById('dm_group_name').value;
+    var select = document.getElementById('select_groups').childNodes;
+    for (var i = 1; i < select.length; i++) {
+    	if(val === select[i].value) {
+	    document.getElementById("group_name_delete_members").submit();
+	} else {
+	    continue;
+	}
+    }
+}
+
+function show_groupname(Groupname, Users) {
+    Users.sort();
+    for(var i=0;i<Users.length;i++) {
+    	$('#select_dm_members').append("<option id='option-"+Users[i]+"' value='" + Users[i] + "'>"+Users[i]+"</option>");
+    }
+    $('#dm_group_name').val(Groupname);
+    $('#group_groupname').val(Groupname);
+}
+
+function dm_members() {
+    var val = document.getElementById("cg_members").value;
+    var opts = document.getElementById("select_dm_members").childNodes;
+    for (var i = 1; i < opts.length; i++) {
+    	if (opts[i].value === val) {
+	    members_func(opts[i].value);
+	    break;
+	}
+    }
 }

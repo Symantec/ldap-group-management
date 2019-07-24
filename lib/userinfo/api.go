@@ -29,6 +29,8 @@ type UserInfo interface {
 
 	DeleteDescription(groupnames []string) error
 
+	ChangeDescription(groupname string, managegroup string) error
+
 	GetallGroups() ([]string, error)
 
 	GetgroupsofUser(username string) ([]string, error)

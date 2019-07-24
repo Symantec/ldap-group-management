@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"errors"
 	"flag"
@@ -27,6 +29,7 @@ type baseConfig struct {
 	TemplatesPath         string `yaml:"templates_path"`
 	SMTPserver            string `yaml:"smtp_server"`
 	SmtpSenderAddress     string `yaml:"smtp_sender_address"`
+	ClientCAFilename      string `yaml:"client_ca_filename"`
 }
 
 type AppConfigFile struct {
@@ -79,10 +82,8 @@ type Response struct {
 
 var (
 	Version        = "No version provided"
-	configFilename = flag.String("config", "config.yml", "The filename of the configuration")
-	//tpl *template.Template
-	//debug          = flag.Bool("debug", false, "enable debugging output")
-	authSource *authhandler.SimpleOIDCAuth
+	configFilename = flag.String("config", "/etc/smallpoint/config.yml", "The filename of the configuration")
+	authSource     *authhandler.SimpleOIDCAuth
 )
 
 const (
@@ -114,6 +115,8 @@ const (
 	createServiceAccWebPagePath = "/create_serviceaccount"
 	createServiceAccountPath    = "/create_serviceaccount/"
 	groupinfoPath               = "/group_info/"
+	changeownershipbuttonPath   = "/change_owner/"
+	changeownershipPath         = "/change_owner"
 
 	indexPath  = "/"
 	authPath   = "/auth/oidcsimple/callback"
@@ -178,6 +181,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	var openidConfigFilename = state.Config.Base.OpenIDCConfigFilename //"/etc/openidc_config_keymaster.yml"
 
 	// if you alresy use the context:
@@ -220,6 +224,9 @@ func main() {
 	http.Handle(addmembersPath, http.HandlerFunc(state.addmemberstoGroupWebpageHandler))
 	http.Handle(addmembersbuttonPath, http.HandlerFunc(state.addmemberstoExistingGroup))
 
+	http.Handle(changeownershipPath, http.HandlerFunc(state.changeownershipWebpageHandler))
+	http.Handle(changeownershipbuttonPath, http.HandlerFunc(state.changeownership))
+
 	http.Handle(deletemembersPath, http.HandlerFunc(state.deletemembersfromGroupWebpageHandler))
 	http.Handle(deletemembersbuttonPath, http.HandlerFunc(state.deletemembersfromExistingGroup))
 
@@ -232,5 +239,41 @@ func main() {
 	http.Handle(cssPath, fs)
 	http.Handle(imagesPath, fs)
 	http.Handle(jsPath, fs)
-	log.Fatal(http.ListenAndServeTLS(state.Config.Base.HttpAddress, state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename, nil))
+
+	var clientCACertPool *x509.CertPool
+	if len(state.Config.Base.ClientCAFilename) > 0 {
+		clientCACertPool = x509.NewCertPool()
+		caCert, err := ioutil.ReadFile(state.Config.Base.ClientCAFilename)
+		if err != nil {
+			log.Fatalf("cannot read clientCA file err=%s", err)
+		}
+		clientCACertPool.AppendCertsFromPEM(caCert)
+	}
+
+	tlsConfig := &tls.Config{
+		MinVersion:               tls.VersionTLS12,
+		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+		PreferServerCipherSuites: true,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+		},
+		ClientAuth: tls.VerifyClientCertIfGiven,
+		ClientCAs:  clientCACertPool,
+	}
+
+	serviceServer := &http.Server{
+		Addr:         state.Config.Base.HttpAddress,
+		TLSConfig:    tlsConfig,
+		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	err = serviceServer.ListenAndServeTLS(state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename)
+	if err != nil {
+		log.Fatalf("Failed to start service server, err=%s", err)
+	}
+
 }

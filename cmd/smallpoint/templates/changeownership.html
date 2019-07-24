@@ -1,0 +1,58 @@
+{{ define "content"}}
+
+
+<!-- Header -->
+<header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-group"></i>Change Group Ownership(RegExp)</b></h5>
+</header>
+
+<div class="w3-panel">
+    <table class="w3-table w3-striped w3-white">
+        <tr>
+            <td>Regexp Group Name</td>
+            <td>
+                <input autocomplete="off" type="text" id="group_regexp"u>
+	    </td>
+        </tr>
+        <tr>
+            <td>Manager Group</td>
+            <td>
+                <input autocomplete="off" list="select_groups" id="cg_groupname" oninput="group_groupname()" required name="groupname" type="text">
+                <datalist id="select_groups">
+                </datalist><br/>
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
+            <textarea id="listgroups_output" cols="40" rows="10" data-role="none" style="resize: none;margin-left: auto; margin-right:auto;" readonly></textarea>
+            </td>
+        </tr>
+        <button class="w3-button w3-right w3-text-new-white w3-new-blue" data-toggle="modal" data-target="#myModalAddpeopletoGroup_regexp" style="margin-left:10px">Change Ownership</button>
+        <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="list_group" onclick="listgroup_regexp()">Test List Groups</button>
+    </table>
+    <div class="modal fade" id="myModalAddpeopletoGroup_regexp" role="dialog">
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to change ownership of these groups?</p>
+                    <form id="form_addpeople_togroup" method="POST" action="/change_owner/?username={{.UserName}}" autocomplete="off">
+                        Groups: <input autocomplete="off" id='group_members' name="groupnames" required type="text" readonly/><br/>
+                        ManagerGroup  : <input autocomplete="off" id='group_groupname' name="managegroup" required="required" type="text" readonly/><br/>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" onclick="addpeopletogroup_form_submit()" id="btn_addpeopletogroup" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ end }}
