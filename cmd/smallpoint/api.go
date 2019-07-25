@@ -481,3 +481,30 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 	}
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "changeownership_success")
 }
+
+func (state *RuntimeState) getGroupsJS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+	userGroups, err := state.Userinfo.GetGroupsInfoOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	/*
+		err = r.ParseForm()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	*/
+	//groupsType := r.PostFormValue("type")
+
+}

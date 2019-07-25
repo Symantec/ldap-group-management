@@ -173,14 +173,31 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	response := Response{username, userGroups, nil, nil, "", "", nil}
-	sidebarType := "sidebar"
+	//sidebarType := "sidebar"
 
-	if state.Userinfo.UserisadminOrNot(response.UserName) {
-		sidebarType = "admins_sidebar"
-	}
+	isAdmin := state.Userinfo.UserisadminOrNot(response.UserName)
+	/*
+		if isAdmin {
+			sidebarType = "admins_sidebar"
+		}
+	*/
 
 	w.Header().Set("Cache-Control", "private, max-age=30")
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "my_groups")
+	pageData := myGroupsPageData{
+		UserName: username,
+		Groups:   userGroups,
+		IsAdmin:  isAdmin,
+		Title:    "My Groups",
+	}
+	err = state.htmlTemplate.ExecuteTemplate(w, "myGroupsPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
+	return
+
+	//generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "my_groups")
 }
 
 //user's pending requests
