@@ -41,6 +41,16 @@ func checkCSRF(w http.ResponseWriter, r *http.Request) (bool, error) {
 	return true, nil
 }
 
+func setSecurityHeaders(w http.ResponseWriter) {
+	//all common security headers go here
+	w.Header().Set("Strict-Transport-Security", "max-age=1209600")
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("X-XSS-Protection", "1")
+	w.Header().Set("Content-Security-Policy",
+		"default-src 'self'; script-src 'self' cdn.datatables.net maxcdn.bootstrapcdn.com code.jquery.com "+
+			";style-src 'self' cdn.datatables.net maxcdn.bootstrapcdn.com fonts.googleapis.com 'unsafe-inline'; font-src cdnjs.cloudflare.com fonts.gstatic.com fonts.googleapis.com ")
+}
+
 func randomStringGeneration() (string, error) {
 	const size = 32
 	bytes := make([]byte, size)
@@ -166,29 +176,16 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
-	userGroups, err := state.Userinfo.GetGroupsInfoOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	response := Response{username, userGroups, nil, nil, "", "", nil}
-	//sidebarType := "sidebar"
 
-	isAdmin := state.Userinfo.UserisadminOrNot(response.UserName)
-	/*
-		if isAdmin {
-			sidebarType = "admins_sidebar"
-		}
-	*/
-
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")
 	pageData := myGroupsPageData{
 		UserName: username,
-		Groups:   userGroups,
 		IsAdmin:  isAdmin,
 		Title:    "My Groups",
 	}
+	log.Printf("myGroupsPageData=%+v", pageData)
 	err = state.htmlTemplate.ExecuteTemplate(w, "myGroupsPage", pageData)
 	if err != nil {
 		log.Printf("Failed to execute %v", err)
@@ -196,7 +193,6 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	return
-
 	//generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "my_groups")
 }
 

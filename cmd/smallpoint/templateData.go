@@ -120,7 +120,7 @@ const myGroupsPageText = `
     <script type="text/javascript" src="/getGroups.js"></script>
 </head>
 <body class="w3-light-grey" >
-{{template "header"}}
+{{template "header" .}}
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
