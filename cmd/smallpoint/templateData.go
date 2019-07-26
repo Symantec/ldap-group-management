@@ -93,7 +93,8 @@ type myGroupsPageData struct {
 	Title   string
 	IsAdmin bool
 
-	UserName            string
+	UserName string
+
 	Groups              [][]string
 	Users               []string
 	PendingActions      [][]string
@@ -116,8 +117,9 @@ const myGroupsPageText = `
     {{template "commonJS"}}
     <script type="text/javascript" src="/js/newtable.js"></script>
     <script type="text/javascript" src="/js/sidebar.js"></script>
+    <script type="text/javascript" src="/getGroups.js"></script>
 </head>
-<body class="w3-light-grey" onload="Run_OnLoad({{.Groups}},{{.PendingActions}},{{.GroupUsers}},{{.Users}});">
+<body class="w3-light-grey" >
 {{template "header"}}
 
 <!-- !PAGE CONTENT! -->
@@ -160,17 +162,4 @@ const myGroupsPageText = `
 </body>
 </html>
 {{end}}
-`
-
-type getGroupsJSData struct {
-	Groups [][]string
-}
-
-const getGroupsJSText = `
-document.addEventListener('DOMContentLoaded', function () {
-	        groupnames = {{.Groups}};
-	        var final_groupnames=array(groupnames);
-		RequestAccess(final_groupnames);
-		datalist(groupnames[0]);
-});
 `

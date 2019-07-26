@@ -482,7 +482,17 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "changeownership_success")
 }
 
-func (state *RuntimeState) getGroupsJS(w http.ResponseWriter, r *http.Request) {
+// TODO: figure out how to do this with templates or even better migrate to AJAX to get data
+const getGroupsJSPainText = `
+document.addEventListener('DOMContentLoaded', function () {
+                var groupnames = %s;
+                var final_groupnames=array(groupnames);
+                RequestAccess(final_groupnames);
+                datalist(groupnames[0]);
+});
+`
+
+func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -497,14 +507,15 @@ func (state *RuntimeState) getGroupsJS(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	/*
-		err = r.ParseForm()
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-	*/
-	//groupsType := r.PostFormValue("type")
-
+	encodedGroups, err := json.Marshal(userGroups)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("%s", encodedGroups)
+	w.Header().Set("Cache-Control", "private, max-age=15")
+	w.Header().Set("Content-Type", "application/javascript")
+	fmt.Fprintf(w, getGroupsJSPainText, encodedGroups)
+	return
 }
