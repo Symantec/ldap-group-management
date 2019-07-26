@@ -23,6 +23,8 @@ const commonJSText = `
     <script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script src="https://cdn.datatables.net/select/1.2.5/js/dataTables.select.min.js"></script>
+    <script type="text/javascript" src="/js/newtable.js"></script>
+    <script type="text/javascript" src="/js/sidebar.js"></script>
 {{end}}
 `
 
@@ -115,8 +117,6 @@ const myGroupsPageText = `
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {{template "commonCSS"}}
     {{template "commonJS"}}
-    <script type="text/javascript" src="/js/newtable.js"></script>
-    <script type="text/javascript" src="/js/sidebar.js"></script>
     <script type="text/javascript" src="/getGroups.js"></script>
 </head>
 <body class="w3-light-grey" >
@@ -156,6 +156,76 @@ const myGroupsPageText = `
     </table>
   </div>
 </div>
+{{template "footer"}}
+</div>
+
+</body>
+</html>
+{{end}}
+`
+
+type allGroupsPageData struct {
+	Title   string
+	IsAdmin bool
+
+	UserName  string
+	JSSources []string
+}
+
+const allGroupsPageText = `
+{{define "allGroupsPage"}}
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{template "commonCSS"}}
+    {{template "commonJS"}}
+    <script type="text/javascript" src="/getGroups.js?type=all"></script>
+</head>
+<body class="w3-light-grey" >
+{{template "header" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+  <div id="content">
+
+  <header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-group"></i>All Ldap Groups</b>
+    </h5>
+  </header>
+
+  <div class="w3-panel">
+    <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn" data-toggle="modal" data-target="#myModal">Request Access</button>
+    <div class="modal fade" id="myModal" role="dialog">
+        <div class="modal-dialog">
+
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"></button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to request access for these <span id="add_here"></span> selected groups?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" id="btn_requestaccess" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <table class="w3-table w3-striped w3-white" id="display">
+
+    </table>
+
+  </div>
+
+  </div>
 {{template "footer"}}
 </div>
 

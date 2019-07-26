@@ -138,25 +138,28 @@ func (state *RuntimeState) allGroupsHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		return
 	}
-	Allgroups, err := state.Userinfo.GetallGroupsandDescription(state.Config.TargetLDAP.GroupSearchBaseDNs)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := allGroupsPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "All Groups",
 	}
-	response := Response{username, Allgroups, nil, nil, "", "", nil}
+
 	returnAcceptType := state.getPreferredAcceptType(r)
 	switch returnAcceptType {
 	case "text/html":
-		//response.UserName=*userInfo.Username
-		if state.Userinfo.UserisadminOrNot(username) == true {
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groups")
+		setSecurityHeaders(w)
+		w.Header().Set("Cache-Control", "private, max-age=30")
 
-		} else {
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "sidebar", "groups")
+		err = state.htmlTemplate.ExecuteTemplate(w, "allGroupsPage", pageData)
+		if err != nil {
+			log.Printf("Failed to execute %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
+			return
 		}
+		return
 	default:
-		b, err := json.MarshalIndent(response, "", " ")
+		b, err := json.MarshalIndent(pageData, "", " ")
 		if err != nil {
 			log.Printf("Failed marshal %v", err)
 			http.Error(w, "error", http.StatusInternalServerError)

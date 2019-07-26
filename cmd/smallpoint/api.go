@@ -501,19 +501,31 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return
 	}
-	userGroups, err := state.Userinfo.GetGroupsInfoOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
+	var groupsToSend [][]string
+	switch r.FormValue("type") {
+	case "all":
+		groupsToSend, err = state.Userinfo.GetallGroupsandDescription(state.Config.TargetLDAP.GroupSearchBaseDNs)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	default:
+
+		groupsToSend, err = state.Userinfo.GetGroupsInfoOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	}
+	encodedGroups, err := json.Marshal(groupsToSend)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	encodedGroups, err := json.Marshal(userGroups)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	log.Printf("%s", encodedGroups)
+	//log.Printf("%s", encodedGroups)
 	w.Header().Set("Cache-Control", "private, max-age=15")
 	w.Header().Set("Content-Type", "application/javascript")
 	fmt.Fprintf(w, getGroupsJSPainText, encodedGroups)
