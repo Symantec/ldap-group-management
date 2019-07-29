@@ -30,23 +30,27 @@ const (
 )
 
 type UserInfoLDAPSource struct {
-	BindUsername             string `yaml:"bind_username"`
-	BindPassword             string `yaml:"bind_password"`
-	LDAPTargetURLs           string `yaml:"ldap_target_urls"`
-	UserSearchBaseDNs        string `yaml:"user_search_base_dns"`
-	UserSearchFilter         string `yaml:"user_search_filter"`
-	GroupSearchBaseDNs       string `yaml:"group_search_base_dns"`
-	GroupSearchFilter        string `yaml:"group_search_filter"`
-	Admins                   string `yaml:"super_admins"`
-	ServiceAccountBaseDNs    string `yaml:"service_search_base_dns"`
-	MainBaseDN               string `yaml:"Main_base_dns"`
-	GroupManageAttribute     string `yaml:"group_Manage_Attribute"`
-	allUsersRWLock           sync.RWMutex
-	allUsersCacheValue       []string
-	allUsersCacheExpiration  time.Time
-	allGroupsMutex           sync.Mutex
-	allGroupsCacheValue      []string
-	allGroupsCacheExpiration time.Time
+	BindUsername          string `yaml:"bind_username"`
+	BindPassword          string `yaml:"bind_password"`
+	LDAPTargetURLs        string `yaml:"ldap_target_urls"`
+	UserSearchBaseDNs     string `yaml:"user_search_base_dns"`
+	UserSearchFilter      string `yaml:"user_search_filter"`
+	GroupSearchBaseDNs    string `yaml:"group_search_base_dns"`
+	GroupSearchFilter     string `yaml:"group_search_filter"`
+	Admins                string `yaml:"super_admins"`
+	ServiceAccountBaseDNs string `yaml:"service_search_base_dns"`
+	MainBaseDN            string `yaml:"Main_base_dns"`
+	GroupManageAttribute  string `yaml:"group_Manage_Attribute"`
+
+	allUsersRWLock                     sync.RWMutex
+	allUsersCacheValue                 []string
+	allUsersCacheExpiration            time.Time
+	allGroupsMutex                     sync.Mutex
+	allGroupsCacheValue                []string
+	allGroupsCacheExpiration           time.Time
+	allGroupsAndManagerCacheMutex      sync.Mutex
+	allGroupsAndManagerCacheValue      [][]string
+	allGroupsAndManagerCacheExpiration time.Time
 }
 
 func extractCNFromDNString(input []string) (output []string, err error) {
@@ -489,7 +493,7 @@ func (u *UserInfoLDAPSource) GetusersofaGroup(groupname string) ([]string, strin
 		u.GroupSearchBaseDNs,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		"(&(cn="+groupname+" )(objectClass=posixGroup))",
-		nil,
+		[]string{"memberUid", u.GroupManageAttribute},
 		nil,
 	)
 	sr, err := conn.Search(searchRequest)
@@ -497,6 +501,7 @@ func (u *UserInfoLDAPSource) GetusersofaGroup(groupname string) ([]string, strin
 		log.Println(err)
 		return nil, "", err
 	}
+	log.Printf("GetusersofaGroup sr=%+v", sr)
 	if len(sr.Entries) > 1 {
 		log.Println("Duplicate entries found")
 		return nil, "", errors.New("Multiple entries found, Contact the administrator!")
@@ -1028,7 +1033,7 @@ func (u *UserInfoLDAPSource) GetGroupsInfoOfUser(groupdn string, username string
 	return GroupandDescriptionPair, nil
 }
 
-func (u *UserInfoLDAPSource) GetallGroupsandDescription(grouddn string) ([][]string, error) {
+func (u *UserInfoLDAPSource) getAllGroupsManagedByNonCached() ([][]string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return nil, err
@@ -1038,12 +1043,16 @@ func (u *UserInfoLDAPSource) GetallGroupsandDescription(grouddn string) ([][]str
 	var GroupandDescriptionPair [][]string
 	var Groupattributes []string
 
-	searchrequest := ldap.NewSearchRequest(grouddn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+	searchrequest := ldap.NewSearchRequest(u.GroupSearchBaseDNs, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		"(|(objectClass=posixGroup)(objectClass=groupofNames))", []string{"cn", u.GroupManageAttribute}, nil)
+
+	t0 := time.Now()
 	result, err := conn.Search(searchrequest)
 	if err != nil {
 		return nil, err
 	}
+	t1 := time.Now()
+	log.Printf("getAllGroupsAndManagedby Search Took %v to run", t1.Sub(t0))
 	for _, entry := range result.Entries {
 		managerValue := entry.GetAttributeValue(u.GroupManageAttribute)
 		switch strings.ToLower(u.GroupManageAttribute) {
@@ -1063,12 +1072,34 @@ func (u *UserInfoLDAPSource) GetallGroupsandDescription(grouddn string) ([][]str
 		Groupattributes = nil
 	}
 	return GroupandDescriptionPair, nil
+}
 
+//const allGroupsCacheDuration = time.Second * 30
+/*
+        allGroupsAndManagerCacheMutex      sync.Mutex
+	        allGroupsAndManagerCacheValue      [][]string
+		        allGroupsAndManagerCacheExpiration time.Time
+*/
+
+func (u *UserInfoLDAPSource) GetAllGroupsManagedBy() ([][]string, error) {
+
+	u.allGroupsAndManagerCacheMutex.Lock()
+	defer u.allGroupsAndManagerCacheMutex.Unlock()
+	if u.allGroupsAndManagerCacheExpiration.After(time.Now()) {
+		return u.allGroupsAndManagerCacheValue, nil
+	}
+	allGroups, err := u.getAllGroupsManagedByNonCached()
+	if err != nil {
+		return nil, err
+	}
+	u.allGroupsAndManagerCacheValue = allGroups
+	u.allGroupsAndManagerCacheExpiration = time.Now().Add(allGroupsCacheDuration)
+	return allGroups, nil
 }
 
 func (u *UserInfoLDAPSource) GetGroupandManagedbyAttributeValue(groupnames []string) ([][]string, error) {
 
-	GroupandDescriptionPair, err := u.GetallGroupsandDescription(u.GroupSearchBaseDNs)
+	GroupandDescriptionPair, err := u.GetAllGroupsManagedBy()
 	if err != nil {
 		log.Println(err)
 		return nil, err

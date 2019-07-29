@@ -199,53 +199,70 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 	//generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "my_groups")
 }
 
+func (state *RuntimeState) getPendingRequestGroupsofUser(username string) ([][]string, error) {
+	go state.Userinfo.GetAllGroupsManagedBy()
+	t0 := time.Now()
+	groupsPendingInDB, _, err := findrequestsofUserinDB(username, state)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	t1 := time.Now()
+	log.Printf("findrequestsofUserinDB Took %v to run", t1.Sub(t0))
+	var actualPendingGroups []string
+	// TODO: replace this loop for another one where we iterate over the
+	// groups of the user. This would lead to only 1 new DB connection per
+	// pending group request
+	for _, groupname := range groupsPendingInDB {
+		t0 := time.Now()
+		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupname, username)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		t1 := time.Now()
+		log.Printf("IsgroupmemberorNo Took %v to run", t1.Sub(t0))
+		if Ismember {
+			err := deleteEntryInDB(username, groupname, state)
+			if err != nil {
+				log.Println(err)
+				return nil, err
+			}
+			continue
+		}
+		actualPendingGroups = append(actualPendingGroups, groupname)
+	}
+	log.Printf("ctualPendingGroups=%+v", actualPendingGroups)
+	return state.Userinfo.GetGroupandManagedbyAttributeValue(actualPendingGroups)
+
+}
+
 //user's pending requests
 func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Request) {
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
-	groupnames, _, err := findrequestsofUserinDB(username, state)
+	_, hasRequests, err := findrequestsofUserinDB(username, state)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-
-	for _, groupname := range groupnames {
-		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupname, username)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-		if Ismember {
-			err := deleteEntryInDB(username, groupname, state)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-				return
-			}
-			continue
-		}
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := pendingRequestsPageData{
+		UserName:           username,
+		IsAdmin:            isAdmin,
+		Title:              "Pending Group Requests",
+		HasPendingRequests: hasRequests,
 	}
-
-	groups, err := state.Userinfo.GetGroupandManagedbyAttributeValue(groupnames)
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "pendingRequestsPage", pageData)
 	if err != nil {
-		log.Println(err)
-	}
-	response := Response{UserName: username, Groups: groups, Users: nil, PendingActions: nil}
-
-	sidebarType := "sidebar"
-	if state.Userinfo.UserisadminOrNot(username) {
-		sidebarType = "admins_sidebar"
-	}
-	if groupnames == nil {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "no_pending_requests")
-
-	} else {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "pending_requests")
-
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
 	}
 }
 

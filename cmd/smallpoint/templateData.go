@@ -233,3 +233,90 @@ const allGroupsPageText = `
 </html>
 {{end}}
 `
+
+type pendingRequestsPageData struct {
+	Title   string
+	IsAdmin bool
+
+	UserName           string
+	HasPendingRequests bool
+	JSSources          []string
+}
+
+const pendingRequestsPageText = `
+{{define "pendingRequestsPage"}}
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{template "commonCSS"}}
+    {{template "commonJS"}}
+    i{{if .HasPendingRequests}}<script type="text/javascript" src="/getGroups.js?type=pendingRequests"></script>{{end}}
+</head>
+<body class="w3-light-grey" >
+{{template "header" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+  <div id="content">
+
+
+{{if .HasPendingRequests}}
+<header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-group"></i>My Pending Group Requests</b>
+    </h5>
+</header>
+
+<div class="w3-panel">
+    <button class="w3-button w3-right w3-text-new-white w3-red" id="length_btn" data-toggle="modal" data-target="#myModal">Delete Requests</button>
+    <div class="modal fade" id="myModal" role="dialog">
+        <div class="modal-dialog">
+
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <span id="add_here"></span> selected requests?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" id="btn_deleterequest" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <table class="w3-table w3-striped w3-white" id="display">
+
+    </table>
+
+</div>
+{{else}}
+
+<header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-group"></i>My Pending Group Requests</b>
+    </h5>
+</header>
+
+<div class="w3-panel">
+    <p>You don't have any pending requests at the moment.</p>
+</div>
+
+{{end}}
+
+
+  </div><!-- end of content div -->
+{{template "footer"}}
+</div>
+
+</body>
+</html>
+{{end}}
+`

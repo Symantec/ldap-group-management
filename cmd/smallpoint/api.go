@@ -504,7 +504,14 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 	var groupsToSend [][]string
 	switch r.FormValue("type") {
 	case "all":
-		groupsToSend, err = state.Userinfo.GetallGroupsandDescription(state.Config.TargetLDAP.GroupSearchBaseDNs)
+		groupsToSend, err = state.Userinfo.GetAllGroupsManagedBy()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	case "pendingRequests":
+		groupsToSend, err = state.getPendingRequestGroupsofUser(username)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)

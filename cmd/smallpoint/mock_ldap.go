@@ -421,7 +421,7 @@ func (m *MockLdap) GetGroupDN(groupname string) (string, error) {
 	return "", nil
 }
 
-func (m *MockLdap) GetallGroupsandDescription(groupdn string) ([][]string, error) {
+func (m *MockLdap) GetAllGroupsManagedBy() ([][]string, error) {
 	var groups [][]string
 	var eachGroup []string
 	for _, value := range m.Groups {

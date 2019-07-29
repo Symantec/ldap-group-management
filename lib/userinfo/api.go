@@ -69,7 +69,7 @@ type UserInfo interface {
 
 	GetGroupDN(groupname string) (string, error)
 
-	GetallGroupsandDescription(groupdn string) ([][]string, error)
+	GetAllGroupsManagedBy() ([][]string, error)
 
 	GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error)
 
