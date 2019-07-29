@@ -483,12 +483,20 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 }
 
 // TODO: figure out how to do this with templates or even better migrate to AJAX to get data
-const getGroupsJSPainText = `
+const getGroupsJSRequestAccessText = `
 document.addEventListener('DOMContentLoaded', function () {
                 var groupnames = %s;
                 var final_groupnames=array(groupnames);
                 RequestAccess(final_groupnames);
                 datalist(groupnames[0]);
+});
+`
+
+const getGroupsJSPendingActionsText = `
+document.addEventListener('DOMContentLoaded', function () {
+	pendingActions = %s; 
+	var pending_actions=arrayPendingActions(PendingActions);
+	pendingActionsTable(pending_actions);
 });
 `
 
@@ -501,6 +509,7 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return
 	}
+	outputText := getGroupsJSRequestAccessText
 	var groupsToSend [][]string
 	switch r.FormValue("type") {
 	case "all":
@@ -517,6 +526,14 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
+	case "pendingActions":
+		groupsToSend, err = state.getUserPendingActions(username)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		outputText = getGroupsJSPendingActionsText
 	default:
 
 		groupsToSend, err = state.Userinfo.GetGroupsInfoOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
@@ -535,6 +552,6 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 	//log.Printf("%s", encodedGroups)
 	w.Header().Set("Cache-Control", "private, max-age=15")
 	w.Header().Set("Content-Type", "application/javascript")
-	fmt.Fprintf(w, getGroupsJSPainText, encodedGroups)
+	fmt.Fprintf(w, outputText, encodedGroups)
 	return
 }

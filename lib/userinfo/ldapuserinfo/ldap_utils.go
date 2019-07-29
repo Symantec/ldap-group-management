@@ -510,7 +510,20 @@ func (u *UserInfoLDAPSource) GetusersofaGroup(groupname string) ([]string, strin
 	if sr.Entries[0].GetAttributeValues(u.GroupManageAttribute) == nil {
 		return users, "", nil
 	}
+
 	GroupmanagedbyValue := sr.Entries[0].GetAttributeValue(u.GroupManageAttribute)
+	switch strings.ToLower(u.GroupManageAttribute) {
+	case "owner":
+		groupCN, err := extractCNFromDNString([]string{GroupmanagedbyValue})
+		if err != nil {
+			log.Println(err)
+			return users, "", err
+		}
+		GroupmanagedbyValue = groupCN[0]
+	default:
+		GroupmanagedbyValue = GroupmanagedbyValue
+	}
+
 	return users, GroupmanagedbyValue, nil
 }
 

@@ -471,6 +471,89 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 
 }
 
+func (state *RuntimeState) cleanupPendingRequests() error {
+	DBentries, err := getDBentries(state)
+	if err != nil {
+		log.Printf("getUserPendingActions: getDBEntries err: %s", err)
+		return err
+	}
+	for _, entry := range DBentries {
+		log.Printf("top of loop entry=%+v", entry)
+		groupName := entry[1]
+		requestingUser := entry[0]
+		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, requestingUser)
+		if err != nil {
+			log.Printf("getUserPendingActions: isggroupmemberor not err: %s", err)
+			return err
+		}
+		if Ismember {
+			err := deleteEntryInDB(requestingUser, groupName, state)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+			continue
+		}
+	}
+	return nil
+}
+
+func (state *RuntimeState) getUserPendingActions(username string) ([][]string, error) {
+	go state.Userinfo.GetAllGroupsManagedBy() //warm up cache
+	go state.cleanupPendingRequests()
+	DBentries, err := getDBentries(state)
+	if err != nil {
+		log.Printf("getUserPendingActions: getDBEntries err: %s", err)
+		return nil, err
+	}
+
+	//TODO, fast returns on empty DB entries
+	var rvalue [][]string
+
+	userGroups, err := state.Userinfo.GetgroupsofUser(username)
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(userGroups)
+
+	allGroups, err := state.Userinfo.GetAllGroupsManagedBy()
+	if err != nil {
+		return nil, err
+	}
+	group2manager := make(map[string]string)
+	for _, entry := range allGroups {
+		group2manager[entry[0]] = entry[1]
+	}
+	//log.Printf("%+v", group2manager)
+
+	for _, entry := range DBentries {
+		log.Printf("top of loop entry=%+v", entry)
+		groupName := entry[1]
+		//requestingUser := entry[0]
+		fmt.Println(groupName)
+		managerGroup := group2manager[groupName]
+
+		log.Printf("get managerGroup=%s", managerGroup)
+		if managerGroup == descriptionAttribute {
+			managerGroup = groupName
+		}
+
+		log.Printf("finale managerGroup=%s", managerGroup)
+
+		groupIndex := sort.SearchStrings(userGroups, managerGroup)
+		if groupIndex >= len(userGroups) {
+			continue
+		}
+		if userGroups[groupIndex] != managerGroup {
+			continue
+		}
+
+		rvalue = append(rvalue, entry)
+
+	}
+	return rvalue, nil
+}
+
 //User's Pending Actions
 func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request) {
 	username, err := state.GetRemoteUserName(w, r)
