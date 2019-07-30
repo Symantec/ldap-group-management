@@ -47,8 +47,11 @@ func setSecurityHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Frame-Options", "DENY")
 	w.Header().Set("X-XSS-Protection", "1")
 	w.Header().Set("Content-Security-Policy",
-		"default-src 'self'; script-src 'self' cdn.datatables.net maxcdn.bootstrapcdn.com code.jquery.com "+
-			";style-src 'self' cdn.datatables.net maxcdn.bootstrapcdn.com fonts.googleapis.com 'unsafe-inline'; font-src cdnjs.cloudflare.com fonts.gstatic.com fonts.googleapis.com ")
+		"default-src 'self';"+
+			" script-src 'self' cdn.datatables.net maxcdn.bootstrapcdn.com code.jquery.com; "+
+			" style-src 'self' cdn.datatables.net maxcdn.bootstrapcdn.com cdnjs.cloudflare.com fonts.googleapis.com 'unsafe-inline';"+
+			" font-src cdnjs.cloudflare.com fonts.gstatic.com fonts.googleapis.com maxcdn.bootstrapcdn.com;"+
+			" img-src 'self' cdn.datatables.net")
 }
 
 func randomStringGeneration() (string, error) {
@@ -524,7 +527,6 @@ func (state *RuntimeState) getUserPendingActions(username string) ([][]string, e
 	for _, entry := range allGroups {
 		group2manager[entry[0]] = entry[1]
 	}
-	//log.Printf("%+v", group2manager)
 
 	for _, entry := range DBentries {
 		log.Printf("top of loop entry=%+v", entry)
@@ -560,60 +562,30 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		return
 	}
+	go state.Userinfo.GetAllGroupsManagedBy() //warm up cache
 	DBentries, err := getDBentries(state)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	var response Response
-	response.UserName = username
-	for _, entry := range DBentries {
-		groupName := entry[1]
-		user := entry[0]
-		//fmt.Println(groupName)
-		//check if entry[0] i.e. user is already a group member or not ; if yes, delete request and continue.
-		Ismember, description, err := state.Userinfo.IsgroupmemberorNot(groupName, user)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-		if Ismember {
-			err := deleteEntryInDB(user, groupName, state)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-				return
-			}
-			continue
-		}
-		//get the description value (or) group managed by value; if descriptionAttribute
 
-		if description != descriptionAttribute {
-			groupName = description
-		}
-		// Check now if username is member of groupname(in description) and if it is, then add it.
-		Isgroupmember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
-		if err != nil {
-			log.Println(err)
-		}
-		if Isgroupmember {
-			response.PendingActions = append(response.PendingActions, entry)
-		}
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := pendingActionsPageData{
+		UserName:          username,
+		IsAdmin:           isAdmin,
+		Title:             "Pending Group Requests",
+		HasPendingActions: len(DBentries) > 0,
 	}
-	sidebarType := "sidebar"
-	if state.Userinfo.UserisadminOrNot(username) {
-		sidebarType = "admins_sidebar"
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "pendingActionsPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
 	}
 
-	if response.PendingActions == nil {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "no_pending_actions")
-
-	} else {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "pending_actions")
-
-	}
 }
 
 //Approving

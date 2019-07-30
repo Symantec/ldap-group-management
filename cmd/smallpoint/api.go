@@ -495,7 +495,7 @@ document.addEventListener('DOMContentLoaded', function () {
 const getGroupsJSPendingActionsText = `
 document.addEventListener('DOMContentLoaded', function () {
 	pendingActions = %s; 
-	var pending_actions=arrayPendingActions(PendingActions);
+	var pending_actions=arrayPendingActions(pendingActions);
 	pendingActionsTable(pending_actions);
 });
 `

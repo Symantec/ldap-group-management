@@ -151,7 +151,8 @@ func (state *RuntimeState) loadTemplates() (err error) {
 
 	/// Load the oter built in templates
 	extraTemplates := []string{commonCSSText, commonJSText, headerHTMLText,
-		footerHTMLText, sidebarHTMLText, myGroupsPageText, allGroupsPageText, pendingRequestsPageText}
+		footerHTMLText, sidebarHTMLText, myGroupsPageText, allGroupsPageText,
+		pendingRequestsPageText, pendingActionsPageText}
 	for _, templateString := range extraTemplates {
 		_, err = state.htmlTemplate.Parse(templateString)
 		if err != nil {
