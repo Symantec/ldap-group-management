@@ -526,6 +526,15 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
+	case "allNoManager":
+		allgroups, err := state.Userinfo.GetallGroups()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		sort.Strings(allgroups)
+		groupsToSend = [][]string{allgroups}
 	case "pendingActions":
 		groupsToSend, err = state.getUserPendingActions(username)
 		if err != nil {
@@ -553,5 +562,42 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 	w.Header().Set("Cache-Control", "private, max-age=15")
 	w.Header().Set("Content-Type", "application/javascript")
 	fmt.Fprintf(w, outputText, encodedGroups)
+	return
+}
+
+const getUsersJSText = `
+document.addEventListener('DOMContentLoaded', function () {
+                var Allusers = %s;
+                //var usernames=arrayUsers(Users);
+                //Group_Info(usernames);
+		list_members(Allusers);
+});
+`
+
+func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	_, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	usersToSend, err := state.Userinfo.GetallUsers()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	encodedUsers, err := json.Marshal(usersToSend)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Cache-Control", "private, max-age=15")
+	w.Header().Set("Content-Type", "application/javascript")
+	fmt.Fprintf(w, getUsersJSText, encodedUsers)
 	return
 }

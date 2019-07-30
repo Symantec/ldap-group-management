@@ -122,6 +122,7 @@ const (
 	changeownershipPath         = "/change_owner"
 
 	getGroupsJSPath = "/getGroups.js"
+	getUsersJSPath  = "/getUsers.js"
 
 	indexPath  = "/"
 	authPath   = "/auth/oidcsimple/callback"
@@ -152,7 +153,7 @@ func (state *RuntimeState) loadTemplates() (err error) {
 	/// Load the oter built in templates
 	extraTemplates := []string{commonCSSText, commonJSText, headerHTMLText,
 		footerHTMLText, sidebarHTMLText, myGroupsPageText, allGroupsPageText,
-		pendingRequestsPageText, pendingActionsPageText}
+		pendingRequestsPageText, pendingActionsPageText, createGroupPageText}
 	for _, templateString := range extraTemplates {
 		_, err = state.htmlTemplate.Parse(templateString)
 		if err != nil {
@@ -281,6 +282,7 @@ func main() {
 	http.Handle(groupinfoPath, http.HandlerFunc(state.groupInfoWebpage))
 
 	http.Handle(getGroupsJSPath, http.HandlerFunc(state.getGroupsJSHandler))
+	http.Handle(getUsersJSPath, http.HandlerFunc(state.getUsersJSHandler))
 
 	fs := http.FileServer(http.Dir(state.Config.Base.TemplatesPath))
 	http.Handle(cssPath, fs)

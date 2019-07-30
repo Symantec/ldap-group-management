@@ -429,3 +429,98 @@ const pendingActionsPageText = `
 </html>
 {{end}}
 `
+
+type createGroupPageData struct {
+	Title   string
+	IsAdmin bool
+
+	UserName  string
+	JSSources []string
+}
+
+const createGroupPageText = `
+{{define "createGroupPage"}}
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{template "commonCSS"}}
+    {{template "commonJS"}}
+    <script type="text/javascript" src="/js/createGroup.js"></script>
+    <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
+    <script type="text/javascript" src="/getUsers.js"></script>
+</head>
+<body class="w3-light-grey" >
+{{template "header" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+  <div id="content">
+
+
+<!-- Header -->
+<header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-group"></i>Create a Group</b></h5>
+</header>
+
+<div class="w3-panel">
+        <table class="w3-table w3-striped w3-white" id="creategroup">
+            <tr>
+                <td>Group Name</td>
+                <td><input autocomplete="off" id="cg_groupname" name="groupname"  required="required" type="text"/><br/></td>
+            </tr>
+            <tr>
+                <td>description</td>
+                <td><select  id="select_groups" required="required" name="description" type="text">
+                    <option value="self-managed">self-managed</option>
+                </select><br/></td>
+            </tr>
+            <tr>
+                <td>Members</td>
+                <td>
+                    <div class='suggestion'>
+                    </div>
+                    <input autocomplete="off" class="members" id='cg_members'  list="select_members" name="members" type="text"/>
+                    <datalist class="select_memberslist" id="select_members">
+                    </datalist>
+                </td>
+            </tr>
+            <button class="w3-button w3-right w3-text-new-white w3-new-blue" data-toggle="modal" data-target="#myModalCreateGroup">Create Group</button>
+        </table>
+
+    <div class="modal fade" id="myModalCreateGroup" role="dialog">
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to create this group?</p>
+                    <form id="form_create_group" method="POST" action="/create_group/?username={{.UserName}}" autocomplete="off">
+                        GroupName: <input autocomplete="off" id='group_groupname' name="groupname" required type="text" readonly/><br/>
+                        Managedby: <input autocomplete="off" id="group_managedby" name="description" required type="text" readonly><br/>
+                        Members  : <input autocomplete="off" class='group_members' id='group_members' name="members" required="required" type="text" readonly/><br/>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default"  id="btn_creategroup" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+  </div><!-- end of content div -->
+{{template "footer"}}
+</div>
+
+</body>
+</html>
+{{end}}
+`

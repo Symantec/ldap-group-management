@@ -269,33 +269,31 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// On cold state: 3569 ms
 func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
-	Allgroups, err := state.Userinfo.GetallGroups()
 
+	// next two lines warm up cache
+	go state.Userinfo.GetallUsers()
+	go state.Userinfo.GetallGroups()
+
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := createGroupPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Pending Group Requests",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "createGroupPage", pageData)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
-		return
-	}
-	Allusers, err := state.Userinfo.GetallUsers()
-	if err != nil {
-		log.Printf("creategroupWebpageHandler, GetallUser err: %s", err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-
-	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
-
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "create_group")
-
 }
 
 func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
