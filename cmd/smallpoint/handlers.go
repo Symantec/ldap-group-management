@@ -199,7 +199,6 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	return
-	//generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "my_groups")
 }
 
 func (state *RuntimeState) getPendingRequestGroupsofUser(username string) ([][]string, error) {
