@@ -771,6 +771,7 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 		return nil, err
 	}
 	var userEmail []string
+	log.Printf("GetEmailofusersingroup:%s, %+v", groupname, groupUsers)
 	for _, entry := range groupUsers {
 		value, err := u.GetEmailofauser(entry)
 		if err != nil {

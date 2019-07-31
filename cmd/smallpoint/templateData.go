@@ -524,3 +524,123 @@ const createGroupPageText = `
 </html>
 {{end}}
 `
+
+type deleteGroupPageData struct {
+	Title   string
+	IsAdmin bool
+
+	UserName  string
+	JSSources []string
+}
+
+const deleteGroupPageText = `
+{{define "deleteGroupPage"}}
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{template "commonCSS"}}
+    {{template "commonJS"}}
+    <script type="text/javascript" src="/js/deleteGroup.js"></script>
+    <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
+</head>
+<body class="w3-light-grey" >
+{{template "header" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+  <div id="content">
+
+
+<header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-group"></i>Delete Group</b></h5>
+</header>
+
+<div class="w3-panel">
+        <table class="w3-table w3-striped w3-white" id="deletegroup">
+            <tr>
+                <td>Group Names</td>
+                <td>
+                    <div class='suggestion'>
+                    </div>
+                    <input autocomplete="off" class="groupnames" id='cg_groupnames'  list="select_groups" name="groupnames" type="text"/>
+                    <datalist class="select_groupslist" id="select_groups">
+                    </datalist>
+                </td>
+            </tr>
+            <button class="w3-button w3-right w3-text-new-white w3-new-blue" data-toggle="modal" data-target="#myModalDeleteGroups">Delete Groups</button>
+        </table>
+    <div class="modal fade" id="myModalDeleteGroups" role="dialog">
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete groups?</p>
+                    <form autocomplete="off" id="form_delete_group" method="POST" action="/delete_group/?username={{.UserName}}">
+                        GroupNames: <input autocomplete="off" class='group_names' id='group_names' name="groupnames" required="required" type="text" readonly/><br/>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" id="btn_deletegroup" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+  </div><!-- end of content div -->
+{{template "footer"}}
+</div>
+
+</body>
+</html>
+{{end}}
+`
+
+type simpleMessagePageData struct {
+	Title   string
+	IsAdmin bool
+
+	UserName       string
+	JSSources      []string
+	SuccessMessage string
+	ErrorMessage   string
+}
+
+const simpleMessagePageText = `
+{{define "simpleMessagePage"}}
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{template "commonCSS"}}
+    {{template "commonJS"}}
+    <script type="text/javascript" src="/js/deleteGroup.js"></script>
+    <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
+</head>
+<body class="w3-light-grey" >
+{{template "header" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+  <div id="content">
+     <p>
+     {{.SuccessMessage}}
+     </p>
+  </div><!-- end of content div -->
+{{template "footer"}}
+</div>
+
+</body>
+</html>
+{{end}}
+`

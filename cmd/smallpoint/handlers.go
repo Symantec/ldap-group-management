@@ -300,23 +300,21 @@ func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *h
 	if err != nil {
 		return
 	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
-		return
+	go state.Userinfo.GetallGroups() //cache warmup
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := deleteGroupPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Delete Group",
 	}
-	Allgroups, err := state.Userinfo.GetallGroups()
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "deleteGroupPage", pageData)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-
-	sort.Strings(Allgroups)
-
-	response := Response{username, [][]string{Allgroups}, nil, nil, "", "", nil}
-
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "delete_group")
-
 }
 
 //requesting access by users to join in groups...
@@ -341,6 +339,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
 		return
 	}
+	log.Printf("requestAccessHandler: post user checks")
 
 	var out map[string][]string
 	err = json.NewDecoder(r.Body).Decode(&out)
@@ -359,18 +358,27 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 	}
 	err = insertRequestInDB(username, out["groups"], state)
 	if err != nil {
-		log.Println(err)
+		log.Printf("requestAccessHandler: Error inserting request into DB err:: %s", err)
 		http.Error(w, "oops! an error occured.", http.StatusInternalServerError)
 		return
 	}
 	go state.SendRequestemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
-	sidebarType := "sidebar"
 
-	if state.Userinfo.UserisadminOrNot(username) == true {
-		sidebarType = "admins_sidebar"
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        isAdmin,
+		Title:          "Request sent Sucessfully",
+		SuccessMessage: "Requests sent successfully, to manage your requests please visit My Pending Requests.",
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", sidebarType, "Accessrequestsent")
-
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 //delete access requests made by user
