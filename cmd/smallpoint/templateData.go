@@ -810,7 +810,7 @@ const groupInfoPageText = `
                     </datalist>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default"  onclick="addmember_form_submit()" id="btn_form_modal_addmember" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default"  id="btn_form_modal_addmember" data-dismiss="modal">Confirm</button>
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                 </div>
             </div>
@@ -838,7 +838,7 @@ const groupInfoPageText = `
                     </datalist>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" onclick="removemember_form_submit()" id="btn_form_modal_removemember" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default"  id="btn_form_modal_removemember" data-dismiss="modal">Confirm</button>
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                 </div>
             </div>
@@ -877,6 +877,19 @@ const groupInfoPageText = `
                     <button type="button" class="close" data-dismiss="modal"></button>
                     <h4 class="modal-title">Action Required</h4>
                 </div>
+                {{if .IsGroupAdmin}}
+                <div class="modal-body">
+                    <p>Are you sure you want to join this group?</p>
+                    <form id="form_modal_joingroup" action="/addmembers/?username={{.UserName}}" method="POST">
+                        GroupName: <input autocomplete="off" name="groupname" id="join_admin" type="text" value="{{.GroupName}}" required readonly><br/>
+                        Username : <input autocomplete="off" name="members" required="required" value="{{.UserName}}" type="text" readonly><br/>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" id="btn_joingroup_admin"  data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+                {{else}}
                 <div class="modal-body">
                     <p>Are you sure you want to request access for this group?</p>
                     GroupName: <input name="groupname" id="groupinfo_join_nonmember" type="text" value="{{.GroupName}}" readonly><br/>
@@ -885,10 +898,11 @@ const groupInfoPageText = `
                     <button type="button" class="btn btn-default" id="btn_joingroup" data-dismiss="modal">Confirm</button>
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                 </div>
+                {{end}}
             </div>
-
         </div>
     </div>
+  
     {{end}}
 
     <table class="w3-table w3-striped w3-white" id="table_groupinfo">
@@ -896,6 +910,165 @@ const groupInfoPageText = `
     </table>
 
 
+</div>
+
+
+  </div><!-- end of content div -->
+{{template "footer"}}
+</div>
+
+</body>
+</html>
+{{end}}
+`
+
+type createServiceAccountPageData struct {
+	Title   string
+	IsAdmin bool
+
+	UserName  string
+	JSSources []string
+}
+
+const createServiceAccountPageText = `
+{{define "createServiceAccountPage"}}
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{template "commonCSS"}}
+    {{template "commonJS"}}
+    <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
+</head>
+<body class="w3-light-grey" >
+{{template "header" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+  <div id="content">
+
+
+
+<!-- Header -->
+<header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-group"></i>Create a Service Account</b></h5>
+</header>
+
+<div class="w3-panel">
+    <form method="POST" action="/create_serviceaccount/?username={{.UserName}}">
+        <table class="w3-table w3-striped w3-white" id="creategroup">
+            <tr>
+                <td><label for="AccountName">Service Account Name</label></td>
+                <td><input autocomplete="off" id="AccountName" name="AccountName" required type="text"/><br/></td>
+            </tr>
+            <tr>
+                <td><label id="labelEmailAddress" for="EmailAddress">DL Email Address Only</label></td>
+                <td><input autocomplete="off" id="EmailAddress" name="mail" required type="text"/><br/></td>
+            </tr>
+            <tr>
+                <td><label id="labelloginShell" for="loginShell" >login Shell</label></td>
+                <td><select id="loginShell" required name="loginShell" type="text">
+                    <option value="/bin/false">/bin/false</option>
+                    <option value="/bin/bash">/bin/bash</option>
+                </select></td>
+            </tr>
+            <button class="w3-button w3-right w3-text-new-white w3-new-blue" type="submit" >Create Service Account</button>
+        </table>
+    </form>
+</div>
+
+
+  </div><!-- end of content div -->
+{{template "footer"}}
+</div>
+
+</body>
+</html>
+{{end}}
+`
+
+type changeGroupOwnershipPageData struct {
+	Title   string
+	IsAdmin bool
+
+	UserName  string
+	JSSources []string
+}
+
+const changeGroupOwnershipPageText = `
+{{define "changeGroupOwnershipPage"}}
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{template "commonCSS"}}
+    {{template "commonJS"}}
+    <script type="text/javascript" src="/js/changeGroupOwnership.js"></script>
+    <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
+    <script type="text/javascript" src="/getUsers.js"></script>
+</head>
+<body class="w3-light-grey" >
+{{template "header" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+  <div id="content">
+
+<header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-group"></i>Change Group Ownership(RegExp)</b></h5>
+</header>
+
+<div class="w3-panel">
+    <table class="w3-table w3-striped w3-white">
+        <tr>
+            <td>Regexp Group Name</td>
+            <td>
+                <input autocomplete="off" type="text" id="group_regexp"u>
+            </td>
+        </tr>
+        <tr>
+            <td>Manager Group</td>
+            <td>
+                <input autocomplete="off" list="select_groups" id="cg_groupname" required name="groupname" type="text">
+                <datalist id="select_groups">
+                </datalist><br/>
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
+            <textarea id="listgroups_output" cols="40" rows="10" data-role="none" style="resize: none;margin-left: auto; margin-right:auto;" readonly></textarea>
+            </td>
+        </tr>
+        <button class="w3-button w3-right w3-text-new-white w3-new-blue" data-toggle="modal" data-target="#myModalAddpeopletoGroup_regexp" style="margin-left:10px">Change Ownership</button>
+        <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="list_group">Test List Groups</button>
+    </table>
+    <div class="modal fade" id="myModalAddpeopletoGroup_regexp" role="dialog">
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to change ownership of these groups?</p>
+                    <form id="form_addpeople_togroup" method="POST" action="/change_owner/?username={{.UserName}}" autocomplete="off">
+                        Groups: <input autocomplete="off" id='group_members' name="groupnames" required type="text" readonly/><br/>
+                        ManagerGroup  : <input autocomplete="off" id='group_groupname' name="managegroup" required="required" type="text" readonly/><br/>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" id="btn_addpeopletogroup" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 

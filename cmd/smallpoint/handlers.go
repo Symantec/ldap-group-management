@@ -994,22 +994,24 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 	if err != nil {
 		return
 	}
-	Allgroups, err := state.Userinfo.GetallGroups()
-
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	if !state.Userinfo.UserisadminOrNot(username) {
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	if !isAdmin {
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
-
-	response := Response{username, [][]string{Allgroups}, nil, nil, "", "", nil}
-
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "create_service_account")
-
+	pageData := createServiceAccountPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Members Sucessfully Deleted",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "createServiceAccountPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (state *RuntimeState) groupExistsorNot(w http.ResponseWriter, groupname string) error {
@@ -1101,104 +1103,13 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		GroupManagedbyValue: managedby,
 	}
 	setSecurityHeaders(w)
-	w.Header().Set("Cache-Control", "private, max-age=30")
+	w.Header().Set("Cache-Control", "private, max-age=15")
 	err = state.htmlTemplate.ExecuteTemplate(w, "groupInfoPage", pageData)
 	if err != nil {
 		log.Printf("Failed to execute %v", err)
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-	/*
-		AllUsersinGroup, managedby, err := state.Userinfo.GetusersofaGroup(groupName)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-		sort.Strings(AllUsersinGroup)
-
-		Allusers, err := state.Userinfo.GetallUsers()
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-
-		//response.Users = AllUsersinGroup
-		response = Response{username, nil, Allusers, nil, groupName, managedby, AllUsersinGroup}
-		superAdmin := state.Userinfo.UserisadminOrNot(username)
-		sidebarType := "sidebar"
-		if superAdmin {
-			sidebarType = "admins_sidebar"
-		}
-		groupandmanagedby, err := state.Userinfo.GetGroupandManagedbyAttributeValue([]string{groupName})
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
-			return
-		}
-		groupexistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupandmanagedby[0][1])
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
-			return
-		}
-
-		groupinfowebpageType := "groupinfo_member"
-
-		IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
-			return
-		}
-		IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, groupName)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-
-		if groupandmanagedby[0][1] != "self-managed" && !groupexistsornot {
-			if !superAdmin {
-				groupinfowebpageType = "groupinfo_no_managedby_member_nomem"
-				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-				return
-			}
-
-			if IsgroupMember {
-				groupinfowebpageType = "groupinfo_member_admin"
-				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-				return
-
-			} else {
-				groupinfowebpageType = "groupinfo_nonmember_admin"
-				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-				return
-
-			}
-		}
-
-		if IsgroupMember {
-			if IsgroupAdmin || superAdmin {
-				groupinfowebpageType = "groupinfo_member_admin"
-				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-
-			} else {
-				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-			}
-
-		} else {
-			if IsgroupAdmin || superAdmin {
-				groupinfowebpageType = "groupinfo_nonmember_admin"
-				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-			} else {
-				groupinfowebpageType = "groupinfo_nonmember"
-				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-
-			}
-		}
-	*/
 }
 
 func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, r *http.Request) {
@@ -1206,31 +1117,22 @@ func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, 
 	if err != nil {
 		return
 	}
-
-	t0 := time.Now()
-	Allgroups, err := state.Userinfo.GetallGroups()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	t1 := time.Now()
-	log.Printf("GetAllGroups Took %v to run", t1.Sub(t0))
-
-	sort.Strings(Allgroups)
-
-	if !state.Userinfo.UserisadminOrNot(username) {
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	if !isAdmin {
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
-	var Allusers []string
-	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
-
-	sidebarType := "sidebar"
-	if state.Userinfo.UserisadminOrNot(username) {
-		sidebarType = "admins_sidebar"
+	pageData := changeGroupOwnershipPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Change Group OwnerShip",
 	}
-
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "changeownership")
-
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "changeGroupOwnershipPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
