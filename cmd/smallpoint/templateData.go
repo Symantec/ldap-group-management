@@ -644,3 +644,266 @@ const simpleMessagePageText = `
 </html>
 {{end}}
 `
+
+type addMembersToGroupPagData struct {
+	Title   string
+	IsAdmin bool
+
+	UserName  string
+	JSSources []string
+}
+
+const addMembersToGroupPageText = `
+{{define "addMembersToGroupPage"}}
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{template "commonCSS"}}
+    {{template "commonJS"}}
+    <script type="text/javascript" src="/js/addMemberToGroup.js"></script>
+    <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
+    <script type="text/javascript" src="/getUsers.js"></script>
+</head>
+<body class="w3-light-grey" >
+{{template "header" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+  <div id="content">
+
+<!-- Header -->
+<header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-group"></i>Add members to Group</b></h5>
+</header>
+
+<div class="w3-panel">
+        <table class="w3-table w3-striped w3-white">
+            <tr>
+                <td>Group Name</td>
+                <td>
+                    <input autocomplete="off" list="select_groups" id="cg_groupname" required name="groupname" type="text">
+                    <datalist id="select_groups">
+                    </datalist><br/>
+                </td>
+            </tr>
+            <tr>
+                <td>Members</td>
+                <td>
+                    <div class='suggestion'>
+                    </div>
+                    <input autocomplete="off" class="members" id='cg_members' list="select_members" name="members" type="text"/>
+                    <datalist class="select_memberslist" id="select_members">
+                    </datalist>
+                </td>
+            </tr>
+            <button class="w3-button w3-right w3-text-new-white w3-new-blue" data-toggle="modal" data-target="#myModalAddpeopletoGroup">Add Members</button>
+        </table>
+    <div class="modal fade" id="myModalAddpeopletoGroup" role="dialog">
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to add members to the group?</p>
+                    <form id="form_addpeople_togroup" method="POST" action="/addmembers/?username={{.UserName}}" autocomplete="off">
+                        GroupName: <input autocomplete="off" id='group_groupname' name="groupname" required type="text" readonly/><br/>
+                        Members  : <input autocomplete="off" class='group_members' id='group_members' name="members" required="required" type="text" readonly/><br/>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default"  id="btn_addpeopletogroup" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+  </div><!-- end of content div -->
+{{template "footer"}}
+</div>
+
+</body>
+</html>
+{{end}}
+`
+
+type groupInfoPageData struct {
+	Title    string
+	IsAdmin  bool
+	UserName string
+
+	IsMember            bool
+	IsGroupAdmin        bool
+	GroupName           string
+	GroupManagedbyValue string
+	JSSources           []string
+}
+
+const groupInfoPageText = `
+{{define "groupInfoPage"}}
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{template "commonCSS"}}
+    {{template "commonJS"}}
+    <script type="text/javascript" src="/js/groupInfo.js"></script>
+    <script type="text/javascript" src="/getUsers.js?type=group&groupName={{.GroupName}}"></script>
+</head>
+<body class="w3-light-grey" >
+{{template "header" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+  <div id="content">
+
+
+<!-- Header -->
+<header class="w3-container" style="padding-top:12px">
+    <h4><b><i class="fa fa-group"></i>Group Name:<strong id="groupname_member">{{.GroupName}}</strong></b></h4>
+    <br>
+    <br>
+    <h4><b>Group Managed Attribute:<strong id="group_managedby">{{.GroupManagedbyValue}}</strong></b></h4>
+</header>
+
+<div class="w3-panel">
+    {{if .IsGroupAdmin}}
+    <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn" data-toggle="modal" data-target="#myModalAddMember">Add Members</button>
+    <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn" data-toggle="modal" data-target="#myModalRemoveMembers">Remove Members</button>    
+    {{end}}
+    {{if .IsMember}}
+    <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn" data-toggle="modal" data-target="#myModalExitGroup">Exit group</button>
+    {{else}}
+    <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn" data-toggle="modal" data-target="#myModal_joingroup">Join Group</button>
+    {{end}}
+
+
+    {{if .IsGroupAdmin}}
+    <div class="modal fade" id="myModalAddMember" role="dialog">
+        <div class="modal-dialog">
+
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"></button>
+                    <h4 class="modal-title"><p>Please enter the names of those whom you want to add to this  group?</p></h4>
+                </div>
+                <div class="modal-body">
+                    <form id="form_modal_addmember" action="/addmembers/?username={{.UserName}}" method="POST">
+                        GroupName: <input name="groupname" required type="text" value="{{.GroupName}}" readonly><br/>
+                        <input class='group_members' id='group_members' name="members" required="required" type="hidden" readonly/><br/>
+                    </form>
+                    <div class='suggestion'>
+                    </div>
+                    Members  : <input autocomplete="off" class="members" id='cg_members' list="select_members" name="members" type="text"/>
+                    <datalist class="select_memberslist" id="select_members">
+                    </datalist>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default"  onclick="addmember_form_submit()" id="btn_form_modal_addmember" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="myModalRemoveMembers" role="dialog">
+        <div class="modal-dialog">
+
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"></button>
+                    <h4 class="modal-title"><p>Please enter the names of those whom you want to remove from group?</p></h4>
+                </div>
+                <div class="modal-body">
+                    <form id="form_modal_removemember" action="/deletemembers/?username={{.UserName}}" method="POST">
+                        GroupName: <input autocomplete="off" name="groupname" required type="text" value="{{.GroupName}}" readonly><br/>
+                        <input autocomplete="off" class="group_removemembers" id='group_removemembers' name="members" required="required" type="hidden" readonly/><br/>
+                    </form>
+                    <div class='suggestion_removemembers'>
+                    </div>
+                    Members  : <input autocomplete="off" class="remove_members" id='cg_members_remove' list="select_members_remove" name="members" type="text"/>
+                    <datalist class="select_memberslist" id="select_members_remove">
+                    </datalist>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" onclick="removemember_form_submit()" id="btn_form_modal_removemember" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{end}}
+    {{if .IsMember}}
+    <div class="modal fade" id="myModalExitGroup" role="dialog">
+        <div class="modal-dialog">
+
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"></button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to exit this group?</p>
+                    GroupName: <input name="groupname" id="groupinfo_exit" type="text" value="{{.GroupName}}" readonly><br/>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" id="groupinfo_btn_exitgroup" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+
+        </div>
+    </div>    
+    {{else}}
+    <div class="modal fade" id="myModal_joingroup" role="dialog">
+        <div class="modal-dialog">
+
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"></button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to request access for this group?</p>
+                    GroupName: <input name="groupname" id="groupinfo_join_nonmember" type="text" value="{{.GroupName}}" readonly><br/>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" id="btn_joingroup" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    {{end}}
+
+    <table class="w3-table w3-striped w3-white" id="table_groupinfo">
+
+    </table>
+
+
+</div>
+
+
+  </div><!-- end of content div -->
+{{template "footer"}}
+</div>
+
+</body>
+</html>
+{{end}}
+`

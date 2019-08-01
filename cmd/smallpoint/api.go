@@ -315,7 +315,20 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	for _, member := range strings.Split(members, ",") {
 		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groupcreation_success")
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        true,
+		Title:          "Group Creation Success",
+		SuccessMessage: "Group has been successfully Created",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 //Delete groups handler --required
@@ -574,6 +587,14 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 `
 
+const getUsersGroupJSText = `
+document.addEventListener('DOMContentLoaded', function () {
+                var groupUsers = %s;
+                var usernames=arrayUsers(groupUsers);
+                Group_Info(usernames);
+});
+`
+
 func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -584,12 +605,44 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 		log.Println(err)
 		return
 	}
-	usersToSend, err := state.Userinfo.GetallUsers()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
+	outputText := getUsersJSText
+	var usersToSend []string
+	switch r.FormValue("type") {
+	case "group":
+		groupName := r.FormValue("groupName")
+		if groupName == "" {
+			log.Printf("No groupName found")
+			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
+			return
+		}
+		groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupName)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		if !groupnameExistsorNot {
+			log.Println("Group doesn't exist!")
+			http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
+			return
+		}
+		usersToSend, _, err = state.Userinfo.GetusersofaGroup(groupName)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		outputText = getUsersGroupJSText
+
+	default:
+		usersToSend, err = state.Userinfo.GetallUsers()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
 	}
+	sort.Strings(usersToSend)
 	encodedUsers, err := json.Marshal(usersToSend)
 	if err != nil {
 		log.Println(err)
@@ -598,6 +651,6 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 	}
 	w.Header().Set("Cache-Control", "private, max-age=15")
 	w.Header().Set("Content-Type", "application/javascript")
-	fmt.Fprintf(w, getUsersJSText, encodedUsers)
+	fmt.Fprintf(w, outputText, encodedUsers)
 	return
 }

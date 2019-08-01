@@ -677,7 +677,6 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 	go state.sendApproveemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
 	w.WriteHeader(http.StatusOK)
 
-	//generateHTML(w,username,"index","sidebar","Accessrequestsent")
 }
 
 //Reject handler
@@ -739,30 +738,23 @@ func (state *RuntimeState) addmemberstoGroupWebpageHandler(w http.ResponseWriter
 	if err != nil {
 		return
 	}
-
-	Allgroups, err := state.Userinfo.GetallGroups()
+	// warm up caches
+	go state.Userinfo.GetallUsers()
+	go state.Userinfo.GetallGroups()
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := addMembersToGroupPagData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Add Members To Group",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "addMembersToGroupPage", pageData)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-
-	sort.Strings(Allgroups)
-
-	Allusers, err := state.Userinfo.GetallUsers()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
-
-	sidebarType := "sidebar"
-	if state.Userinfo.UserisadminOrNot(username) {
-		sidebarType = "admins_sidebar"
-	}
-
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "addpeopletogroups")
 
 }
 
@@ -831,8 +823,22 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 	for _, member := range strings.Split(members, ",") {
 		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "addpeopletogroup_success")
 
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        isAdmin,
+		Title:          "Members Sucessfully Added",
+		SuccessMessage: "Selected Members have been successfully added to the group",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
@@ -885,11 +891,13 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		return
 	}
 
+	log.Printf("r=%+v", r)
 	var groupinfo userinfo.GroupInfo
 	groupinfo.Groupname = r.PostFormValue("groupname")
 	members := r.PostFormValue("members")
 	////// TODO: @SLR9511: why is done this way?... please revisit
 	if members == "" {
+		log.Printf("no members")
 		AllUsersinGroup, managedby, err := state.Userinfo.GetusersofaGroup(groupinfo.Groupname)
 		Allgroups, err := state.Userinfo.GetallGroups()
 		if err != nil {
@@ -899,7 +907,15 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		}
 		sort.Strings(Allgroups)
 
-		response := Response{username, [][]string{Allgroups}, nil, nil, groupinfo.Groupname, managedby, AllUsersinGroup}
+		response := Response{
+			UserName: username,
+			Groups:   [][]string{Allgroups},
+			Users:    nil, //this is the original value, not giving actual results
+			//Users:               AllUsersinGroup,
+			PendingActions:      nil,
+			GroupName:           groupinfo.Groupname,
+			GroupManagedbyValue: managedby,
+			GroupUsers:          AllUsersinGroup}
 		sidebarType := "sidebar"
 		superAdmin := state.Userinfo.UserisadminOrNot(username)
 		if superAdmin {
@@ -954,7 +970,22 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	for _, member := range strings.Split(members, ",") {
 		state.sysLog.Write([]byte(fmt.Sprintf("%s was deleted from Group %s by %s", member, groupinfo.Groupname, username)))
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "deletemembersfromgroup_success")
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        isAdmin,
+		Title:          "Members Sucessfully Deleted",
+		SuccessMessage: "Selected Members have been successfully deleted from the group",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
+	//generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "deletemembersfromgroup_success")
 
 }
 
@@ -1024,7 +1055,7 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "couldn't parse the URL", http.StatusInternalServerError)
 		return
 	}
-	var response Response
+	//var response Response
 
 	groupName := params[0] //username is "cn" Attribute of a User
 	groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupName)
@@ -1038,42 +1069,13 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
 		return
 	}
-	AllUsersinGroup, managedby, err := state.Userinfo.GetusersofaGroup(groupName)
+	// begin change
+	_, managedby, err := state.Userinfo.GetusersofaGroup(groupName)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	sort.Strings(AllUsersinGroup)
-
-	Allusers, err := state.Userinfo.GetallUsers()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-
-	//response.Users = AllUsersinGroup
-	response = Response{username, nil, Allusers, nil, groupName, managedby, AllUsersinGroup}
-	superAdmin := state.Userinfo.UserisadminOrNot(username)
-	sidebarType := "sidebar"
-	if superAdmin {
-		sidebarType = "admins_sidebar"
-	}
-	groupandmanagedby, err := state.Userinfo.GetGroupandManagedbyAttributeValue([]string{groupName})
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
-		return
-	}
-	groupexistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupandmanagedby[0][1])
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
-		return
-	}
-
-	groupinfowebpageType := "groupinfo_member"
 
 	IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
 	if err != nil {
@@ -1088,45 +1090,115 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if groupandmanagedby[0][1] != "self-managed" && !groupexistsornot {
-		if !superAdmin {
-			groupinfowebpageType = "groupinfo_no_managedby_member_nomem"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := groupInfoPageData{
+		UserName:            username,
+		IsAdmin:             isAdmin,
+		Title:               "Group information for group X",
+		IsMember:            IsgroupMember,
+		IsGroupAdmin:        IsgroupAdmin || isAdmin,
+		GroupName:           groupName,
+		GroupManagedbyValue: managedby,
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "groupInfoPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
+	/*
+		AllUsersinGroup, managedby, err := state.Userinfo.GetusersofaGroup(groupName)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
+		}
+		sort.Strings(AllUsersinGroup)
+
+		Allusers, err := state.Userinfo.GetallUsers()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+
+		//response.Users = AllUsersinGroup
+		response = Response{username, nil, Allusers, nil, groupName, managedby, AllUsersinGroup}
+		superAdmin := state.Userinfo.UserisadminOrNot(username)
+		sidebarType := "sidebar"
+		if superAdmin {
+			sidebarType = "admins_sidebar"
+		}
+		groupandmanagedby, err := state.Userinfo.GetGroupandManagedbyAttributeValue([]string{groupName})
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
+			return
+		}
+		groupexistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupandmanagedby[0][1])
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
+			return
+		}
+
+		groupinfowebpageType := "groupinfo_member"
+
+		IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
+			return
+		}
+		IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, groupName)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+
+		if groupandmanagedby[0][1] != "self-managed" && !groupexistsornot {
+			if !superAdmin {
+				groupinfowebpageType = "groupinfo_no_managedby_member_nomem"
+				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
+				return
+			}
+
+			if IsgroupMember {
+				groupinfowebpageType = "groupinfo_member_admin"
+				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
+				return
+
+			} else {
+				groupinfowebpageType = "groupinfo_nonmember_admin"
+				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
+				return
+
+			}
 		}
 
 		if IsgroupMember {
-			groupinfowebpageType = "groupinfo_member_admin"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-			return
+			if IsgroupAdmin || superAdmin {
+				groupinfowebpageType = "groupinfo_member_admin"
+				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
+
+			} else {
+				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
+			}
 
 		} else {
-			groupinfowebpageType = "groupinfo_nonmember_admin"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-			return
+			if IsgroupAdmin || superAdmin {
+				groupinfowebpageType = "groupinfo_nonmember_admin"
+				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
+			} else {
+				groupinfowebpageType = "groupinfo_nonmember"
+				generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
 
+			}
 		}
-	}
-
-	if IsgroupMember {
-		if IsgroupAdmin || superAdmin {
-			groupinfowebpageType = "groupinfo_member_admin"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-
-		} else {
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-		}
-
-	} else {
-		if IsgroupAdmin || superAdmin {
-			groupinfowebpageType = "groupinfo_nonmember_admin"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-		} else {
-			groupinfowebpageType = "groupinfo_nonmember"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-
-		}
-	}
+	*/
 }
 
 func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, r *http.Request) {
