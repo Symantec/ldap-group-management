@@ -759,7 +759,8 @@ const groupInfoPageText = `
     {{template "commonJS"}}
     <script type="text/javascript" src="/js/groupInfo.js"></script>
     <script type="text/javascript" src="/getUsers.js?type=group&groupName={{.GroupName}}"></script>
-</head>
+    <script type="text/javascript" src="/getUsers.js"></script>
+    </head>
 <body class="w3-light-grey" >
 {{template "header" .}}
 
