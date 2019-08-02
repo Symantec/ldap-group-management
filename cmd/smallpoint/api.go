@@ -364,7 +364,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 
 		}
 		if !groupnameExistsorNot {
-			http.Error(w, fmt.Sprintf("Group %s doesn't exist!", eachGroup), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Group %s doesn't exist!", eachGroup), http.StatusBadRequest)
 			return
 		}
 		groupnames = append(groupnames, eachGroup)
@@ -385,7 +385,20 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groupdeletion_success")
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        true,
+		Title:          "Group Deletion Suucess",
+		SuccessMessage: "Group has been successfully Deleted",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 
 }
 
@@ -451,7 +464,20 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		return
 	}
 	state.sysLog.Write([]byte(fmt.Sprintf("Service account "+"%s"+" was created by "+"%s", groupinfo.Groupname, username)))
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "serviceacc_creation_success")
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        true,
+		Title:          "Service Account Creation Success",
+		SuccessMessage: "Service Account successfully created",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Request) {
@@ -492,7 +518,20 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		}
 		state.sysLog.Write([]byte(fmt.Sprintf("Group %s is managed by %s now, this change was made by %s.", group, managegroup, username)))
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "changeownership_success")
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        true,
+		Title:          "Change Ownership success",
+		SuccessMessage: "Group(s) have successfuly changed ownership",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // TODO: figure out how to do this with templates or even better migrate to AJAX to get data

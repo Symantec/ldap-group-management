@@ -860,32 +860,6 @@ func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseW
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-	/*
-		Allgroups, err := state.Userinfo.GetallGroups()
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-
-		sort.Strings(Allgroups)
-
-		Allusers, err := state.Userinfo.GetallUsers()
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-
-		response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
-
-		sidebarType := "sidebar"
-		if state.Userinfo.UserisadminOrNot(username) {
-			sidebarType = "admins_sidebar"
-		}
-
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "deletemembersfromgroup")
-	*/
 }
 
 func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter, r *http.Request) {
