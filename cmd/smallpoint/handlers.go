@@ -886,30 +886,21 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	////// TODO: @SLR9511: why is done this way?... please revisit
 	if members == "" {
 		log.Printf("no members")
-		AllUsersinGroup, managedby, err := state.Userinfo.GetusersofaGroup(groupinfo.Groupname)
-		Allgroups, err := state.Userinfo.GetallGroups()
+		isAdmin := state.Userinfo.UserisadminOrNot(username)
+		pageData := deleteMembersFromGroupPageData{
+			UserName:  username,
+			IsAdmin:   isAdmin,
+			GroupName: groupinfo.Groupname,
+			Title:     "Delete Memebers From Group",
+		}
+		setSecurityHeaders(w)
+		w.Header().Set("Cache-Control", "private, max-age=30")
+		err = state.htmlTemplate.ExecuteTemplate(w, "deleteMembersFromGroupPage", pageData)
 		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			log.Printf("Failed to execute %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
 			return
 		}
-		sort.Strings(Allgroups)
-
-		response := Response{
-			UserName: username,
-			Groups:   [][]string{Allgroups},
-			Users:    nil, //this is the original value, not giving actual results
-			//Users:               AllUsersinGroup,
-			PendingActions:      nil,
-			GroupName:           groupinfo.Groupname,
-			GroupManagedbyValue: managedby,
-			GroupUsers:          AllUsersinGroup}
-		sidebarType := "sidebar"
-		superAdmin := state.Userinfo.UserisadminOrNot(username)
-		if superAdmin {
-			sidebarType = "admins_sidebar"
-		}
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "deletemembersfromgroup")
 		return
 	}
 	log.Println("delete these members", members)
