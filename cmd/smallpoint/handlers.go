@@ -191,7 +191,6 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 		IsAdmin:  isAdmin,
 		Title:    "My Groups",
 	}
-	log.Printf("myGroupsPageData=%+v", pageData)
 	err = state.htmlTemplate.ExecuteTemplate(w, "myGroupsPage", pageData)
 	if err != nil {
 		log.Printf("Failed to execute %v", err)
@@ -203,27 +202,21 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 
 func (state *RuntimeState) getPendingRequestGroupsofUser(username string) ([][]string, error) {
 	go state.Userinfo.GetAllGroupsManagedBy()
-	t0 := time.Now()
 	groupsPendingInDB, _, err := findrequestsofUserinDB(username, state)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
-	t1 := time.Now()
-	log.Printf("findrequestsofUserinDB Took %v to run", t1.Sub(t0))
 	var actualPendingGroups []string
 	// TODO: replace this loop for another one where we iterate over the
 	// groups of the user. This would lead to only 1 new DB connection per
 	// pending group request
 	for _, groupname := range groupsPendingInDB {
-		t0 := time.Now()
 		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupname, username)
 		if err != nil {
 			log.Println(err)
 			return nil, err
 		}
-		t1 := time.Now()
-		log.Printf("IsgroupmemberorNo Took %v to run", t1.Sub(t0))
 		if Ismember {
 			err := deleteEntryInDB(username, groupname, state)
 			if err != nil {
@@ -234,7 +227,6 @@ func (state *RuntimeState) getPendingRequestGroupsofUser(username string) ([][]s
 		}
 		actualPendingGroups = append(actualPendingGroups, groupname)
 	}
-	log.Printf("ctualPendingGroups=%+v", actualPendingGroups)
 	return state.Userinfo.GetGroupandManagedbyAttributeValue(actualPendingGroups)
 
 }
@@ -339,7 +331,6 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
 		return
 	}
-	log.Printf("requestAccessHandler: post user checks")
 
 	var out map[string][]string
 	err = json.NewDecoder(r.Body).Decode(&out)
@@ -540,12 +531,12 @@ func (state *RuntimeState) getUserPendingActions(username string) ([][]string, e
 		fmt.Println(groupName)
 		managerGroup := group2manager[groupName]
 
-		log.Printf("get managerGroup=%s", managerGroup)
+		//log.Printf("get managerGroup=%s", managerGroup)
 		if managerGroup == descriptionAttribute {
 			managerGroup = groupName
 		}
 
-		log.Printf("finale managerGroup=%s", managerGroup)
+		//log.Printf("finale managerGroup=%s", managerGroup)
 
 		groupIndex := sort.SearchStrings(userGroups, managerGroup)
 		if groupIndex >= len(userGroups) {
@@ -830,6 +821,7 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		IsAdmin:        isAdmin,
 		Title:          "Members Sucessfully Added",
 		SuccessMessage: "Selected Members have been successfully added to the group",
+		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
 	}
 	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")
@@ -879,7 +871,6 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		return
 	}
 
-	log.Printf("r=%+v", r)
 	var groupinfo userinfo.GroupInfo
 	groupinfo.Groupname = r.PostFormValue("groupname")
 	members := r.PostFormValue("members")
@@ -955,6 +946,7 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		IsAdmin:        isAdmin,
 		Title:          "Members Sucessfully Deleted",
 		SuccessMessage: "Selected Members have been successfully deleted from the group",
+		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
 	}
 	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")

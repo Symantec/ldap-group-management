@@ -611,6 +611,7 @@ type simpleMessagePageData struct {
 	UserName       string
 	JSSources      []string
 	SuccessMessage string
+	ContinueURL    string
 	ErrorMessage   string
 }
 
@@ -636,6 +637,7 @@ const simpleMessagePageText = `
      <p>
      {{.SuccessMessage}}
      </p>
+     {{if .ContinueURL}}<p>Click <a href="{{.ContinueURL}}">Here </a> to continue</p>{{end}}
   </div><!-- end of content div -->
 {{template "footer"}}
 </div>
