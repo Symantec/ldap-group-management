@@ -156,7 +156,8 @@ func (state *RuntimeState) loadTemplates() (err error) {
 		pendingRequestsPageText, pendingActionsPageText,
 		createGroupPageText, deleteGroupPageText,
 		simpleMessagePageText, addMembersToGroupPageText, groupInfoPageText,
-		createServiceAccountPageText, changeGroupOwnershipPageText}
+		createServiceAccountPageText, changeGroupOwnershipPageText,
+		deleteMembersFromGroupPageText}
 	for _, templateString := range extraTemplates {
 		_, err = state.htmlTemplate.Parse(templateString)
 		if err != nil {

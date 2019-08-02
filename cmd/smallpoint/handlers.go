@@ -846,32 +846,46 @@ func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseW
 	if err != nil {
 		return
 	}
-
-	Allgroups, err := state.Userinfo.GetallGroups()
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := deleteMembersFromGroupPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Delete Memebers From Group",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "deleteMembersFromGroupPage", pageData)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
+	/*
+		Allgroups, err := state.Userinfo.GetallGroups()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
 
-	sort.Strings(Allgroups)
+		sort.Strings(Allgroups)
 
-	Allusers, err := state.Userinfo.GetallUsers()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
+		Allusers, err := state.Userinfo.GetallUsers()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
 
-	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
+		response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
 
-	sidebarType := "sidebar"
-	if state.Userinfo.UserisadminOrNot(username) {
-		sidebarType = "admins_sidebar"
-	}
+		sidebarType := "sidebar"
+		if state.Userinfo.UserisadminOrNot(username) {
+			sidebarType = "admins_sidebar"
+		}
 
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "deletemembersfromgroup")
-
+		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "deletemembersfromgroup")
+	*/
 }
 
 func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter, r *http.Request) {
@@ -985,8 +999,6 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-	//generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "deletemembersfromgroup_success")
-
 }
 
 func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter, r *http.Request) {

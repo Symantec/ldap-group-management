@@ -1080,3 +1080,96 @@ const changeGroupOwnershipPageText = `
 </html>
 {{end}}
 `
+
+type deleteMembersFromGroupPageData struct {
+	Title   string
+	IsAdmin bool
+
+	UserName  string
+	JSSources []string
+	GroupName string
+}
+
+const deleteMembersFromGroupPageText = `
+{{define "deleteMembersFromGroupPage"}}
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{template "commonCSS"}}
+    {{template "commonJS"}}
+    <script type="text/javascript" src="/js/deleteMembersFromGroup.js"></script>
+    <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
+    <script type="text/javascript" src="/getUsers.js"></script>
+</head>
+<body class="w3-light-grey" >
+{{template "header" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+  <div id="content">
+
+
+<!-- Header -->
+<header class="w3-container" style="padding-top:12px">
+    <h5><b><i class="fa fa-group"></i>Remove Members from a Group</b></h5>
+</header>
+
+<div class="w3-panel">
+        <table class="w3-table w3-striped w3-white">
+            <tr>
+                <td>Group Name</td>
+                <td>
+                    <input list="select_groups" id="cg_groupname"  required name="groupname" type="text">
+                    <datalist id="select_groups">
+                    </datalist><br/>
+                </td>
+            </tr>
+            <tr>
+                <td>Members</td>
+                <td>
+                    <div class='suggestion'>
+                    </div>
+                    <input class="members" id='cg_members' list="select_members" name="members" type="text"/>
+                    <datalist class="select_memberslist" id="select_members">
+                    </datalist>
+                </td>
+            </tr>
+            <button class="w3-button w3-right w3-text-new-white w3-new-blue" data-toggle="modal" data-target="#myModalDeletemembersfromGroup">Remove Members</button>
+        </table>
+
+    <div class="modal fade" id="myModalDeletemembersfromGroup" role="dialog">
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Action Required</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to remove members from the group?</p>
+                    <form id="form_deletemembers_fromgroup" method="POST" action="/deletemembers/?username={{.UserName}}">
+                        GroupName: <input id='group_groupname' name="groupname" required type="text" readonly/><br/>
+                        Members  : <input class='group_members' id='group_members' name="members" required="required" type="text" readonly/><br/>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default"  id="btn_deletemembersfromgroup" data-dismiss="modal">Confirm</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+  </div><!-- end of content div -->
+{{template "footer"}}
+</div>
+
+</body>
+</html>
+{{end}}
+`
