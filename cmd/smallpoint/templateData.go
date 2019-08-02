@@ -1009,7 +1009,6 @@ const changeGroupOwnershipPageText = `
     {{template "commonJS"}}
     <script type="text/javascript" src="/js/changeGroupOwnership.js"></script>
     <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
-    <script type="text/javascript" src="/getUsers.js"></script>
 </head>
 <body class="w3-light-grey" >
 {{template "header" .}}

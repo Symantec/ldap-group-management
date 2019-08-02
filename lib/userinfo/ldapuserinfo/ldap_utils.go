@@ -262,6 +262,10 @@ func (u *UserInfoLDAPSource) CreateGroup(groupinfo userinfo.GroupInfo) error {
 	var managerAttributeValue string
 	switch strings.ToLower(u.GroupManageAttribute) {
 	case "owner":
+		if groupinfo.Description == "self-managed" {
+			managerAttributeValue = entry
+			break
+		}
 		managerDN, err := u.GetGroupDN(groupinfo.Description)
 		if err != nil {
 			log.Println(err)
@@ -1012,6 +1016,10 @@ func (u *UserInfoLDAPSource) GetGroupDN(groupname string) (string, error) {
 	}
 	if len(sr.Entries) > 1 {
 		log.Println("Duplicate entries found")
+		return "", errors.New("Multiple entries found, Contact the administrator!")
+	}
+	if len(sr.Entries) < 1 {
+		log.Printf("No DN found for group:%s", groupname)
 		return "", errors.New("Multiple entries found, Contact the administrator!")
 	}
 	users := sr.Entries[0].DN
