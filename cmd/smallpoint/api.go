@@ -595,6 +595,30 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 			return
 		}
 		outputText = getGroupsJSPendingActionsText
+	case "managedByMe":
+		allGroups, err := state.Userinfo.GetAllGroupsManagedBy()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		userGroups, err := state.Userinfo.GetgroupsofUser(username)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		userGroupMap := make(map[string]interface{})
+		for _, groupName := range userGroups {
+			userGroupMap[groupName] = nil
+		}
+		for _, groupTuple := range allGroups {
+			managingGroup := groupTuple[1]
+			_, ok := userGroupMap[managingGroup]
+			if ok {
+				groupsToSend = append(groupsToSend, groupTuple)
+			}
+		}
 	default:
 
 		groupsToSend, err = state.Userinfo.GetGroupsInfoOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)

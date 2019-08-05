@@ -187,9 +187,34 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")
 	pageData := myGroupsPageData{
-		UserName: username,
-		IsAdmin:  isAdmin,
-		Title:    "My Groups",
+		UserName:  username,
+		IsAdmin:   isAdmin,
+		Title:     "My Groups",
+		JSSources: []string{"/getGroups.js"},
+	}
+	err = state.htmlTemplate.ExecuteTemplate(w, "myGroupsPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
+	return
+}
+
+func (state *RuntimeState) myManagedGroupsHandler(w http.ResponseWriter, r *http.Request) {
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	pageData := myGroupsPageData{
+		UserName:  username,
+		IsAdmin:   isAdmin,
+		Title:     "My Managed Groups",
+		JSSources: []string{"/getGroups.js?type=managedByMe"},
 	}
 	err = state.htmlTemplate.ExecuteTemplate(w, "myGroupsPage", pageData)
 	if err != nil {
@@ -559,7 +584,8 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 		return
 	}
 	go state.Userinfo.GetAllGroupsManagedBy() //warm up cache
-	DBentries, err := getDBentries(state)
+	//DBentries, err := getDBentries(state)
+	userPendingActions, err := state.getUserPendingActions(username)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -571,7 +597,7 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 		UserName:          username,
 		IsAdmin:           isAdmin,
 		Title:             "Pending Group Requests",
-		HasPendingActions: len(DBentries) > 0,
+		HasPendingActions: len(userPendingActions) > 0,
 	}
 	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")

@@ -28,6 +28,21 @@ const commonJSText = `
 {{end}}
 `
 
+const commonHeadText = `
+{{define "commonHead"}}
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{template "commonCSS"}}
+    {{template "commonJS"}}
+    {{if .JSSources -}}
+    {{- range .JSSources }}
+    <script type="text/javascript" src="{{.}}"></script>
+    {{- end}}
+    {{- end}}
+{{end}}
+`
+
 const headerHTMLText = `
 {{define "header"}}
 <!-- Top container -->
@@ -74,7 +89,8 @@ const sidebarHTMLText = `
     <div class="w3-bar-block">
         <a href="/" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; My Groups</a>
         <a href="/allGroups" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; All LDAP Groups</a>
-        <a href="/pending-actions" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Actions</a>
+        <a href="/my_managed_groups" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; My Managed Groups</a>
+	<a href="/pending-actions" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Actions</a>
         <a href="/pending-requests" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Requests</a>
         {{if .IsAdmin}}
         <a href="/create_group" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Create Group</a>
@@ -96,14 +112,14 @@ type myGroupsPageData struct {
 	IsAdmin bool
 
 	UserName string
-
+	/*  // These is the old template data
 	Groups              [][]string
 	Users               []string
 	PendingActions      [][]string
 	GroupName           string
 	GroupManagedbyValue string
 	GroupUsers          []string
-
+	*/
 	JSSources []string
 }
 
@@ -112,12 +128,7 @@ const myGroupsPageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
-    <script type="text/javascript" src="/getGroups.js"></script>
+    {{template "commonHead" . }}
 </head>
 <body class="w3-light-grey" >
 {{template "header" .}}
@@ -126,7 +137,7 @@ const myGroupsPageText = `
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
   <div id="content">
   <header class="w3-container" style="padding-top:12px">
-    <h5><b><i class="fa fa-group"></i>My Groups</b>
+    <h5><b><i class="fa fa-group"></i>{{.Title}}</b>
         <button class="w3-button w3-right w3-text-new-white w3-red" id="length_btn" data-toggle="modal" data-target="#myModal">Exit Group</button>
         <div class="modal fade" id="myModal" role="dialog">
             <div class="modal-dialog">
@@ -177,11 +188,7 @@ const allGroupsPageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
+    {{template "commonHead" . }}
     <script type="text/javascript" src="/getGroups.js?type=all"></script>
 </head>
 <body class="w3-light-grey" >
@@ -248,11 +255,7 @@ const pendingRequestsPageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
+    {{template "commonHead" . }}
     {{if .HasPendingRequests}}<script type="text/javascript" src="/getGroups.js?type=pendingRequests"></script>{{end}}
 </head>
 <body class="w3-light-grey" >
@@ -335,11 +338,7 @@ const pendingActionsPageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
+    {{template "commonHead" . }}
     {{if .HasPendingActions}}<script type="text/javascript" src="/getGroups.js?type=pendingActions"></script>{{end}}
 </head>
 <body class="w3-light-grey" >
@@ -443,11 +442,7 @@ const createGroupPageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
+    {{template "commonHead" . }}
     <script type="text/javascript" src="/js/createGroup.js"></script>
     <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
     <script type="text/javascript" src="/getUsers.js"></script>
@@ -538,11 +533,7 @@ const deleteGroupPageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
+    {{template "commonHead" . }}
     <script type="text/javascript" src="/js/deleteGroup.js"></script>
     <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
 </head>
@@ -620,13 +611,7 @@ const simpleMessagePageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
-    <script type="text/javascript" src="/js/deleteGroup.js"></script>
-    <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
+    {{template "commonHead" . }}
 </head>
 <body class="w3-light-grey" >
 {{template "header" .}}
@@ -660,11 +645,7 @@ const addMembersToGroupPageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
+    {{template "commonHead" . }}
     <script type="text/javascript" src="/js/addMemberToGroup.js"></script>
     <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
     <script type="text/javascript" src="/getUsers.js"></script>
@@ -754,11 +735,7 @@ const groupInfoPageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
+    {{template "commonHead" . }}
     <script type="text/javascript" src="/js/groupInfo.js"></script>
     <script type="text/javascript" src="/getUsers.js?type=group&groupName={{.GroupName}}"></script>
     <script type="text/javascript" src="/getUsers.js"></script>
@@ -938,11 +915,7 @@ const createServiceAccountPageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
+    {{template "commonHead" . }}
     <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
 </head>
 <body class="w3-light-grey" >
@@ -1005,11 +978,7 @@ const changeGroupOwnershipPageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
+    {{template "commonHead" . }}
     <script type="text/javascript" src="/js/changeGroupOwnership.js"></script>
     <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
 </head>
@@ -1097,11 +1066,7 @@ const deleteMembersFromGroupPageText = `
 <html>
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{.Title}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{template "commonCSS"}}
-    {{template "commonJS"}}
+    {{template "commonHead" . }}
     <script type="text/javascript" src="/js/deleteMembersFromGroup.js"></script>
     <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
     <script type="text/javascript" src="/getUsers.js"></script>
