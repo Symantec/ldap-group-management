@@ -249,7 +249,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	}
 	//check if user is admin or not
 	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized ", http.StatusUnauthorized)
+		http.Error(w, "you are not authorized ", http.StatusForbidden)
 		return
 	}
 	err = r.ParseForm()
@@ -342,7 +342,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		http.Error(w, "you are not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -412,7 +412,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		return
 	}
 	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized ", http.StatusUnauthorized)
+		http.Error(w, "you are not authorized ", http.StatusForbidden)
 		return
 	}
 	err = r.ParseForm()
@@ -490,7 +490,7 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		http.Error(w, "you are not authorized", http.StatusForbidden)
 		return
 	}
 
