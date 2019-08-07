@@ -232,14 +232,21 @@ func (state *RuntimeState) getPendingRequestGroupsofUser(username string) ([][]s
 		log.Println(err)
 		return nil, err
 	}
+	log.Printf("groupsPendingInDB=%+v", groupsPendingInDB)
 	var actualPendingGroups []string
 	// TODO: replace this loop for another one where we iterate over the
 	// groups of the user. This would lead to only 1 new DB connection per
 	// pending group request
 	for _, groupname := range groupsPendingInDB {
+		//check if grop exists
+		log.Printf("groupname='%s'", groupname)
 		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupname, username)
 		if err != nil {
 			log.Println(err)
+			if err == userinfo.GroupDoesNotExist {
+				// TODO: delete from DB
+				continue
+			}
 			return nil, err
 		}
 		if Ismember {
