@@ -649,7 +649,7 @@ document.addEventListener('DOMContentLoaded', function () {
 				if(ajaxRequest.status == 200){
 					var jsonObj = JSON.parse(ajaxRequest.responseText);
 					var users = jsonObj.Users;
-					console.log("users :" + users);
+					//console.log("users :" + users);
 					list_members(users);
 				}
 				else {

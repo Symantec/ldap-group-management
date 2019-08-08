@@ -1,4 +1,4 @@
-package main
+package mock
 
 import (
 	"errors"
@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 )
+
+const descriptionAttribute = "self-managed"
 
 const UserServiceAccount userinfo.AccountType = 1
 const GroupServiceAccount userinfo.AccountType = 2
