@@ -643,10 +643,24 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 
 const getUsersJSText = `
 document.addEventListener('DOMContentLoaded', function () {
-                var Allusers = %s;
-                //var usernames=arrayUsers(Users);
-                //Group_Info(usernames);
-		list_members(Allusers);
+	        var ajaxRequest = new XMLHttpRequest();
+		ajaxRequest.onreadystatechange = function(){
+			if(ajaxRequest.readyState == 4){
+				if(ajaxRequest.status == 200){
+					var jsonObj = JSON.parse(ajaxRequest.responseText);
+					var users = jsonObj.Users;
+					console.log("users :" + users);
+					list_members(users);
+				}
+				else {
+					console.log("Status error: " + ajaxRequest.status);
+				}
+			}
+		}
+		ajaxRequest.open('GET', '/getUsers.js?type=all&encoding=json');
+		ajaxRequest.send();
+                //var Allusers = %s;
+		//list_members(Allusers);
 });
 `
 
@@ -657,6 +671,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 Group_Info(usernames);
 });
 `
+
+type usersJSONData struct {
+	Users []string
+}
 
 func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
@@ -698,22 +716,41 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 		outputText = getUsersGroupJSText
 
 	default:
-		usersToSend, err = state.Userinfo.GetallUsers()
+		if r.FormValue("encoding") == "json" {
+			usersToSend, err = state.Userinfo.GetallUsers()
+			if err != nil {
+				log.Println(err)
+				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				return
+			}
+		} else {
+			go state.Userinfo.GetallUsers()
+		}
+	}
+	sort.Strings(usersToSend)
+	switch r.FormValue("encoding") {
+	case "json":
+		w.Header().Set("Cache-Control", "private, max-age=15")
+		w.Header().Set("Content-Type", "application/json")
+		usersJSON := usersJSONData{Users: usersToSend}
+		err = json.NewEncoder(w).Encode(usersJSON)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
-	}
-	sort.Strings(usersToSend)
-	encodedUsers, err := json.Marshal(usersToSend)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+
+	default:
+		encodedUsers, err := json.Marshal(usersToSend)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Cache-Control", "private, max-age=15")
+		w.Header().Set("Content-Type", "application/javascript")
+		fmt.Fprintf(w, outputText, encodedUsers)
 		return
 	}
-	w.Header().Set("Cache-Control", "private, max-age=15")
-	w.Header().Set("Content-Type", "application/javascript")
-	fmt.Fprintf(w, outputText, encodedUsers)
 	return
 }
