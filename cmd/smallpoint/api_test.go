@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -144,45 +146,50 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 	}
 }
 
-func TestCreateGrouphandler(t *testing.T) {
+func TestCreateGrouphandlerSuccess(t *testing.T) {
 	state, err := setupTestState()
 	if err != nil {
 		log.Println(err)
 	}
-	cookie := testCreateValidCookie()
-	req, err := http.NewRequest("POST", creategroupPath, nil)
+	formValues := url.Values{"groupname": {"foo"}, "description": {"group1"}, "members": {"user1"}}
+	//formString := strings.NewReader(formValues.Encode())
+	req, err := http.NewRequest("POST", creategroupPath, strings.NewReader(formValues.Encode()))
 	if err != nil {
 		t.Fatal(err)
 	}
+	cookie := testCreateValidAdminCookie()
 	req.AddCookie(&cookie)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(state.createGrouphandler)
 
 	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusForbidden {
+	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
+
 }
 
-/*
-func TestRuntimeState_getallgroupsHandler(t *testing.T) {
+func TestCreateDrouphandlerSuccess(t *testing.T) {
 	state, err := setupTestState()
 	if err != nil {
 		log.Println(err)
 	}
-
-	req, err := http.NewRequest("GET", allgroupsPath, nil)
+	formValues := url.Values{"groupnames": {"group1"}}
+	//formString := strings.NewReader(formValues.Encode())
+	req, err := http.NewRequest("POST", deletegroupPath, strings.NewReader(formValues.Encode()))
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidCookie()
+	cookie := testCreateValidAdminCookie()
 	req.AddCookie(&cookie)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.getallgroupsHandler)
+	handler := http.HandlerFunc(state.deleteGrouphandler)
 
 	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
@@ -191,131 +198,3 @@ func TestRuntimeState_getallgroupsHandler(t *testing.T) {
 			status, http.StatusOK)
 	}
 }
-*/
-
-/*
-func TestRuntimeState_getusersingroupHandlerFail(t *testing.T) {
-	state, err := setupTestState()
-	if err != nil {
-		log.Println(err)
-	}
-
-	req, err := http.NewRequest("GET", groupusersPath, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cookie := testCreateValidCookie()
-	req.AddCookie(&cookie)
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.getusersingroupHandler)
-
-	handler.ServeHTTP(rr, req)
-	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusInternalServerError {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusInternalServerError)
-	}
-
-}
-
-func TestRuntimeState_getusersingroupHandlerSuccess(t *testing.T) {
-	state, err := setupTestState()
-	if err != nil {
-		log.Println(err)
-	}
-
-	req, err := http.NewRequest("GET", groupusersTestPath, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cookie := testCreateValidCookie()
-	req.AddCookie(&cookie)
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.getusersingroupHandler)
-
-	handler.ServeHTTP(rr, req)
-	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-
-}
-
-func TestRuntimeState_getgroupsofuserHandlerFail(t *testing.T) {
-	state, err := setupTestState()
-	if err != nil {
-		log.Println(err)
-	}
-
-	req, err := http.NewRequest("GET", usergroupsPath, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cookie := testCreateValidCookie()
-	req.AddCookie(&cookie)
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.getgroupsofuserHandler)
-
-	handler.ServeHTTP(rr, req)
-	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusInternalServerError {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusInternalServerError)
-	}
-
-}
-
-func TestRuntimeState_getgroupsofuserHandlerSuccess(t *testing.T) {
-	state, err := setupTestState()
-	if err != nil {
-		log.Println(err)
-	}
-
-	req, err := http.NewRequest("GET", usergroupsTestPath, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cookie := testCreateValidCookie()
-	req.AddCookie(&cookie)
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.getgroupsofuserHandler)
-
-	handler.ServeHTTP(rr, req)
-	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-
-}
-
-func TestRuntimeState_getallusersHandler(t *testing.T) {
-	state, err := setupTestState()
-	if err != nil {
-		log.Println(err)
-	}
-
-	req, err := http.NewRequest("GET", allusersPath, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cookie := testCreateValidCookie()
-	req.AddCookie(&cookie)
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(state.getallusersHandler)
-
-	handler.ServeHTTP(rr, req)
-	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-
-}
-*/
