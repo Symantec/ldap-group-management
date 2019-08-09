@@ -125,6 +125,7 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 		}
 	}
 
+	// This one should fail due to missing form
 	adminCookie := testCreateValidAdminCookie()
 	for path, testFunc := range adminTestPoints {
 		req, err := http.NewRequest("POST", path, nil)
@@ -142,6 +143,25 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 		if status := rr.Code; status != http.StatusBadRequest {
 			t.Errorf("handler returned wrong status code: got %v want %v",
 				status, http.StatusBadRequest)
+		}
+	}
+	// This one should fail due to CSRF detection
+	for path, testFunc := range adminTestPoints {
+		req, err := http.NewRequest("POST", "https://foobar.com"+path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.AddCookie(&adminCookie)
+		req.Header.Set("Referer", "https://evilsite.com")
+
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(testFunc)
+
+		handler.ServeHTTP(rr, req)
+		// Check the status code is what we expect.
+		if status := rr.Code; status != http.StatusUnauthorized {
+			t.Errorf("handler returned wrong status code: got %v want %v",
+				status, http.StatusUnauthorized)
 		}
 	}
 }
@@ -196,5 +216,109 @@ func TestCreateDrouphandlerSuccess(t *testing.T) {
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
+	}
+}
+
+func TestCreateServiceAccounthandlerSuccess(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Println(err)
+	}
+	formValues := url.Values{"AccountName": {"new_svc_account"}, "mail": {"alice@example.com"}, "loginShell": {"/bin/false"}}
+	//formString := strings.NewReader(formValues.Encode())
+	req, err := http.NewRequest("POST", createServiceAccountPath, strings.NewReader(formValues.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := testCreateValidAdminCookie()
+	req.AddCookie(&cookie)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(state.createServiceAccounthandler)
+
+	handler.ServeHTTP(rr, req)
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+}
+
+func TestChangeownershipSuccess(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Println(err)
+	}
+	formValues := url.Values{"groupnames": {"group1"}, "managegroup": {"group1"}}
+	//formString := strings.NewReader(formValues.Encode())
+	req, err := http.NewRequest("POST", changeownershipbuttonPath, strings.NewReader(formValues.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := testCreateValidAdminCookie()
+	req.AddCookie(&cookie)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(state.changeownership)
+
+	handler.ServeHTTP(rr, req)
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+}
+
+func TestGetGroupsJSHandler(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Println(err)
+	}
+	var groupTypes = []string{"invalid", "all", "pendingRequests", "allNoManager", "pendingActions", "managedByMe"}
+	for _, groupType := range groupTypes {
+		req, err := http.NewRequest("GET", getGroupsJSPath+"?type="+groupType, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cookie := testCreateValidCookie()
+		req.AddCookie(&cookie)
+
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(state.getGroupsJSHandler)
+
+		handler.ServeHTTP(rr, req)
+		// Check the status code is what we expect.
+		if status := rr.Code; status != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v",
+				status, http.StatusOK)
+		}
+	}
+}
+
+func TestGetUsersJSHandler(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Println(err)
+	}
+	var testParams = []string{"foo=bar", "encoding=json", "type=group&groupName=group1"}
+	for _, param := range testParams {
+		req, err := http.NewRequest("GET", getUsersJSPath+"?"+param, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cookie := testCreateValidCookie()
+		req.AddCookie(&cookie)
+
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(state.getUsersJSHandler)
+
+		handler.ServeHTTP(rr, req)
+		// Check the status code is what we expect.
+		if status := rr.Code; status != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v",
+				status, http.StatusOK)
+		}
 	}
 }

@@ -22,7 +22,7 @@ func checkCSRF(w http.ResponseWriter, r *http.Request) (bool, error) {
 	if r.Method != getMethod {
 		referer := r.Referer()
 		if len(referer) > 0 && len(r.Host) > 0 {
-			log.Println(3, "ref =%s, host=%s", referer, r.Host)
+			log.Printf("ref =%s, host=%s", referer, r.Host)
 			refererURL, err := url.Parse(referer)
 			if err != nil {
 				log.Println(err)

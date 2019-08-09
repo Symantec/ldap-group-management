@@ -269,7 +269,9 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
 		return
 	}
-	state.sysLog.Write([]byte(fmt.Sprintf("Service account "+"%s"+" was created by "+"%s", groupinfo.Groupname, username)))
+	if state.sysLog != nil {
+		state.sysLog.Write([]byte(fmt.Sprintf("Service account "+"%s"+" was created by "+"%s", groupinfo.Groupname, username)))
+	}
 	pageData := simpleMessagePageData{
 		UserName:       username,
 		IsAdmin:        true,
