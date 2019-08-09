@@ -14,6 +14,7 @@ import (
 //All handlers and API endpoints starts from here.
 
 //Display all groups in Target LDAP --required
+/*
 func (state *RuntimeState) getallgroupsHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := state.GetRemoteUserName(w, r)
 	if err != nil {
@@ -53,7 +54,8 @@ func (state *RuntimeState) getallgroupsHandler(w http.ResponseWriter, r *http.Re
 	}
 	return
 }
-
+*/
+/*
 //Display all users in Target LDAP --required
 func (state *RuntimeState) getallusersHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := state.GetRemoteUserName(w, r)
@@ -223,6 +225,7 @@ func (state *RuntimeState) getusersingroupHandler(w http.ResponseWriter, r *http
 	}
 	return
 }
+*/
 
 func (state *RuntimeState) getPreferredAcceptType(r *http.Request) string {
 	preferredAcceptType := "application/json"
@@ -255,7 +258,11 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	err = r.ParseForm()
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		if err.Error() == "missing form body" {
+			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
+		} else {
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		}
 		return
 	}
 	var groupinfo userinfo.GroupInfo
@@ -349,7 +356,11 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	err = r.ParseForm()
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "cannot parse form!", http.StatusInternalServerError)
+		if err.Error() == "missing form body" {
+			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
+		} else {
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		}
 		return
 	}
 	var groupnames []string
@@ -418,7 +429,11 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	err = r.ParseForm()
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		if err.Error() == "missing form body" {
+			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
+		} else {
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		}
 		return
 	}
 	var groupinfo userinfo.GroupInfo
@@ -497,7 +512,11 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 	err = r.ParseForm()
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		if err.Error() == "missing form body" {
+			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
+		} else {
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		}
 		return
 	}
 	groups := strings.Split(r.PostFormValue("groupnames"), ",")

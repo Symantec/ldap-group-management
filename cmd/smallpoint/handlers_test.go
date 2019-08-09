@@ -13,6 +13,7 @@ func TestNonAdminWebPathsHandlerSuccess(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
+	validTestGroupInfoPath := groupinfoPath + "?groupname=group1"
 	testWebEndpoints := map[string]http.HandlerFunc{
 		indexPath:                  state.mygroupsHandler,
 		allLDAPgroupsPath:          state.allGroupsHandler,
@@ -21,6 +22,7 @@ func TestNonAdminWebPathsHandlerSuccess(t *testing.T) {
 		pendingrequestsPath:        state.pendingRequests,
 		addmembersPath:             state.addmemberstoGroupWebpageHandler,
 		deletemembersPath:          state.deletemembersfromGroupWebpageHandler,
+		validTestGroupInfoPath:     state.groupInfoWebpage,
 	}
 
 	//nonAdminWebPaths := []string{indexPath}
