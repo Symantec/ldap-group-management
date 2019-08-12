@@ -115,7 +115,7 @@ func (m *MockLdap) GetallUsers() ([]string, error) {
 	return allusers, nil
 }
 
-func (m *MockLdap) CreateuserDn(username string) string {
+func (m *MockLdap) createUserDN(username string) string {
 	userDN := "uid=" + username + "," + LdapUserDN
 	return userDN
 }
@@ -191,7 +191,7 @@ func (m *MockLdap) GetallGroups() ([]string, error) {
 
 func (m *MockLdap) GetgroupsofUser(username string) ([]string, error) {
 	var usergroups []string
-	userdn := m.CreateuserDn(username)
+	userdn := m.createUserDN(username)
 	Userinfo := m.Users[userdn]
 	for _, groupdn := range Userinfo.memberOf {
 		Groupinfo := m.Groups[groupdn]
@@ -310,7 +310,7 @@ func (m *MockLdap) GetDescriptionvalue(groupname string) (string, error) {
 }
 
 func (m *MockLdap) GetEmailofauser(username string) ([]string, error) {
-	userdn := m.CreateuserDn(username)
+	userdn := m.createUserDN(username)
 	usersinfo := m.Users[userdn]
 
 	return []string{usersinfo.mail}, nil
@@ -412,7 +412,7 @@ func (m *MockLdap) ServiceAccountExistsornot(groupname string) (bool, string, er
 	return false, "", nil
 }
 
-func (m *MockLdap) GetGroupDN(groupname string) (string, error) {
+func (m *MockLdap) getGroupDN(groupname string) (string, error) {
 	for _, entry := range m.Groups {
 		cn := entry.cn
 		if cn == groupname {
@@ -438,7 +438,7 @@ func (m *MockLdap) GetAllGroupsManagedBy() ([][]string, error) {
 func (m *MockLdap) GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error) {
 	var usergroupsinfo [][]string
 	var usergroups []string
-	userdn := m.CreateuserDn(username)
+	userdn := m.createUserDN(username)
 	Userinfo := m.Users[userdn]
 	for _, groupdn := range Userinfo.memberOf {
 		Groupinfo := m.Groups[groupdn]

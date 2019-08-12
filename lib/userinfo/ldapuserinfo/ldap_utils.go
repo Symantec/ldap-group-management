@@ -276,7 +276,7 @@ func (u *UserInfoLDAPSource) CreateGroup(groupinfo userinfo.GroupInfo) error {
 			managerAttributeValue = entry
 			break
 		}
-		managerDN, err := u.GetGroupDN(groupinfo.Description)
+		managerDN, err := u.getGroupDN(groupinfo.Description)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -322,7 +322,7 @@ func (u *UserInfoLDAPSource) DeleteGroup(groupnames []string) error {
 	defer conn.Close()
 
 	for _, entry := range groupnames {
-		groupdn, err := u.GetGroupDN(entry)
+		groupdn, err := u.getGroupDN(entry)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -347,7 +347,7 @@ func (u *UserInfoLDAPSource) AddAtributedescription(groupname string) error {
 	}
 	defer conn.Close()
 
-	entry, err := u.GetGroupDN(groupname)
+	entry, err := u.getGroupDN(groupname)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -376,7 +376,7 @@ func (u *UserInfoLDAPSource) DeleteDescription(groupnames []string) error {
 	defer conn.Close()
 
 	for _, entry := range groupnames {
-		entry, err = u.GetGroupDN(entry)
+		entry, err = u.getGroupDN(entry)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -402,7 +402,7 @@ func (u *UserInfoLDAPSource) ChangeDescription(groupname string, managegroup str
 		return err
 	}
 	defer conn.Close()
-	entry, err := u.GetGroupDN(groupname)
+	entry, err := u.getGroupDN(groupname)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -410,7 +410,7 @@ func (u *UserInfoLDAPSource) ChangeDescription(groupname string, managegroup str
 	var attributeValue string
 	switch strings.ToLower(u.GroupManageAttribute) {
 	case "owner":
-		managerDN, err := u.GetGroupDN(managegroup)
+		managerDN, err := u.getGroupDN(managegroup)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -654,7 +654,7 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) 
 		log.Println(err)
 		return err
 	}
-	entry, err := u.GetGroupDN(groupinfo.Groupname)
+	entry, err := u.getGroupDN(groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -690,7 +690,7 @@ func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo
 		log.Println(err)
 		return err
 	}
-	entry, err := u.GetGroupDN(groupinfo.Groupname)
+	entry, err := u.getGroupDN(groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -1037,7 +1037,7 @@ func (u *UserInfoLDAPSource) ServiceAccountExistsornot(groupname string) (bool, 
 	return true, serviceAccountDN, nil
 }
 
-func (u *UserInfoLDAPSource) GetGroupDN(groupname string) (string, error) {
+func (u *UserInfoLDAPSource) getGroupDN(groupname string) (string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)

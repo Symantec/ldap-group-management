@@ -65,8 +65,6 @@ type UserInfo interface {
 
 	ServiceAccountExistsornot(groupname string) (bool, string, error)
 
-	GetGroupDN(groupname string) (string, error)
-
 	GetAllGroupsManagedBy() ([][]string, error)
 
 	GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error)
