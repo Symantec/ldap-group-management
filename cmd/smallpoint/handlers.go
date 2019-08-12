@@ -359,8 +359,8 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 	if !userExistsornot {
-		log.Println("Bad request!")
-		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+		log.Println("Bad request! user does not exist")
+		http.Error(w, fmt.Sprint("Bad request, user does not exist!"), http.StatusBadRequest)
 		return
 	}
 
@@ -371,7 +371,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	//log.Println(out)
+
 	//fmt.Print(out["groups"])
 	for _, entry := range out["groups"] {
 		err = state.groupExistsorNot(w, entry)
