@@ -94,7 +94,6 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 			return
 		}
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
-		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
 	}
 
 	err = state.Userinfo.CreateGroup(groupinfo)

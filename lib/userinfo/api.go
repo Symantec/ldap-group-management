@@ -21,10 +21,6 @@ type GroupInfo struct {
 type UserInfo interface {
 	GetallUsers() ([]string, error)
 
-	CreateuserDn(username string) string
-
-	CreategroupDn(groupname string) string
-
 	CreateserviceDn(groupname string, a AccountType) string
 
 	CreateGroup(groupinfo GroupInfo) error
@@ -46,10 +42,6 @@ type UserInfo interface {
 	ParseSuperadmins() []string
 
 	UserisadminOrNot(username string) bool
-
-	GetmaximumGidnumber(searchBaseDN string) (string, error)
-
-	GetmaximumUidnumber(searchBaseDN string) (string, error)
 
 	AddmemberstoExisting(groupinfo GroupInfo) error
 

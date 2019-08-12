@@ -49,7 +49,7 @@ func (u *UserInfoLDAPSource) DisableaccountsinLdap(result []string) error {
 	defer conn.Close()
 
 	for _, entry := range result {
-		entry = u.CreateuserDn(entry)
+		entry = u.createUserDN(entry)
 
 		modify := ldap.NewModifyRequest(entry)
 		modify.Replace("nsaccountLock", nsaccountLock)

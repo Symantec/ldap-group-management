@@ -486,7 +486,6 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	var groupinfo userinfo.GroupInfo
-	groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(username))
 	groupinfo.MemberUid = append(groupinfo.MemberUid, username)
 	for _, entry := range out["groups"] {
 		groupinfo.Groupname = entry
@@ -684,7 +683,6 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			var groupinfo userinfo.GroupInfo
 			groupinfo.Groupname = entry[1]
 			groupinfo.MemberUid = append(groupinfo.MemberUid, entry[0])
-			groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(entry[0]))
 			err := state.Userinfo.AddmemberstoExisting(groupinfo)
 			if err != nil {
 				log.Println(err)
@@ -835,7 +833,6 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 			continue
 		}
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
-		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
 	}
 
 	err = state.Userinfo.AddmemberstoExisting(groupinfo)
@@ -961,7 +958,6 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 			continue
 		}
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
-		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
 	}
 
 	err = state.Userinfo.DeletemembersfromGroup(groupinfo)
