@@ -563,12 +563,9 @@ func (state *RuntimeState) getUserPendingActions(username string) ([][]string, e
 		fmt.Println(groupName)
 		managerGroup := group2manager[groupName]
 
-		//log.Printf("get managerGroup=%s", managerGroup)
 		if managerGroup == descriptionAttribute {
 			managerGroup = groupName
 		}
-
-		//log.Printf("finale managerGroup=%s", managerGroup)
 
 		groupIndex := sort.SearchStrings(userGroups, managerGroup)
 		if groupIndex >= len(userGroups) {

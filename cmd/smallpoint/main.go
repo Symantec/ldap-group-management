@@ -17,7 +17,7 @@ import (
 	"log/syslog"
 	"net/http"
 	"os"
-	//"path/filepath"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -135,23 +135,21 @@ const (
 
 func (state *RuntimeState) loadTemplates() (err error) {
 	//Load extra templates
-	/*
-		templatesPath := state.Config.Base.TemplatesPath
-		if _, err = os.Stat(templatesPath); err != nil {
+	templatesPath := state.Config.Base.TemplatesPath
+	if _, err = os.Stat(templatesPath); err != nil {
+		return err
+	}
+	state.htmlTemplate = template.New("main")
+
+	//Eventally this will include the customization path
+	templateFiles := []string{}
+	for _, templateFilename := range templateFiles {
+		templatePath := filepath.Join(templatesPath, templateFilename)
+		_, err = state.htmlTemplate.ParseFiles(templatePath)
+		if err != nil {
 			return err
 		}
-	*/
-	state.htmlTemplate = template.New("main")
-	/*
-		templateFiles := []string{"footer_extra.tmpl", "header_extra.tmpl", "login_extra.tmpl"}
-		for _, templateFilename := range templateFiles {
-			templatePath := filepath.Join(templatesPath, templateFilename)
-			_, err = state.htmlTemplate.ParseFiles(templatePath)
-			if err != nil {
-				return err
-			}
-		}
-	*/
+	}
 
 	/// Load the oter built in templates
 	extraTemplates := []string{commonCSSText, commonJSText, headerHTMLText,
