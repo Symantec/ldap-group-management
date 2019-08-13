@@ -61,7 +61,7 @@ func New() *MockLdap {
 	var testldap MockLdap
 	testldap.Groups = make(map[string]LdapGroupInfo)
 	testldap.Users = make(map[string]LdapUserInfo)
-	testldap.SuperAdmins = "user1,user2"
+	testldap.SuperAdmins = "user1" // was: user1,user2
 	testldap.Services = make(map[string]LdapServiceInfo)
 
 	testldap.Groups["cn=group1,ou=groups,dc=mgmt,dc=example,dc=com"] = LdapGroupInfo{cn: "group1",
@@ -75,13 +75,28 @@ func New() *MockLdap {
 		memberUid: []string{"user1", "user2"},
 		member:    []string{"uid=user1,ou=people,dc=mgmt,dc=example,dc=com", "uid=user2,ou=people,dc=mgmt,dc=example,dc=com"}}
 
+	testldap.Groups["cn=group3,ou=groups,dc=mgmt,dc=example,dc=com"] = LdapGroupInfo{
+		cn:          "group3",
+		dn:          "cn=group3,ou=groups,dc=mgmt,dc=example,dc=com",
+		description: "cn=group1,ou=groups,dc=mgmt,dc=example,dc=com",
+		gidNumber:   "20000",
+		objectClass: []string{"posixGroup", "top", "groupOfNames"},
+		//memberUid:   []string{"user1", "user2"},
+		//member:      []string{"uid=user1,ou=people,dc=mgmt,dc=example,dc=com", "uid=user2,ou=people,dc=mgmt,dc=example,dc=com"},
+	}
+
 	testldap.Users["uid=user1,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{dn: "uid=user1,ou=people,dc=mgmt,dc=example,dc=com",
 		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com"},
 		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user1", cn: "user1", mail: "user1@example.com",
 	}
 	testldap.Users["uid=user2,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{dn: "uid=user2,ou=people,dc=mgmt,dc=example,dc=com",
 		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com"},
-		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user1", cn: "user1", mail: "user2@example.com",
+		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user2", cn: "user2", mail: "user2@example.com",
+	}
+	testldap.Users["uid=user3,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{
+		dn:          "uid=user3,ou=people,dc=mgmt,dc=example,dc=com",
+		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"},
+		uid:         "user3", cn: "user3", mail: "user3@example.com",
 	}
 
 	testldap.Services["cn=group1,ou=services,dc=mgmt,dc=example,dc=com"] = LdapServiceInfo{cn: "group1",

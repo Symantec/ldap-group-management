@@ -359,7 +359,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 	if !userExistsornot {
-		log.Println("Bad request! user does not exist")
+		log.Println("requestAccessHandler: Bad request! user does not exist")
 		http.Error(w, fmt.Sprint("Bad request, user does not exist!"), http.StatusBadRequest)
 		return
 	}
@@ -1055,6 +1055,9 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "couldn't parse the URL", http.StatusInternalServerError)
 		return
 	}
+
+	go state.Userinfo.GetallUsers() //warm up cache
+
 	//var response Response
 
 	groupName := params[0] //username is "cn" Attribute of a User

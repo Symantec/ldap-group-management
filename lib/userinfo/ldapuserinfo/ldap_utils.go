@@ -543,7 +543,6 @@ func (u *UserInfoLDAPSource) getGroupUsersInternal(conn *ldap.Conn, groupname st
 		log.Println(err)
 		return nil, "", err
 	}
-	log.Printf("GetusersofaGroup sr=%+v", sr)
 	if len(sr.Entries) > 1 {
 		log.Println("Duplicate entries found")
 		return nil, "", errors.New("Multiple entries found, Contact the administrator!")

@@ -148,7 +148,7 @@ func TestRequestAccessHandler(t *testing.T) {
 	//formValues := url.Values{"groupnames": {"group1"}, "managegroup": {"group1"}}
 	//req, err := http.NewRequest("POST", changeownershipbuttonPath, strings.NewReader(formValues.Encode()))
 	requestData := map[string][]string{
-		"groups": []string{"group1"},
+		"groups": []string{"group3"},
 	}
 	jsonBytes, err := json.Marshal(requestData)
 	if err != nil {
@@ -158,7 +158,7 @@ func TestRequestAccessHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidAdminCookie()
+	cookie := testCreateValidCookie() //testCreateValidAdminCookie()
 	req.AddCookie(&cookie)
 	//This is actually not neded
 	req.Header.Set("Content-Type", "application/json")
@@ -169,6 +169,25 @@ func TestRequestAccessHandler(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	// Check the status code is what we expect.
 	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	////Now we test the delete request
+
+	delReq, err := http.NewRequest("POST", deleterequestsPath, bytes.NewReader(jsonBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	delReq.AddCookie(&cookie)
+	delReq.Header.Set("Content-Type", "application/json")
+
+	rr2 := httptest.NewRecorder()
+	handler2 := http.HandlerFunc(state.deleteRequests)
+
+	handler2.ServeHTTP(rr2, delReq)
+	// Check the status code is what we expect.
+	if status := rr2.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
