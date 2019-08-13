@@ -90,15 +90,9 @@ var (
 )
 
 const (
-	descriptionAttribute  = "self-managed"
-	cookieExpirationHours = 12
-	cookieName            = "smallpointauth"
-	/*
-		allgroupsPath               = "/allgroups"
-		allusersPath                = "/allusers"
-		usergroupsPath              = "/user_groups/"
-		groupusersPath              = "/group_users/"
-	*/
+	descriptionAttribute        = "self-managed"
+	cookieExpirationHours       = 12
+	cookieName                  = "smallpointauth"
 	creategroupWebPagePath      = "/create_group"
 	deletegroupWebPagePath      = "/delete_group"
 	creategroupPath             = "/create_group/"
@@ -250,10 +244,6 @@ func main() {
 		log.Fatalf("System log failed")
 	}
 	defer state.sysLog.Close()
-	//http.Handle(allgroupsPath, http.HandlerFunc(state.getallgroupsHandler))
-	//http.Handle(allusersPath, http.HandlerFunc(state.getallusersHandler))
-	//http.Handle(usergroupsPath, http.HandlerFunc(state.getgroupsofuserHandler))
-	//http.Handle(groupusersPath, http.HandlerFunc(state.getusersingroupHandler))
 
 	http.Handle(creategroupWebPagePath, http.HandlerFunc(state.creategroupWebpageHandler))
 	http.Handle(deletegroupWebPagePath, http.HandlerFunc(state.deletegroupWebpageHandler))
