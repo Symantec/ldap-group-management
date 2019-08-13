@@ -994,7 +994,7 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 	}
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	if !isAdmin {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		http.Error(w, "you are not authorized", http.StatusForbidden)
 		return
 	}
 	pageData := createServiceAccountPageData{
@@ -1083,39 +1083,6 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	/*
-		groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupName)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-		if !groupnameExistsorNot {
-			log.Println("Group doesn't exist!")
-			http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
-			return
-		}
-		// begin change
-		_, managedby, err := state.Userinfo.GetusersofaGroup(groupName)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-
-		IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
-			return
-		}
-		IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, groupName)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-	*/
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	pageData := groupInfoPageData{
 		UserName:            username,
@@ -1143,7 +1110,7 @@ func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, 
 	}
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	if !isAdmin {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		http.Error(w, "you are not authorized", http.StatusForbidden)
 		return
 	}
 	pageData := changeGroupOwnershipPageData{

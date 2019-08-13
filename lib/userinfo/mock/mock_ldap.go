@@ -202,13 +202,19 @@ func (m *MockLdap) GetgroupsofUser(username string) ([]string, error) {
 
 func (m *MockLdap) GetusersofaGroup(groupname string) ([]string, string, error) {
 	groupdn := m.CreategroupDn(groupname)
-	groupinfo := m.Groups[groupdn]
+	groupinfo, ok := m.Groups[groupdn]
+	if !ok {
+		return nil, "", userinfo.GroupDoesNotExist
+	}
 	return groupinfo.memberUid, groupinfo.description, nil
 }
 
 func (m *MockLdap) GetGroupUsersAndManagers(groupname string) ([]string, []string, string, error) {
 	groupdn := m.CreategroupDn(groupname)
-	groupinfo := m.Groups[groupdn]
+	groupinfo, ok := m.Groups[groupdn]
+	if !ok {
+		return nil, nil, "", userinfo.GroupDoesNotExist
+	}
 	managergroupDN := m.CreategroupDn(groupinfo.description)
 	var managerMembers []string
 	managerGroupInfo, ok := m.Groups[managergroupDN]
@@ -281,7 +287,10 @@ func (m *MockLdap) GetmaximumUidnumber(s string) (string, error) {
 
 func (m *MockLdap) AddmemberstoExisting(groupinfo userinfo.GroupInfo) error {
 	groupdn := m.CreategroupDn(groupinfo.Groupname)
-	groupinformation := m.Groups[groupdn]
+	groupinformation, ok := m.Groups[groupdn]
+	if !ok {
+		return userinfo.GroupDoesNotExist
+	}
 	for _, memberUid := range groupinfo.MemberUid {
 		groupinformation.memberUid = append(groupinformation.memberUid, memberUid)
 	}
@@ -294,7 +303,10 @@ func (m *MockLdap) AddmemberstoExisting(groupinfo userinfo.GroupInfo) error {
 
 func (m *MockLdap) DeletemembersfromGroup(groupinfo userinfo.GroupInfo) error {
 	groupdn := m.CreategroupDn(groupinfo.Groupname)
-	groupinformation := m.Groups[groupdn]
+	groupinformation, ok := m.Groups[groupdn]
+	if !ok {
+		return userinfo.GroupDoesNotExist
+	}
 	groupinformation.memberUid = removeElements(groupinformation.memberUid, groupinfo.MemberUid)
 	groupinformation.member = removeElements(groupinformation.member, groupinfo.Member)
 	m.Groups[groupdn] = groupinformation
@@ -317,7 +329,11 @@ func (m *MockLdap) IsgroupmemberorNot(groupname string, username string) (bool, 
 
 func (m *MockLdap) GetDescriptionvalue(groupname string) (string, error) {
 	groupdn := m.CreategroupDn(groupname)
-	groupinfo := m.Groups[groupdn]
+	groupinfo, ok := m.Groups[groupdn]
+
+	if !ok {
+		return "", userinfo.GroupDoesNotExist
+	}
 
 	return groupinfo.description, nil
 }
@@ -373,6 +389,9 @@ func (m *MockLdap) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
 
 func (m *MockLdap) IsgroupAdminorNot(username string, groupname string) (bool, error) {
 	managedby, err := m.GetDescriptionvalue(groupname)
+	if err != nil {
+		return false, err
+	}
 	if managedby == "self-managed" {
 		Isgroupmember, _, err := m.IsgroupmemberorNot(groupname, username)
 		if !Isgroupmember && err != nil {

@@ -70,6 +70,76 @@ func TestNonAdminWebPathsHandlerSuccess(t *testing.T) {
 	}
 }
 
+func TestAdminOnlyWebPaths(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Println(err)
+	}
+	testWebEndpoints := map[string]http.HandlerFunc{
+		changeownershipPath:         state.changeownershipWebpageHandler,
+		createServiceAccWebPagePath: state.createserviceAccountPageHandler,
+	}
+
+	adminCookie := testCreateValidAdminCookie()
+
+	for path, testFunc := range testWebEndpoints {
+		req, err := http.NewRequest("GET", path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		//cookie := testCreateValidCookie()
+		req.AddCookie(&adminCookie)
+
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(testFunc)
+
+		handler.ServeHTTP(rr, req)
+		// Check the status code is what we expect.
+		if status := rr.Code; status != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v",
+				status, http.StatusOK)
+		}
+	}
+
+	cookie := testCreateValidCookie()
+
+	for path, testFunc := range testWebEndpoints {
+		req, err := http.NewRequest("GET", path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		//cookie := testCreateValidCookie()
+		req.AddCookie(&cookie)
+
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(testFunc)
+
+		handler.ServeHTTP(rr, req)
+		// Check the status code is what we expect.
+		if status := rr.Code; status != http.StatusForbidden {
+			t.Errorf("handler returned wrong status code: got %v want %v",
+				status, http.StatusForbidden)
+		}
+	}
+	//now ensure unathenticated failed
+	for path, testFunc := range testWebEndpoints {
+		req, err := http.NewRequest("GET", path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(testFunc)
+
+		handler.ServeHTTP(rr, req)
+		// Check the status code is what we expect.
+		if status := rr.Code; status != http.StatusFound {
+			t.Errorf("handler returned wrong status code: got %v want %v",
+				status, http.StatusOK)
+		}
+	}
+}
+
 func TestRequestAccessHandler(t *testing.T) {
 	state, err := setupTestState()
 	if err != nil {

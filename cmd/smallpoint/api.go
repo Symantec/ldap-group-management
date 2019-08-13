@@ -507,20 +507,13 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 			return
 		}
-		groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupName)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-		if !groupnameExistsorNot {
-			log.Println("Group doesn't exist!")
-			http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
-			return
-		}
 		usersToSend, _, err = state.Userinfo.GetusersofaGroup(groupName)
 		if err != nil {
 			log.Println(err)
+			if err == userinfo.GroupDoesNotExist {
+				http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
+				return
+			}
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
