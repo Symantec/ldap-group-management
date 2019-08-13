@@ -49,7 +49,11 @@ func setupTestState() (RuntimeState, error) {
 	state.authcookies[cookievalueTest] = usersession
 	adminSession := cookieInfo{Username: adminTestusername, ExpiresAt: expiresAt}
 	state.authcookies[adminCookievalueTest] = adminSession
-	state.loadTemplates()
+	state.Config.Base.TemplatesPath = "."
+	err = state.loadTemplates()
+	if err != nil {
+		return state, err
+	}
 	return state, nil
 }
 func getTestApiEndpints(state *RuntimeState) map[string]http.HandlerFunc {
@@ -169,7 +173,7 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 func TestCreateGrouphandlerSuccess(t *testing.T) {
 	state, err := setupTestState()
 	if err != nil {
-		log.Println(err)
+		t.Fatal(err)
 	}
 	formValues := url.Values{"groupname": {"foo"}, "description": {"group1"}, "members": {"user1"}}
 	//formString := strings.NewReader(formValues.Encode())

@@ -134,12 +134,14 @@ const (
 )
 
 func (state *RuntimeState) loadTemplates() (err error) {
+
+	state.htmlTemplate = template.New("main")
+
 	//Load extra templates
 	templatesPath := state.Config.Base.TemplatesPath
 	if _, err = os.Stat(templatesPath); err != nil {
 		return err
 	}
-	state.htmlTemplate = template.New("main")
 
 	//Eventally this will include the customization path
 	templateFiles := []string{}
