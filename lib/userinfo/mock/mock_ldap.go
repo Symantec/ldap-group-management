@@ -206,6 +206,19 @@ func (m *MockLdap) GetusersofaGroup(groupname string) ([]string, string, error) 
 	return groupinfo.memberUid, groupinfo.description, nil
 }
 
+func (m *MockLdap) GetGroupUsersAndManagers(groupname string) ([]string, []string, string, error) {
+	groupdn := m.CreategroupDn(groupname)
+	groupinfo := m.Groups[groupdn]
+	managergroupDN := m.CreategroupDn(groupinfo.description)
+	var managerMembers []string
+	managerGroupInfo, ok := m.Groups[managergroupDN]
+	if ok {
+		managerMembers = managerGroupInfo.memberUid
+	}
+	return groupinfo.memberUid, managerMembers, groupinfo.description, nil
+
+}
+
 func (m *MockLdap) ParseSuperadmins() []string {
 	var superAdminsInfo []string
 	for _, admin := range strings.Split(m.SuperAdmins, ",") {

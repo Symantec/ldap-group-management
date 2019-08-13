@@ -29,8 +29,6 @@ type UserInfo interface {
 
 	AddAtributedescription(groupname string) error
 
-	DeleteDescription(groupnames []string) error
-
 	ChangeDescription(groupname string, managegroup string) error
 
 	GetallGroups() ([]string, error)
@@ -38,6 +36,8 @@ type UserInfo interface {
 	GetgroupsofUser(username string) ([]string, error)
 
 	GetusersofaGroup(groupname string) ([]string, string, error)
+
+	GetGroupUsersAndManagers(groupname string) ([]string, []string, string, error)
 
 	ParseSuperadmins() []string
 

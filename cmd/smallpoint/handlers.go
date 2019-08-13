@@ -678,22 +678,22 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 				//fmt.Println("error me")
 				log.Println(err)
 			}
+			continue
 
-		} else if entryExistsorNot(entry[0], entry[1], state) {
-			var groupinfo userinfo.GroupInfo
-			groupinfo.Groupname = entry[1]
-			groupinfo.MemberUid = append(groupinfo.MemberUid, entry[0])
-			err := state.Userinfo.AddmemberstoExisting(groupinfo)
-			if err != nil {
-				log.Println(err)
-			}
+		}
+		var groupinfo userinfo.GroupInfo
+		groupinfo.Groupname = entry[1]
+		groupinfo.MemberUid = append(groupinfo.MemberUid, entry[0])
+		err = state.Userinfo.AddmemberstoExisting(groupinfo)
+		if err != nil {
+			log.Println(err)
+		}
 
-			state.sysLog.Write([]byte(fmt.Sprintf("%s"+" joined Group "+"%s"+" approved by "+"%s", entry[0], entry[1], username)))
-			err = deleteEntryInDB(entry[0], entry[1], state)
-			if err != nil {
-				fmt.Println("error here!")
-				log.Println(err)
-			}
+		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" joined Group "+"%s"+" approved by "+"%s", entry[0], entry[1], username)))
+		err = deleteEntryInDB(entry[0], entry[1], state)
+		if err != nil {
+			fmt.Println("error here!")
+			log.Println(err)
 		}
 	}
 	go state.sendApproveemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
@@ -1058,38 +1058,64 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 	//var response Response
 
 	groupName := params[0] //username is "cn" Attribute of a User
-	groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupName)
+	groupMembers, managerMembers, managedby, err := state.Userinfo.GetGroupUsersAndManagers(groupName)
 	if err != nil {
 		log.Println(err)
+		if err == userinfo.GroupDoesNotExist {
+			http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
+			return
+		}
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	if !groupnameExistsorNot {
-		log.Println("Group doesn't exist!")
-		http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
-		return
+	IsgroupMember := false
+	for _, user := range groupMembers {
+		if user == username {
+			IsgroupMember = true
+			break
+		}
 	}
-	// begin change
-	_, managedby, err := state.Userinfo.GetusersofaGroup(groupName)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
+	IsgroupAdmin := false
+	for _, user := range managerMembers {
+		if user == username {
+			IsgroupAdmin = true
+			break
+		}
 	}
 
-	IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
-		return
-	}
-	IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, groupName)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
+	/*
+		groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupName)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		if !groupnameExistsorNot {
+			log.Println("Group doesn't exist!")
+			http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
+			return
+		}
+		// begin change
+		_, managedby, err := state.Userinfo.GetusersofaGroup(groupName)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
 
+		IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
+			return
+		}
+		IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, groupName)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	*/
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	pageData := groupInfoPageData{
 		UserName:            username,

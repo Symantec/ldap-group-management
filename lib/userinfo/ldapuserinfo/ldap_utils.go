@@ -77,14 +77,7 @@ func extractCNFromDNString(input []string) (output []string, err error) {
 	return output, nil
 }
 
-func (u *UserInfoLDAPSource) objectClassExistsorNot(groupname string, objectclass string) (bool, error) {
-	conn, err := u.getTargetLDAPConnection()
-	if err != nil {
-		log.Println(err)
-		return false, err
-	}
-	defer conn.Close()
-
+func (u *UserInfoLDAPSource) objectClassExistsorNot(conn *ldap.Conn, groupname string, objectclass string) (bool, error) {
 	searchrequest := ldap.NewSearchRequest(u.GroupSearchBaseDNs, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, "(&(cn="+groupname+" )(objectClass=posixGroup))", []string{"objectClass"}, nil)
 	result, err := conn.Search(searchrequest)
@@ -276,7 +269,7 @@ func (u *UserInfoLDAPSource) CreateGroup(groupinfo userinfo.GroupInfo) error {
 			managerAttributeValue = entry
 			break
 		}
-		managerDN, err := u.getGroupDN(groupinfo.Description)
+		managerDN, err := u.getGroupDN(conn, groupinfo.Description)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -322,7 +315,7 @@ func (u *UserInfoLDAPSource) DeleteGroup(groupnames []string) error {
 	defer conn.Close()
 
 	for _, entry := range groupnames {
-		groupdn, err := u.getGroupDN(entry)
+		groupdn, err := u.getGroupDN(conn, entry)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -347,7 +340,7 @@ func (u *UserInfoLDAPSource) AddAtributedescription(groupname string) error {
 	}
 	defer conn.Close()
 
-	entry, err := u.getGroupDN(groupname)
+	entry, err := u.getGroupDN(conn, groupname)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -366,7 +359,7 @@ func (u *UserInfoLDAPSource) AddAtributedescription(groupname string) error {
 }
 
 //Deleting the attribute in a dn in Target Ldap. --required
-func (u *UserInfoLDAPSource) DeleteDescription(groupnames []string) error {
+func (u *UserInfoLDAPSource) deleteDescription(groupnames []string) error {
 
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
@@ -376,7 +369,7 @@ func (u *UserInfoLDAPSource) DeleteDescription(groupnames []string) error {
 	defer conn.Close()
 
 	for _, entry := range groupnames {
-		entry, err = u.getGroupDN(entry)
+		entry, err = u.getGroupDN(conn, entry)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -402,7 +395,7 @@ func (u *UserInfoLDAPSource) ChangeDescription(groupname string, managegroup str
 		return err
 	}
 	defer conn.Close()
-	entry, err := u.getGroupDN(groupname)
+	entry, err := u.getGroupDN(conn, groupname)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -410,7 +403,7 @@ func (u *UserInfoLDAPSource) ChangeDescription(groupname string, managegroup str
 	var attributeValue string
 	switch strings.ToLower(u.GroupManageAttribute) {
 	case "owner":
-		managerDN, err := u.getGroupDN(managegroup)
+		managerDN, err := u.getGroupDN(conn, managegroup)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -510,6 +503,33 @@ func (u *UserInfoLDAPSource) GetusersofaGroup(groupname string) ([]string, strin
 		return nil, "", err
 	}
 	defer conn.Close()
+	return u.getGroupUsersInternal(conn, groupname)
+}
+
+// This might become unndded if we can get connection reuse.
+func (u *UserInfoLDAPSource) GetGroupUsersAndManagers(groupname string) ([]string, []string, string, error) {
+	conn, err := u.getTargetLDAPConnection()
+	if err != nil {
+		log.Println(err)
+		return nil, nil, "", err
+	}
+	defer conn.Close()
+	groupUsers, managerGroupName, err := u.getGroupUsersInternal(conn, groupname)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	managerUsers, _, err := u.getGroupUsersInternal(conn, managerGroupName)
+	if err != nil {
+		if err == userinfo.GroupDoesNotExist {
+			var emptyUsers []string
+			return groupUsers, emptyUsers, managerGroupName, nil
+		}
+		return nil, nil, "", err
+	}
+	return groupUsers, managerUsers, managerGroupName, nil
+}
+
+func (u *UserInfoLDAPSource) getGroupUsersInternal(conn *ldap.Conn, groupname string) ([]string, string, error) {
 
 	searchRequest := ldap.NewSearchRequest(
 		u.GroupSearchBaseDNs,
@@ -649,12 +669,12 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) 
 		return err
 	}
 	defer conn.Close()
-	objectExists, err := u.objectClassExistsorNot(groupinfo.Groupname, objectClassgroupofNames)
+	objectExists, err := u.objectClassExistsorNot(conn, groupinfo.Groupname, objectClassgroupofNames)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	entry, err := u.getGroupDN(groupinfo.Groupname)
+	entry, err := u.getGroupDN(conn, groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -685,12 +705,12 @@ func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo
 		return err
 	}
 	defer conn.Close()
-	objectExists, err := u.objectClassExistsorNot(groupinfo.Groupname, objectClassgroupofNames)
+	objectExists, err := u.objectClassExistsorNot(conn, groupinfo.Groupname, objectClassgroupofNames)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	entry, err := u.getGroupDN(groupinfo.Groupname)
+	entry, err := u.getGroupDN(conn, groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -782,13 +802,16 @@ func (u *UserInfoLDAPSource) GetDescriptionvalue(groupname string) (string, erro
 
 //get email of a user
 func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) {
-	var userEmail []string
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 	defer conn.Close()
+
+	return u.getEmailofUserInternal(conn, username)
+}
+func (u *UserInfoLDAPSource) getEmailofUserInternal(conn *ldap.Conn, username string) ([]string, error) {
 	Userdn := u.createUserDN(username)
 	searchrequest := ldap.NewSearchRequest(Userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, "(&(uid="+username+"))", []string{"mail"}, nil)
@@ -804,6 +827,7 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 	if len(result.Entries[0].GetAttributeValues("mail")) < 1 {
 		return nil, fmt.Errorf("user does not have an email address")
 	}
+	var userEmail []string
 	userEmail = append(userEmail, result.Entries[0].GetAttributeValues("mail")[0])
 	return userEmail, nil
 
@@ -811,16 +835,23 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 
 //get email of all users in the given group
 func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string, error) {
-
-	groupUsers, _, err := u.GetusersofaGroup(groupname)
+	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
+	defer conn.Close()
+
+	groupUsers, _, err := u.getGroupUsersInternal(conn, groupname)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
 	var userEmail []string
 	log.Printf("GetEmailofusersingroup:%s, %+v", groupname, groupUsers)
 	for _, entry := range groupUsers {
-		value, err := u.GetEmailofauser(entry)
+		value, err := u.getEmailofUserInternal(conn, entry)
 		if err != nil {
 			log.Println(err)
 			return nil, err
@@ -1037,14 +1068,7 @@ func (u *UserInfoLDAPSource) ServiceAccountExistsornot(groupname string) (bool, 
 	return true, serviceAccountDN, nil
 }
 
-func (u *UserInfoLDAPSource) getGroupDN(groupname string) (string, error) {
-	conn, err := u.getTargetLDAPConnection()
-	if err != nil {
-		log.Println(err)
-		return "", err
-	}
-	defer conn.Close()
-
+func (u *UserInfoLDAPSource) getGroupDN(conn *ldap.Conn, groupname string) (string, error) {
 	searchRequest := ldap.NewSearchRequest(
 		u.GroupSearchBaseDNs,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
