@@ -249,7 +249,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	}
 	//check if user is admin or not
 	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized ", http.StatusUnauthorized)
+		http.Error(w, "you are not authorized ", http.StatusForbidden)
 		return
 	}
 	err = r.ParseForm()
@@ -315,7 +315,20 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	for _, member := range strings.Split(members, ",") {
 		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groupcreation_success")
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        true,
+		Title:          "Group Creation Success",
+		SuccessMessage: "Group has been successfully Created",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 //Delete groups handler --required
@@ -329,7 +342,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		http.Error(w, "you are not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -351,7 +364,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 
 		}
 		if !groupnameExistsorNot {
-			http.Error(w, fmt.Sprintf("Group %s doesn't exist!", eachGroup), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Group %s doesn't exist!", eachGroup), http.StatusBadRequest)
 			return
 		}
 		groupnames = append(groupnames, eachGroup)
@@ -372,7 +385,20 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groupdeletion_success")
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        true,
+		Title:          "Group Deletion Suucess",
+		SuccessMessage: "Group has been successfully Deleted",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 
 }
 
@@ -386,7 +412,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		return
 	}
 	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized ", http.StatusUnauthorized)
+		http.Error(w, "you are not authorized ", http.StatusForbidden)
 		return
 	}
 	err = r.ParseForm()
@@ -438,7 +464,20 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		return
 	}
 	state.sysLog.Write([]byte(fmt.Sprintf("Service account "+"%s"+" was created by "+"%s", groupinfo.Groupname, username)))
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "serviceacc_creation_success")
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        true,
+		Title:          "Service Account Creation Success",
+		SuccessMessage: "Service Account successfully created",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Request) {
@@ -451,7 +490,7 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		http.Error(w, "you are not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -479,5 +518,202 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		}
 		state.sysLog.Write([]byte(fmt.Sprintf("Group %s is managed by %s now, this change was made by %s.", group, managegroup, username)))
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "changeownership_success")
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        true,
+		Title:          "Change Ownership success",
+		SuccessMessage: "Group(s) have successfuly changed ownership",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// TODO: figure out how to do this with templates or even better migrate to AJAX to get data
+const getGroupsJSRequestAccessText = `
+document.addEventListener('DOMContentLoaded', function () {
+                var groupnames = %s;
+                var final_groupnames=array(groupnames);
+                RequestAccess(final_groupnames);
+                datalist(groupnames[0]);
+});
+`
+
+const getGroupsJSPendingActionsText = `
+document.addEventListener('DOMContentLoaded', function () {
+	pendingActions = %s; 
+	var pending_actions=arrayPendingActions(pendingActions);
+	pendingActionsTable(pending_actions);
+});
+`
+
+func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+	outputText := getGroupsJSRequestAccessText
+	var groupsToSend [][]string
+	switch r.FormValue("type") {
+	case "all":
+		groupsToSend, err = state.Userinfo.GetAllGroupsManagedBy()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	case "pendingRequests":
+		groupsToSend, err = state.getPendingRequestGroupsofUser(username)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	case "allNoManager":
+		allgroups, err := state.Userinfo.GetallGroups()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		sort.Strings(allgroups)
+		groupsToSend = [][]string{allgroups}
+	case "pendingActions":
+		groupsToSend, err = state.getUserPendingActions(username)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		outputText = getGroupsJSPendingActionsText
+	case "managedByMe":
+		allGroups, err := state.Userinfo.GetAllGroupsManagedBy()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		userGroups, err := state.Userinfo.GetgroupsofUser(username)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		userGroupMap := make(map[string]interface{})
+		for _, groupName := range userGroups {
+			userGroupMap[groupName] = nil
+		}
+		for _, groupTuple := range allGroups {
+			managingGroup := groupTuple[1]
+			_, ok := userGroupMap[managingGroup]
+			if ok {
+				groupsToSend = append(groupsToSend, groupTuple)
+			}
+		}
+	default:
+
+		groupsToSend, err = state.Userinfo.GetGroupsInfoOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	}
+	encodedGroups, err := json.Marshal(groupsToSend)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	//log.Printf("%s", encodedGroups)
+	w.Header().Set("Cache-Control", "private, max-age=15")
+	w.Header().Set("Content-Type", "application/javascript")
+	fmt.Fprintf(w, outputText, encodedGroups)
+	return
+}
+
+const getUsersJSText = `
+document.addEventListener('DOMContentLoaded', function () {
+                var Allusers = %s;
+                //var usernames=arrayUsers(Users);
+                //Group_Info(usernames);
+		list_members(Allusers);
+});
+`
+
+const getUsersGroupJSText = `
+document.addEventListener('DOMContentLoaded', function () {
+                var groupUsers = %s;
+                var usernames=arrayUsers(groupUsers);
+                Group_Info(usernames);
+});
+`
+
+func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	_, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	outputText := getUsersJSText
+	var usersToSend []string
+	switch r.FormValue("type") {
+	case "group":
+		groupName := r.FormValue("groupName")
+		if groupName == "" {
+			log.Printf("No groupName found")
+			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
+			return
+		}
+		groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupName)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		if !groupnameExistsorNot {
+			log.Println("Group doesn't exist!")
+			http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
+			return
+		}
+		usersToSend, _, err = state.Userinfo.GetusersofaGroup(groupName)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		outputText = getUsersGroupJSText
+
+	default:
+		usersToSend, err = state.Userinfo.GetallUsers()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+	}
+	sort.Strings(usersToSend)
+	encodedUsers, err := json.Marshal(usersToSend)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Cache-Control", "private, max-age=15")
+	w.Header().Set("Content-Type", "application/javascript")
+	fmt.Fprintf(w, outputText, encodedUsers)
+	return
 }

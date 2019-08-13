@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/mssola/user_agent"
 	"log"
 	"net/smtp"
@@ -13,28 +14,28 @@ import (
 func (state *RuntimeState) SendRequestemail(username string, groupnames []string,
 	remoteAddr string, userAgent string) error {
 	for _, entry := range groupnames {
-		description, err := state.Userinfo.GetDescriptionvalue(entry)
+		managerEntry, err := state.Userinfo.GetDescriptionvalue(entry)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
-		if description == "self-managed" {
-			usersEmail, err := state.Userinfo.GetEmailofusersingroup(entry)
-			if err != nil {
-				log.Println(err)
-				return err
+		log.Printf("managerEntry:%s", managerEntry)
+		if managerEntry == "" {
+			log.Printf("no manager for group %s.", entry)
+			return fmt.Errorf("no manager for group %s", entry)
 
-			}
-			state.SuccessRequestemail(username, usersEmail, entry, remoteAddr, userAgent)
-		} else {
-			usersEmail, err := state.Userinfo.GetEmailofusersingroup(description)
-			if err != nil {
-				log.Println(err)
-				return err
-
-			}
-			state.SuccessRequestemail(username, usersEmail, entry, remoteAddr, userAgent)
 		}
+		var usersEmail []string
+		if managerEntry == "self-managed" {
+			managerEntry = entry
+		}
+		usersEmail, err = state.Userinfo.GetEmailofusersingroup(managerEntry)
+		if err != nil {
+			log.Printf("SendRequestemail: GetEmailofusersingroup err:%s", err)
+			return err
+
+		}
+		state.SuccessRequestemail(username, usersEmail, entry, remoteAddr, userAgent)
 	}
 	return nil
 }

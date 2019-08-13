@@ -11,11 +11,13 @@ import (
 	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
 	"github.com/cviecco/go-simple-oidc-auth/authhandler"
 	"gopkg.in/yaml.v2"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"log/syslog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -39,13 +41,14 @@ type AppConfigFile struct {
 }
 
 type RuntimeState struct {
-	Config      AppConfigFile
-	dbType      string
-	db          *sql.DB
-	Userinfo    userinfo.UserInfo
-	authcookies map[string]cookieInfo
-	cookiemutex sync.Mutex
-	sysLog      *syslog.Writer
+	Config       AppConfigFile
+	dbType       string
+	db           *sql.DB
+	Userinfo     userinfo.UserInfo
+	authcookies  map[string]cookieInfo
+	cookiemutex  sync.Mutex
+	htmlTemplate *template.Template
+	sysLog       *syslog.Writer
 }
 
 type cookieInfo struct {
@@ -117,6 +120,10 @@ const (
 	groupinfoPath               = "/group_info/"
 	changeownershipbuttonPath   = "/change_owner/"
 	changeownershipPath         = "/change_owner"
+	myManagedGroupsWebPagePath  = "/my_managed_groups"
+
+	getGroupsJSPath = "/getGroups.js"
+	getUsersJSPath  = "/getUsers.js"
 
 	indexPath  = "/"
 	authPath   = "/auth/oidcsimple/callback"
@@ -124,6 +131,42 @@ const (
 	imagesPath = "/images/"
 	jsPath     = "/js/"
 )
+
+func (state *RuntimeState) loadTemplates() (err error) {
+	//Load extra templates
+	templatesPath := state.Config.Base.TemplatesPath
+	if _, err = os.Stat(templatesPath); err != nil {
+		return err
+	}
+	state.htmlTemplate = template.New("main")
+
+	//Eventally this will include the customization path
+	templateFiles := []string{}
+	for _, templateFilename := range templateFiles {
+		templatePath := filepath.Join(templatesPath, templateFilename)
+		_, err = state.htmlTemplate.ParseFiles(templatePath)
+		if err != nil {
+			return err
+		}
+	}
+
+	/// Load the oter built in templates
+	extraTemplates := []string{commonCSSText, commonJSText, headerHTMLText,
+		footerHTMLText, sidebarHTMLText, myGroupsPageText, allGroupsPageText,
+		pendingRequestsPageText, pendingActionsPageText,
+		createGroupPageText, deleteGroupPageText,
+		simpleMessagePageText, addMembersToGroupPageText, groupInfoPageText,
+		createServiceAccountPageText, changeGroupOwnershipPageText,
+		deleteMembersFromGroupPageText, commonHeadText}
+	for _, templateString := range extraTemplates {
+		_, err = state.htmlTemplate.Parse(templateString)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 //parses the config file
 func loadConfig(configFilename string) (RuntimeState, error) {
@@ -150,6 +193,13 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 		log.Printf("Source=%s", source)
 		return state, err
 	}
+
+	//Load extra templates
+	err = state.loadTemplates()
+	if err != nil {
+		return state, err
+	}
+
 	err = initDB(&state)
 	if err != nil {
 		return state, err
@@ -234,6 +284,11 @@ func main() {
 	http.Handle(createServiceAccountPath, http.HandlerFunc(state.createServiceAccounthandler))
 
 	http.Handle(groupinfoPath, http.HandlerFunc(state.groupInfoWebpage))
+
+	http.Handle(getGroupsJSPath, http.HandlerFunc(state.getGroupsJSHandler))
+	http.Handle(getUsersJSPath, http.HandlerFunc(state.getUsersJSHandler))
+
+	http.Handle(myManagedGroupsWebPagePath, http.HandlerFunc(state.myManagedGroupsHandler))
 
 	fs := http.FileServer(http.Dir(state.Config.Base.TemplatesPath))
 	http.Handle(cssPath, fs)

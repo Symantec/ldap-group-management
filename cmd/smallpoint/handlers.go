@@ -41,6 +41,19 @@ func checkCSRF(w http.ResponseWriter, r *http.Request) (bool, error) {
 	return true, nil
 }
 
+func setSecurityHeaders(w http.ResponseWriter) {
+	//all common security headers go here
+	w.Header().Set("Strict-Transport-Security", "max-age=1209600")
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("X-XSS-Protection", "1")
+	w.Header().Set("Content-Security-Policy",
+		"default-src 'self';"+
+			" script-src 'self' cdn.datatables.net maxcdn.bootstrapcdn.com code.jquery.com; "+
+			" style-src 'self' cdn.datatables.net maxcdn.bootstrapcdn.com cdnjs.cloudflare.com fonts.googleapis.com 'unsafe-inline';"+
+			" font-src cdnjs.cloudflare.com fonts.gstatic.com fonts.googleapis.com maxcdn.bootstrapcdn.com;"+
+			" img-src 'self' cdn.datatables.net")
+}
+
 func randomStringGeneration() (string, error) {
 	const size = 32
 	bytes := make([]byte, size)
@@ -128,25 +141,28 @@ func (state *RuntimeState) allGroupsHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		return
 	}
-	Allgroups, err := state.Userinfo.GetallGroupsandDescription(state.Config.TargetLDAP.GroupSearchBaseDNs)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := allGroupsPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "All Groups",
 	}
-	response := Response{username, Allgroups, nil, nil, "", "", nil}
+
 	returnAcceptType := state.getPreferredAcceptType(r)
 	switch returnAcceptType {
 	case "text/html":
-		//response.UserName=*userInfo.Username
-		if state.Userinfo.UserisadminOrNot(username) == true {
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "groups")
+		setSecurityHeaders(w)
+		w.Header().Set("Cache-Control", "private, max-age=30")
 
-		} else {
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "sidebar", "groups")
+		err = state.htmlTemplate.ExecuteTemplate(w, "allGroupsPage", pageData)
+		if err != nil {
+			log.Printf("Failed to execute %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
+			return
 		}
+		return
 	default:
-		b, err := json.MarshalIndent(response, "", " ")
+		b, err := json.MarshalIndent(pageData, "", " ")
 		if err != nil {
 			log.Printf("Failed marshal %v", err)
 			http.Error(w, "error", http.StatusInternalServerError)
@@ -166,21 +182,78 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
-	userGroups, err := state.Userinfo.GetGroupsInfoOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
+
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	pageData := myGroupsPageData{
+		UserName:  username,
+		IsAdmin:   isAdmin,
+		Title:     "My Groups",
+		JSSources: []string{"/getGroups.js"},
+	}
+	err = state.htmlTemplate.ExecuteTemplate(w, "myGroupsPage", pageData)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-	response := Response{username, userGroups, nil, nil, "", "", nil}
-	sidebarType := "sidebar"
+	return
+}
 
-	if state.Userinfo.UserisadminOrNot(response.UserName) {
-		sidebarType = "admins_sidebar"
+func (state *RuntimeState) myManagedGroupsHandler(w http.ResponseWriter, r *http.Request) {
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
 	}
 
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "my_groups")
+	pageData := myGroupsPageData{
+		UserName:  username,
+		IsAdmin:   isAdmin,
+		Title:     "My Managed Groups",
+		JSSources: []string{"/getGroups.js?type=managedByMe"},
+	}
+	err = state.htmlTemplate.ExecuteTemplate(w, "myGroupsPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
+	return
+}
+
+func (state *RuntimeState) getPendingRequestGroupsofUser(username string) ([][]string, error) {
+	go state.Userinfo.GetAllGroupsManagedBy()
+	groupsPendingInDB, _, err := findrequestsofUserinDB(username, state)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	var actualPendingGroups []string
+	// TODO: replace this loop for another one where we iterate over the
+	// groups of the user. This would lead to only 1 new DB connection per
+	// pending group request
+	for _, groupname := range groupsPendingInDB {
+		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupname, username)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		if Ismember {
+			err := deleteEntryInDB(username, groupname, state)
+			if err != nil {
+				log.Println(err)
+				return nil, err
+			}
+			continue
+		}
+		actualPendingGroups = append(actualPendingGroups, groupname)
+	}
+	return state.Userinfo.GetGroupandManagedbyAttributeValue(actualPendingGroups)
+
 }
 
 //user's pending requests
@@ -189,77 +262,54 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
-	groupnames, _, err := findrequestsofUserinDB(username, state)
+	_, hasRequests, err := findrequestsofUserinDB(username, state)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-
-	for _, groupname := range groupnames {
-		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupname, username)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-		if Ismember {
-			err := deleteEntryInDB(username, groupname, state)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-				return
-			}
-			continue
-		}
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := pendingRequestsPageData{
+		UserName:           username,
+		IsAdmin:            isAdmin,
+		Title:              "Pending Group Requests",
+		HasPendingRequests: hasRequests,
 	}
-
-	groups, err := state.Userinfo.GetGroupandManagedbyAttributeValue(groupnames)
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "pendingRequestsPage", pageData)
 	if err != nil {
-		log.Println(err)
-	}
-	response := Response{UserName: username, Groups: groups, Users: nil, PendingActions: nil}
-
-	sidebarType := "sidebar"
-	if state.Userinfo.UserisadminOrNot(username) {
-		sidebarType = "admins_sidebar"
-	}
-	if groupnames == nil {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "no_pending_requests")
-
-	} else {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "pending_requests")
-
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
 	}
 }
 
+// On cold state: 3569 ms
 func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
-	Allgroups, err := state.Userinfo.GetallGroups()
 
+	// next two lines warm up cache
+	go state.Userinfo.GetallUsers()
+	go state.Userinfo.GetallGroups()
+
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := createGroupPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Pending Group Requests",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "createGroupPage", pageData)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
-		return
-	}
-	Allusers, err := state.Userinfo.GetallUsers()
-	if err != nil {
-		log.Printf("creategroupWebpageHandler, GetallUser err: %s", err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-
-	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
-
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "create_group")
-
 }
 
 func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
@@ -267,23 +317,21 @@ func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *h
 	if err != nil {
 		return
 	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
-		return
+	go state.Userinfo.GetallGroups() //cache warmup
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := deleteGroupPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Delete Group",
 	}
-	Allgroups, err := state.Userinfo.GetallGroups()
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "deleteGroupPage", pageData)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-
-	sort.Strings(Allgroups)
-
-	response := Response{username, [][]string{Allgroups}, nil, nil, "", "", nil}
-
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "delete_group")
-
 }
 
 //requesting access by users to join in groups...
@@ -326,18 +374,27 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 	}
 	err = insertRequestInDB(username, out["groups"], state)
 	if err != nil {
-		log.Println(err)
+		log.Printf("requestAccessHandler: Error inserting request into DB err:: %s", err)
 		http.Error(w, "oops! an error occured.", http.StatusInternalServerError)
 		return
 	}
 	go state.SendRequestemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
-	sidebarType := "sidebar"
 
-	if state.Userinfo.UserisadminOrNot(username) == true {
-		sidebarType = "admins_sidebar"
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        isAdmin,
+		Title:          "Request sent Sucessfully",
+		SuccessMessage: "Requests sent successfully, to manage your requests please visit My Pending Requests.",
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", sidebarType, "Accessrequestsent")
-
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 //delete access requests made by user
@@ -438,66 +495,116 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 
 }
 
+func (state *RuntimeState) cleanupPendingRequests() error {
+	DBentries, err := getDBentries(state)
+	if err != nil {
+		log.Printf("getUserPendingActions: getDBEntries err: %s", err)
+		return err
+	}
+	for _, entry := range DBentries {
+		log.Printf("top of loop entry=%+v", entry)
+		groupName := entry[1]
+		requestingUser := entry[0]
+		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, requestingUser)
+		if err != nil {
+			log.Printf("getUserPendingActions: isggroupmemberor not err: %s", err)
+			return err
+		}
+		if Ismember {
+			err := deleteEntryInDB(requestingUser, groupName, state)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+			continue
+		}
+	}
+	return nil
+}
+
+func (state *RuntimeState) getUserPendingActions(username string) ([][]string, error) {
+	go state.Userinfo.GetAllGroupsManagedBy() //warm up cache
+	go state.cleanupPendingRequests()
+	DBentries, err := getDBentries(state)
+	if err != nil {
+		log.Printf("getUserPendingActions: getDBEntries err: %s", err)
+		return nil, err
+	}
+
+	//TODO, fast returns on empty DB entries
+	var rvalue [][]string
+
+	userGroups, err := state.Userinfo.GetgroupsofUser(username)
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(userGroups)
+
+	allGroups, err := state.Userinfo.GetAllGroupsManagedBy()
+	if err != nil {
+		return nil, err
+	}
+	group2manager := make(map[string]string)
+	for _, entry := range allGroups {
+		group2manager[entry[0]] = entry[1]
+	}
+
+	for _, entry := range DBentries {
+		log.Printf("top of loop entry=%+v", entry)
+		groupName := entry[1]
+		//requestingUser := entry[0]
+		fmt.Println(groupName)
+		managerGroup := group2manager[groupName]
+
+		if managerGroup == descriptionAttribute {
+			managerGroup = groupName
+		}
+
+		groupIndex := sort.SearchStrings(userGroups, managerGroup)
+		if groupIndex >= len(userGroups) {
+			continue
+		}
+		if userGroups[groupIndex] != managerGroup {
+			continue
+		}
+
+		rvalue = append(rvalue, entry)
+
+	}
+	return rvalue, nil
+}
+
 //User's Pending Actions
 func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request) {
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
-	DBentries, err := getDBentries(state)
+	go state.Userinfo.GetAllGroupsManagedBy() //warm up cache
+	//DBentries, err := getDBentries(state)
+	userPendingActions, err := state.getUserPendingActions(username)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	var response Response
-	response.UserName = username
-	for _, entry := range DBentries {
-		groupName := entry[1]
-		user := entry[0]
-		//fmt.Println(groupName)
-		//check if entry[0] i.e. user is already a group member or not ; if yes, delete request and continue.
-		Ismember, description, err := state.Userinfo.IsgroupmemberorNot(groupName, user)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-		if Ismember {
-			err := deleteEntryInDB(user, groupName, state)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-				return
-			}
-			continue
-		}
-		//get the description value (or) group managed by value; if descriptionAttribute
 
-		if description != descriptionAttribute {
-			groupName = description
-		}
-		// Check now if username is member of groupname(in description) and if it is, then add it.
-		Isgroupmember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
-		if err != nil {
-			log.Println(err)
-		}
-		if Isgroupmember {
-			response.PendingActions = append(response.PendingActions, entry)
-		}
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := pendingActionsPageData{
+		UserName:          username,
+		IsAdmin:           isAdmin,
+		Title:             "Pending Group Requests",
+		HasPendingActions: len(userPendingActions) > 0,
 	}
-	sidebarType := "sidebar"
-	if state.Userinfo.UserisadminOrNot(username) {
-		sidebarType = "admins_sidebar"
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "pendingActionsPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
 	}
 
-	if response.PendingActions == nil {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "no_pending_actions")
-
-	} else {
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "pending_actions")
-
-	}
 }
 
 //Approving
@@ -584,7 +691,6 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 	go state.sendApproveemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
 	w.WriteHeader(http.StatusOK)
 
-	//generateHTML(w,username,"index","sidebar","Accessrequestsent")
 }
 
 //Reject handler
@@ -646,30 +752,23 @@ func (state *RuntimeState) addmemberstoGroupWebpageHandler(w http.ResponseWriter
 	if err != nil {
 		return
 	}
-
-	Allgroups, err := state.Userinfo.GetallGroups()
+	// warm up caches
+	go state.Userinfo.GetallUsers()
+	go state.Userinfo.GetallGroups()
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := addMembersToGroupPagData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Add Members To Group",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "addMembersToGroupPage", pageData)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-
-	sort.Strings(Allgroups)
-
-	Allusers, err := state.Userinfo.GetallUsers()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
-
-	sidebarType := "sidebar"
-	if state.Userinfo.UserisadminOrNot(username) {
-		sidebarType = "admins_sidebar"
-	}
-
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "addpeopletogroups")
 
 }
 
@@ -738,8 +837,23 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 	for _, member := range strings.Split(members, ",") {
 		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "addpeopletogroup_success")
 
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        isAdmin,
+		Title:          "Members Sucessfully Added",
+		SuccessMessage: "Selected Members have been successfully added to the group",
+		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
@@ -747,32 +861,20 @@ func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseW
 	if err != nil {
 		return
 	}
-
-	Allgroups, err := state.Userinfo.GetallGroups()
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := deleteMembersFromGroupPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Delete Memebers From Group",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "deleteMembersFromGroupPage", pageData)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
-
-	sort.Strings(Allgroups)
-
-	Allusers, err := state.Userinfo.GetallUsers()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-
-	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
-
-	sidebarType := "sidebar"
-	if state.Userinfo.UserisadminOrNot(username) {
-		sidebarType = "admins_sidebar"
-	}
-
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "deletemembersfromgroup")
-
 }
 
 func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter, r *http.Request) {
@@ -797,22 +899,22 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	members := r.PostFormValue("members")
 	////// TODO: @SLR9511: why is done this way?... please revisit
 	if members == "" {
-		AllUsersinGroup, managedby, err := state.Userinfo.GetusersofaGroup(groupinfo.Groupname)
-		Allgroups, err := state.Userinfo.GetallGroups()
+		log.Printf("no members")
+		isAdmin := state.Userinfo.UserisadminOrNot(username)
+		pageData := deleteMembersFromGroupPageData{
+			UserName:  username,
+			IsAdmin:   isAdmin,
+			GroupName: groupinfo.Groupname,
+			Title:     "Delete Memebers From Group",
+		}
+		setSecurityHeaders(w)
+		w.Header().Set("Cache-Control", "private, max-age=30")
+		err = state.htmlTemplate.ExecuteTemplate(w, "deleteMembersFromGroupPage", pageData)
 		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			log.Printf("Failed to execute %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
 			return
 		}
-		sort.Strings(Allgroups)
-
-		response := Response{username, [][]string{Allgroups}, nil, nil, groupinfo.Groupname, managedby, AllUsersinGroup}
-		sidebarType := "sidebar"
-		superAdmin := state.Userinfo.UserisadminOrNot(username)
-		if superAdmin {
-			sidebarType = "admins_sidebar"
-		}
-		generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "deletemembersfromgroup")
 		return
 	}
 	log.Println("delete these members", members)
@@ -861,8 +963,22 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	for _, member := range strings.Split(members, ",") {
 		state.sysLog.Write([]byte(fmt.Sprintf("%s was deleted from Group %s by %s", member, groupinfo.Groupname, username)))
 	}
-	generateHTML(w, Response{UserName: username}, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "deletemembersfromgroup_success")
-
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        isAdmin,
+		Title:          "Members Sucessfully Deleted",
+		SuccessMessage: "Selected Members have been successfully deleted from the group",
+		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter, r *http.Request) {
@@ -870,22 +986,24 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 	if err != nil {
 		return
 	}
-	Allgroups, err := state.Userinfo.GetallGroups()
-
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	if !state.Userinfo.UserisadminOrNot(username) {
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	if !isAdmin {
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
-
-	response := Response{username, [][]string{Allgroups}, nil, nil, "", "", nil}
-
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", "admins_sidebar", "create_service_account")
-
+	pageData := createServiceAccountPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Members Sucessfully Deleted",
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "createServiceAccountPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (state *RuntimeState) groupExistsorNot(w http.ResponseWriter, groupname string) error {
@@ -931,7 +1049,7 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "couldn't parse the URL", http.StatusInternalServerError)
 		return
 	}
-	var response Response
+	//var response Response
 
 	groupName := params[0] //username is "cn" Attribute of a User
 	groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupName)
@@ -945,42 +1063,13 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
 		return
 	}
-	AllUsersinGroup, managedby, err := state.Userinfo.GetusersofaGroup(groupName)
+	// begin change
+	_, managedby, err := state.Userinfo.GetusersofaGroup(groupName)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	sort.Strings(AllUsersinGroup)
-
-	Allusers, err := state.Userinfo.GetallUsers()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-
-	//response.Users = AllUsersinGroup
-	response = Response{username, nil, Allusers, nil, groupName, managedby, AllUsersinGroup}
-	superAdmin := state.Userinfo.UserisadminOrNot(username)
-	sidebarType := "sidebar"
-	if superAdmin {
-		sidebarType = "admins_sidebar"
-	}
-	groupandmanagedby, err := state.Userinfo.GetGroupandManagedbyAttributeValue([]string{groupName})
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
-		return
-	}
-	groupexistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupandmanagedby[0][1])
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
-		return
-	}
-
-	groupinfowebpageType := "groupinfo_member"
 
 	IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
 	if err != nil {
@@ -995,44 +1084,23 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if groupandmanagedby[0][1] != "self-managed" && !groupexistsornot {
-		if !superAdmin {
-			groupinfowebpageType = "groupinfo_no_managedby_member_nomem"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-			return
-		}
-
-		if IsgroupMember {
-			groupinfowebpageType = "groupinfo_member_admin"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-			return
-
-		} else {
-			groupinfowebpageType = "groupinfo_nonmember_admin"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-			return
-
-		}
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	pageData := groupInfoPageData{
+		UserName:            username,
+		IsAdmin:             isAdmin,
+		Title:               "Group information for group X",
+		IsMember:            IsgroupMember,
+		IsGroupAdmin:        IsgroupAdmin || isAdmin,
+		GroupName:           groupName,
+		GroupManagedbyValue: managedby,
 	}
-
-	if IsgroupMember {
-		if IsgroupAdmin || superAdmin {
-			groupinfowebpageType = "groupinfo_member_admin"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-
-		} else {
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-		}
-
-	} else {
-		if IsgroupAdmin || superAdmin {
-			groupinfowebpageType = "groupinfo_nonmember_admin"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-		} else {
-			groupinfowebpageType = "groupinfo_nonmember"
-			generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, groupinfowebpageType)
-
-		}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=15")
+	err = state.htmlTemplate.ExecuteTemplate(w, "groupInfoPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -1041,31 +1109,22 @@ func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, 
 	if err != nil {
 		return
 	}
-
-	t0 := time.Now()
-	Allgroups, err := state.Userinfo.GetallGroups()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	t1 := time.Now()
-	log.Printf("GetAllGroups Took %v to run", t1.Sub(t0))
-
-	sort.Strings(Allgroups)
-
-	if !state.Userinfo.UserisadminOrNot(username) {
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	if !isAdmin {
 		http.Error(w, "you are not authorized", http.StatusUnauthorized)
 		return
 	}
-	var Allusers []string
-	response := Response{username, [][]string{Allgroups}, Allusers, nil, "", "", nil}
-
-	sidebarType := "sidebar"
-	if state.Userinfo.UserisadminOrNot(username) {
-		sidebarType = "admins_sidebar"
+	pageData := changeGroupOwnershipPageData{
+		UserName: username,
+		IsAdmin:  isAdmin,
+		Title:    "Change Group OwnerShip",
 	}
-
-	generateHTML(w, response, state.Config.Base.TemplatesPath, "index", sidebarType, "changeownership")
-
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "changeGroupOwnershipPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
 }
