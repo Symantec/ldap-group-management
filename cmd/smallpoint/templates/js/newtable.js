@@ -409,13 +409,17 @@ function members_func(value) {
 
         var optionid="option-"+value;
         var name=value;
-
-        $('option.'+optionid).remove();
+	var buttonid="button-"+value;
+	
+	$("#select_members option[id='" + optionid + "']").remove();
         $("div.suggestion").append($('<div class="borderbox" id='+value+'><b>' + value +
-            '</b><button type="button" onclick="closebox('+"'"+name+"'"+')" class="close" aria-label="Close">\n' +
-            '  <span  aria-hidden="true">&times;</span>\n' +
+            '</b><button id='+buttonid+' type="button" class="close" aria-label="Close">\n' +
+            '<span  aria-hidden="false">&times;</span>\n' +
             '</button></div>'));
-        var str='';
+        document.getElementById(buttonid).addEventListener('click', function (){
+		closebox(name);
+	});
+	var str='';
         $("div.suggestion div b").each(function () {
             str += $(this).text() + ",";
         });
@@ -423,6 +427,7 @@ function members_func(value) {
         $('#group_members').val(str);
     });
 }
+
 
 function closebox(id) {
 
@@ -432,12 +437,17 @@ function closebox(id) {
     $('datalist.select_groupslist').append("<option id='option-"+name+"' value='" +name+ "'>"+name+"</option>");
 
     document.getElementById(id).remove();
+
+    var str='';
+    $("div.suggestion div b").each(function () {
+        str += $(this).text() + ",";
+    });
+    $('#group_members').val(str);
 }
 
 function refractor_members() {
     var val=document.getElementById("group_members").value;
     var length=val.length;
-    //alert("val="+ val)
     if (val[length-1]===","){
         var res = val.substring(0, length-1);
         $('input.group_members').val(res);
@@ -477,10 +487,13 @@ function deletegroups_func(value) {
         document.getElementById(optionid).remove();
 
         $("div.suggestion").append($('<div class="borderbox" id='+value+'><b>' + value +
-            '</b><button type="button" onclick="closebox('+"'"+name+"'"+')" class="close" aria-label="Close">\n' +
+            '</b><button type="button" class="close" aria-label="Close">\n' +
             '  <span  aria-hidden="true">&times;</span>\n' +
             '</button></div>'));
         var str='';
+	document.addEventListener('DOMContentLoaded', function () {
+		document.getElementById(value).addEventListener('click', closebox("'"+value+"'"));
+	});
         $("div.suggestion div b").each(function () {
             str += $(this).text() + ",";
         });
