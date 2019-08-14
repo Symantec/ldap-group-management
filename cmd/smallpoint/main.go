@@ -17,7 +17,7 @@ import (
 	"log/syslog"
 	"net/http"
 	"os"
-	//"path/filepath"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -90,15 +90,9 @@ var (
 )
 
 const (
-	descriptionAttribute  = "self-managed"
-	cookieExpirationHours = 12
-	cookieName            = "smallpointauth"
-	/*
-		allgroupsPath               = "/allgroups"
-		allusersPath                = "/allusers"
-		usergroupsPath              = "/user_groups/"
-		groupusersPath              = "/group_users/"
-	*/
+	descriptionAttribute        = "self-managed"
+	cookieExpirationHours       = 12
+	cookieName                  = "smallpointauth"
 	creategroupWebPagePath      = "/create_group"
 	deletegroupWebPagePath      = "/delete_group"
 	creategroupPath             = "/create_group/"
@@ -134,24 +128,24 @@ const (
 )
 
 func (state *RuntimeState) loadTemplates() (err error) {
+
+	state.htmlTemplate = template.New("main")
+
 	//Load extra templates
-	/*
-		templatesPath := state.Config.Base.TemplatesPath
-		if _, err = os.Stat(templatesPath); err != nil {
+	templatesPath := state.Config.Base.TemplatesPath
+	if _, err = os.Stat(templatesPath); err != nil {
+		return err
+	}
+
+	//Eventally this will include the customization path
+	templateFiles := []string{}
+	for _, templateFilename := range templateFiles {
+		templatePath := filepath.Join(templatesPath, templateFilename)
+		_, err = state.htmlTemplate.ParseFiles(templatePath)
+		if err != nil {
 			return err
 		}
-	*/
-	state.htmlTemplate = template.New("main")
-	/*
-		templateFiles := []string{"footer_extra.tmpl", "header_extra.tmpl", "login_extra.tmpl"}
-		for _, templateFilename := range templateFiles {
-			templatePath := filepath.Join(templatesPath, templateFilename)
-			_, err = state.htmlTemplate.ParseFiles(templatePath)
-			if err != nil {
-				return err
-			}
-		}
-	*/
+	}
 
 	/// Load the oter built in templates
 	extraTemplates := []string{commonCSSText, commonJSText, headerHTMLText,
@@ -250,10 +244,6 @@ func main() {
 		log.Fatalf("System log failed")
 	}
 	defer state.sysLog.Close()
-	//http.Handle(allgroupsPath, http.HandlerFunc(state.getallgroupsHandler))
-	//http.Handle(allusersPath, http.HandlerFunc(state.getallusersHandler))
-	//http.Handle(usergroupsPath, http.HandlerFunc(state.getgroupsofuserHandler))
-	//http.Handle(groupusersPath, http.HandlerFunc(state.getusersingroupHandler))
 
 	http.Handle(creategroupWebPagePath, http.HandlerFunc(state.creategroupWebpageHandler))
 	http.Handle(deletegroupWebPagePath, http.HandlerFunc(state.deletegroupWebpageHandler))
