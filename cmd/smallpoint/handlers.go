@@ -227,12 +227,16 @@ func (state *RuntimeState) myManagedGroupsHandler(w http.ResponseWriter, r *http
 
 func (state *RuntimeState) getPendingRequestGroupsofUser(username string) ([][]string, error) {
 	go state.Userinfo.GetAllGroupsManagedBy()
+	go state.cleanupPendingRequests()
 	groupsPendingInDB, _, err := findrequestsofUserinDB(username, state)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 	log.Printf("groupsPendingInDB=%+v", groupsPendingInDB)
+	if len(groupsPendingInDB) == 0 {
+		return [][]string{}, nil
+	}
 	var actualPendingGroups []string
 	// TODO: replace this loop for another one where we iterate over the
 	// groups of the user. This would lead to only 1 new DB connection per
@@ -511,12 +515,16 @@ func (state *RuntimeState) cleanupPendingRequests() error {
 		log.Printf("top of loop entry=%+v", entry)
 		groupName := entry[1]
 		requestingUser := entry[0]
+		invaldGroup = false
 		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, requestingUser)
 		if err != nil {
-			log.Printf("getUserPendingActions: isggroupmemberor not err: %s", err)
-			return err
+			if err != userinfo.GroupDoesNotExist {
+				log.Printf("getUserPendingActions: isggroupmemberor not err: %s", err)
+				continue
+			}
+			invalidGroup = true
 		}
-		if Ismember {
+		if Ismember || invalidGroup {
 			err := deleteEntryInDB(requestingUser, groupName, state)
 			if err != nil {
 				log.Println(err)
