@@ -237,32 +237,27 @@ func (state *RuntimeState) getPendingRequestGroupsofUser(username string) ([][]s
 	if len(groupsPendingInDB) == 0 {
 		return [][]string{}, nil
 	}
-	var actualPendingGroups []string
-	// TODO: replace this loop for another one where we iterate over the
-	// groups of the user. This would lead to only 1 new DB connection per
-	// pending group request
-	for _, groupname := range groupsPendingInDB {
-		//check if grop exists
-		log.Printf("groupname='%s'", groupname)
-		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupname, username)
-		if err != nil {
-			log.Println(err)
-			if err == userinfo.GroupDoesNotExist {
-				// TODO: delete from DB
-				continue
-			}
-			return nil, err
-		}
-		if Ismember {
-			err := deleteEntryInDB(username, groupname, state)
-			if err != nil {
-				log.Println(err)
-				return nil, err
-			}
-			continue
-		}
-		actualPendingGroups = append(actualPendingGroups, groupname)
+
+	userGroups, err := state.Userinfo.GetgroupsofUser(username)
+	if err != nil {
+		log.Printf("getPendingRequestGroupsofUser, GetgroupsofUser, err:%s", err)
+		return nil, err
 	}
+	var actualPendingGroups []string
+	var found bool
+	for _, requestedGroupName := range groupsPendingInDB {
+		found = false
+		for _, userGroup := range userGroups {
+			if requestedGroupName == userGroup {
+				found = true
+			}
+			break
+		}
+		if !found {
+			actualPendingGroups = append(actualPendingGroups, requestedGroupName)
+		}
+	}
+	log.Printf("actualPendingGroups =%+v, len=%d", actualPendingGroups, len(actualPendingGroups))
 	return state.Userinfo.GetGroupandManagedbyAttributeValue(actualPendingGroups)
 
 }
@@ -273,6 +268,7 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
+	go state.Userinfo.GetAllGroupsManagedBy() // warm up cache
 	_, hasRequests, err := findrequestsofUserinDB(username, state)
 	if err != nil {
 		log.Println(err)
@@ -515,7 +511,7 @@ func (state *RuntimeState) cleanupPendingRequests() error {
 		log.Printf("top of loop entry=%+v", entry)
 		groupName := entry[1]
 		requestingUser := entry[0]
-		invaldGroup = false
+		invalidGroup := false
 		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, requestingUser)
 		if err != nil {
 			if err != userinfo.GroupDoesNotExist {
