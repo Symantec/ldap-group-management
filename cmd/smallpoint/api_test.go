@@ -56,7 +56,7 @@ func setupTestState() (RuntimeState, error) {
 	}
 	return state, nil
 }
-func getTestApiEndpints(state *RuntimeState) map[string]http.HandlerFunc {
+func getTestApiEndpoints(state *RuntimeState) map[string]http.HandlerFunc {
 	testApiEndpoints := map[string]http.HandlerFunc{
 		creategroupPath:          state.createGrouphandler,
 		deletegroupPath:          state.deleteGrouphandler,
@@ -80,7 +80,7 @@ func TestMethodsForApiEndPoints(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
-	apiTestPoints := getTestApiEndpints(&state)
+	apiTestPoints := getTestApiEndpoints(&state)
 	cookie := testCreateValidCookie()
 	for path, testFunc := range apiTestPoints {
 		req, err := http.NewRequest("GET", path, nil)
