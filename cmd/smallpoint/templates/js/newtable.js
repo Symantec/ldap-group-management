@@ -3,7 +3,7 @@ function Run_OnLoad(groupnames,PendingActions,Users,Allusers,onegroup) {
 
         var final_groupnames=array(groupnames);
         RequestAccess(final_groupnames);
-        datalist(groupnames[0]);
+	datalist(groupnames[0]);
     }
     if(PendingActions!=null){
         var pending_actions=arrayPendingActions(PendingActions);
@@ -14,7 +14,7 @@ function Run_OnLoad(groupnames,PendingActions,Users,Allusers,onegroup) {
         Group_Info(usernames);
     }
     if(Allusers!=null){
-        list_members(Allusers);
+	list_members(Allusers);
     }
     if(onegroup!=null && Users != null){
     	show_groupname(onegroup, Users);
@@ -411,13 +411,14 @@ function members_func(value) {
         var name=value;
 	var buttonid="button-"+value;
 	
-	$("#select_members option[id='" + optionid + "']").remove();
+	document.getElementById(optionid).remove();
         $("div.suggestion").append($('<div class="borderbox" id='+value+'><b>' + value +
             '</b><button id='+buttonid+' type="button" class="close" aria-label="Close">\n' +
-            '<span  aria-hidden="false">&times;</span>\n' +
+            '<span  aria-hidden="true">&times;</span>\n' +
             '</button></div>'));
+	var id = "select_members"
         document.getElementById(buttonid).addEventListener('click', function (){
-		closebox(name);
+		closebox(name, id);
 	});
 	var str='';
         $("div.suggestion div b").each(function () {
@@ -429,20 +430,41 @@ function members_func(value) {
 }
 
 
-function closebox(id) {
+function closebox(name, id) {
 
+    reorgdatalist(name, id)
 
-    $('datalist.select_memberslist').append("<option id='option-"+name+"' value='" +name+ "'>"+name+"</option>");
-
-    $('datalist.select_groupslist').append("<option id='option-"+name+"' value='" +name+ "'>"+name+"</option>");
-
-    document.getElementById(id).remove();
+    document.getElementById(name).remove();
 
     var str='';
     $("div.suggestion div b").each(function () {
         str += $(this).text() + ",";
     });
-    $('#group_members').val(str);
+    if (id === "select_members") {
+	$('#group_members').val(str);
+    }
+    if (id === "select_groups") {
+	$('#group_names').val(str);
+    }
+}
+
+function reorgdatalist(name, id) {
+    var options = document.getElementById(id).getElementsByTagName('option');
+    var optionVals = [], i = 0;
+    for (i; i < options.length; i +=1) {
+        optionVals.push(options[i].value);
+    }
+    optionVals.push(name)
+    $("#" + id).empty();
+    if (id === "select_members") {
+	list_members(optionVals);
+    }
+    if (id === "select_groups") {
+    	datalist(optionVals);
+    }
+    if (id === "select_members_remove") {
+	list_removemembers(optionVals);	
+    }
 }
 
 function refractor_members() {
@@ -483,17 +505,19 @@ function deletegroups_func(value) {
 
         var optionid="option-"+value;
         var name=value;
+	var buttonid="button-"+value;
 
         document.getElementById(optionid).remove();
 
         $("div.suggestion").append($('<div class="borderbox" id='+value+'><b>' + value +
-            '</b><button type="button" class="close" aria-label="Close">\n' +
-            '  <span  aria-hidden="true">&times;</span>\n' +
+            '</b><button id='+buttonid+' type="button" class="close" aria-label="Close">\n' +
+            '<span  aria-hidden="true">&times;</span>\n' +
             '</button></div>'));
-        var str='';
-	document.addEventListener('DOMContentLoaded', function () {
-		document.getElementById(value).addEventListener('click', closebox("'"+value+"'"));
+	var id = "select_groups"
+	document.getElementById(buttonid).addEventListener('click', function (){
+		closebox(name, id);
 	});
+	var str='';
         $("div.suggestion div b").each(function () {
             str += $(this).text() + ",";
         });
@@ -520,14 +544,19 @@ function members_removemodal(value) {
 
         var optionid="option-"+value;
         var name=value;
-
-        document.getElementById(optionid).remove();
+	var buttonid="button-"+value;
+	
+	$("#select_members_remove option[id='" + optionid + "']").remove();
 
         $("div.suggestion_removemembers").append($('<div class="borderbox" id='+value+'><b>' + value +
-            '</b><button type="button" onclick="closebox_remove('+"'"+name+"'"+')" class="close" aria-label="Close">\n' +
-            '  <span  aria-hidden="true">&times;</span>\n' +
+            '</b><button id='+buttonid+' type="button" class="close" aria-label="Close">\n' +
+            '<span  aria-hidden="true">&times;</span>\n' +
             '</button></div>'));
-        var str='';
+        var id = "select_members_remove";
+	document.getElementById(buttonid).addEventListener('click', function (){
+		closebox_remove(name, id);
+	});
+	var str='';
         $("div.suggestion_removemembers div b").each(function () {
             str += $(this).text() + ",";
         });
@@ -536,11 +565,25 @@ function members_removemodal(value) {
     });
 }
 
-function closebox_remove(id) {
+function closebox_remove(name, id) {
 
-    $('datalist.select_memberslist').append("<option id='option-"+id+"' value='" +id+ "'>"+id+"</option>");
+    reorgdatalist(name, id)   
+    
+    document.getElementById(name).remove();
+    
+    var str='';
+    $("div.suggestion_removemembers div b").each(function () {
+        str += $(this).text() + ",";
+    });
 
-    document.getElementById(id).remove();
+    $('#group_removemembers').val(str);
+}
+
+function list_removemembers(users) {
+	users.sort();
+	for (i=0;i<users.length;i++) {
+		$('#select_members_remove').append("<option id='option-"+users[i]+"' value='" + users[i] + "'>"+users[i]+"</option>");
+	}
 }
 
 function refractor_removemembers() {
