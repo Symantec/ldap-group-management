@@ -90,14 +90,9 @@ var (
 )
 
 const (
-	descriptionAttribute  = "self-managed"
-	cookieExpirationHours = 12
-	cookieName            = "smallpointauth"
-
-	allgroupsPath               = "/allgroups"
-	allusersPath                = "/allusers"
-	usergroupsPath              = "/user_groups/"
-	groupusersPath              = "/group_users/"
+	descriptionAttribute        = "self-managed"
+	cookieExpirationHours       = 12
+	cookieName                  = "smallpointauth"
 	creategroupWebPagePath      = "/create_group"
 	deletegroupWebPagePath      = "/delete_group"
 	creategroupPath             = "/create_group/"
@@ -133,12 +128,14 @@ const (
 )
 
 func (state *RuntimeState) loadTemplates() (err error) {
+
+	state.htmlTemplate = template.New("main")
+
 	//Load extra templates
 	templatesPath := state.Config.Base.TemplatesPath
 	if _, err = os.Stat(templatesPath); err != nil {
 		return err
 	}
-	state.htmlTemplate = template.New("main")
 
 	//Eventally this will include the customization path
 	templateFiles := []string{}
@@ -247,10 +244,6 @@ func main() {
 		log.Fatalf("System log failed")
 	}
 	defer state.sysLog.Close()
-	http.Handle(allgroupsPath, http.HandlerFunc(state.getallgroupsHandler))
-	http.Handle(allusersPath, http.HandlerFunc(state.getallusersHandler))
-	http.Handle(usergroupsPath, http.HandlerFunc(state.getgroupsofuserHandler))
-	http.Handle(groupusersPath, http.HandlerFunc(state.getusersingroupHandler))
 
 	http.Handle(creategroupWebPagePath, http.HandlerFunc(state.creategroupWebpageHandler))
 	http.Handle(deletegroupWebPagePath, http.HandlerFunc(state.deletegroupWebpageHandler))
@@ -311,6 +304,7 @@ func main() {
 		PreferServerCipherSuites: true,
 		CipherSuites: []uint16{
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
 		},
 		ClientAuth: tls.VerifyClientCertIfGiven,
@@ -320,7 +314,6 @@ func main() {
 	serviceServer := &http.Server{
 		Addr:         state.Config.Base.HttpAddress,
 		TLSConfig:    tlsConfig,
-		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,

@@ -510,6 +510,9 @@ func (u *UserInfoLDAPSource) GetusersofaGroup(groupname string) ([]string, strin
 		log.Println("Duplicate entries found")
 		return nil, "", errors.New("Multiple entries found, Contact the administrator!")
 	}
+	if len(sr.Entries) < 1 {
+		return nil, "", userinfo.GroupDoesNotExist
+	}
 	users := sr.Entries[0].GetAttributeValues("memberUid")
 	if sr.Entries[0].GetAttributeValues(u.GroupManageAttribute) == nil {
 		return users, "", nil
@@ -722,6 +725,9 @@ func (u *UserInfoLDAPSource) GetDescriptionvalue(groupname string) (string, erro
 	if len(sr.Entries) > 1 {
 		log.Println("Duplicate entries found")
 		return "", errors.New("Multiple entries found, Contact the administrator!")
+	}
+	if len(sr.Entries) < 1 {
+		return "", userinfo.GroupDoesNotExist
 	}
 	if sr.Entries[0].GetAttributeValues(u.GroupManageAttribute) == nil {
 		log.Println("No group managed attribute")

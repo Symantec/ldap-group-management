@@ -1,5 +1,11 @@
 package userinfo
 
+import (
+	"errors"
+)
+
+var GroupDoesNotExist = errors.New("Group does not exist")
+
 type AccountType int
 
 type GroupInfo struct {

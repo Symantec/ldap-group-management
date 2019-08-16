@@ -22,7 +22,7 @@ func checkCSRF(w http.ResponseWriter, r *http.Request) (bool, error) {
 	if r.Method != getMethod {
 		referer := r.Referer()
 		if len(referer) > 0 && len(r.Host) > 0 {
-			log.Println(3, "ref =%s, host=%s", referer, r.Host)
+			log.Printf("ref =%s, host=%s", referer, r.Host)
 			refererURL, err := url.Parse(referer)
 			if err != nil {
 				log.Println(err)
@@ -232,14 +232,21 @@ func (state *RuntimeState) getPendingRequestGroupsofUser(username string) ([][]s
 		log.Println(err)
 		return nil, err
 	}
+	log.Printf("groupsPendingInDB=%+v", groupsPendingInDB)
 	var actualPendingGroups []string
 	// TODO: replace this loop for another one where we iterate over the
 	// groups of the user. This would lead to only 1 new DB connection per
 	// pending group request
 	for _, groupname := range groupsPendingInDB {
+		//check if grop exists
+		log.Printf("groupname='%s'", groupname)
 		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupname, username)
 		if err != nil {
 			log.Println(err)
+			if err == userinfo.GroupDoesNotExist {
+				// TODO: delete from DB
+				continue
+			}
 			return nil, err
 		}
 		if Ismember {
