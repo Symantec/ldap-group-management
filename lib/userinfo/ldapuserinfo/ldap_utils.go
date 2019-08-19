@@ -766,6 +766,11 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 
 }
 
+func validateEmail(email string) bool {
+	re := regexp.MustCompile(`^[a-z0-9._%+\-]+@symantec.com$`)
+	return re.MatchString(email)
+}
+
 //get email of all users in the given group
 func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string, error) {
 
@@ -782,8 +787,10 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 			log.Println(err)
 			return nil, err
 		}
+		if !validateEmail(value[0]) {
+			return nil, errors.New("Invalid email for user " + entry)
+		}
 		userEmail = append(userEmail, value[0])
-
 	}
 	return userEmail, nil
 }
