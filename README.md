@@ -10,10 +10,6 @@ You can build it from source. The rpm package contain the binary.
 
 ### Prerequisites
 * go >= 1.10.1
-* make
-* gcc
-
-For Windows we have used [TDM-GCC (64 bit)](https://sourceforge.net/projects/tdm-gcc/) for both gcc and gnu-make.
 
 ### Building
 1. make deps
