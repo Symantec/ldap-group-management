@@ -29,6 +29,8 @@ const (
 	GroupServiceAccount userinfo.AccountType = 2
 )
 
+const LoginShell = "/bin/bash"
+
 type UserInfoLDAPSource struct {
 	BindUsername          string `yaml:"bind_username"`
 	BindPassword          string `yaml:"bind_password"`
@@ -640,7 +642,7 @@ func (u *UserInfoLDAPSource) getMaximumUIDNumber(searchBaseDN string) (string, e
 		[]string{"uidNumber"},
 		nil,
 	)
-	sr, err := conn.Search(searchRequest)
+	sr, err := conn.SearchWithPaging(searchRequest,1500)
 	if err != nil {
 		log.Println(err)
 		return "error in ldapsearch", err
@@ -1212,4 +1214,52 @@ func (u *UserInfoLDAPSource) GetGroupandManagedbyAttributeValue(groupnames []str
 		}
 	}
 	return UserGroupInfo, nil
+}
+
+func (u *UserInfoLDAPSource) CreateUser(username string) error {
+	conn, err := u.getTargetLDAPConnection()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer conn.Close()
+
+	uidnum, err := u.GetmaximumUidnumber(u.UserSearchBaseDNs)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	
+	givenName := strings.Split(username, "_")[0]	
+	userDN := u.CreateuserDn(username)
+
+	user := ldap.NewAddRequest(userDN)
+	user.Attribute("objectClass", []string{"posixAccount", "person", "ldapPublicKey", "organizationalPerson", "inetOrgPerson", "shadowAccount", "top", "inetUser", "pwmuser"})
+	user.Attribute("cn", []string{username})
+	user.Attribute("uid", []string{username})
+	user.Attribute("gecos", []string{username})
+	user.Attribute("givenName", []string{givenName})
+	user.Attribute("displayName", []string{username})
+	user.Attribute("sn", []string{username})
+
+	user.Attribute("homeDirectory", []string{HomeDirectory + username})
+	user.Attribute("loginShell", []string{LoginShell})
+	user.Attribute("sshPublicKey", []string{""})
+	user.Attribute("shadowExpire", []string{"-1"})
+	user.Attribute("shadowFlag", []string{"0"})
+	user.Attribute("shadowLastChange", []string{"1"})
+	user.Attribute("shadowMax", []string{"99999"})
+	user.Attribute("shadowMin", []string{"0"})
+	user.Attribute("shadowWarning", []string{"7"})
+	user.Attribute("mail", []string{username + "@symantec.com"})
+	user.Attribute("uidNumber", []string{uidnum})
+	user.Attribute("gidNumber", []string{"100"})
+
+	err = conn.Add(user)
+	if err != nil {
+		log.Println("error starts here")
+		log.Println(err)
+		return err
+	}
+	return nil
 }
