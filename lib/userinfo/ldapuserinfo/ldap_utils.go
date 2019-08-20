@@ -42,6 +42,8 @@ type UserInfoLDAPSource struct {
 	MainBaseDN            string `yaml:"Main_base_dns"`
 	GroupManageAttribute  string `yaml:"group_Manage_Attribute"`
 
+	RootCAs *x509.CertPool
+
 	allUsersRWLock                     sync.RWMutex
 	allUsersCacheValue                 []string
 	allUsersCacheExpiration            time.Time
@@ -145,7 +147,7 @@ func (u *UserInfoLDAPSource) getTargetLDAPConnection() (*ldap.Conn, error) {
 	}
 
 	for _, TargetLdapUrl := range ldapURL {
-		conn, _, err := getLDAPConnection(*TargetLdapUrl, ldapTimeoutSecs, nil)
+		conn, _, err := getLDAPConnection(*TargetLdapUrl, ldapTimeoutSecs, u.RootCAs)
 
 		if err != nil {
 			log.Println(err)
@@ -235,7 +237,7 @@ func (u *UserInfoLDAPSource) createGroupDN(groupname string) string {
 
 }
 
-func (u *UserInfoLDAPSource) CreateserviceDn(groupname string, a userinfo.AccountType) string {
+func (u *UserInfoLDAPSource) createServiceDN(groupname string, a userinfo.AccountType) string {
 	var serviceDN string
 	if a == UserServiceAccount {
 		serviceDN = "uid=" + groupname + "," + u.ServiceAccountBaseDNs
@@ -879,7 +881,7 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 		log.Println(err)
 		return err
 	}
-	serviceDN := u.CreateserviceDn(groupinfo.Groupname, GroupServiceAccount)
+	serviceDN := u.createServiceDN(groupinfo.Groupname, GroupServiceAccount)
 
 	group := ldap.NewAddRequest(serviceDN)
 	group.Attribute("objectClass", []string{"posixGroup", "top", "groupOfNames"})
@@ -891,7 +893,7 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 		return err
 	}
 
-	serviceDN = u.CreateserviceDn(groupinfo.Groupname, UserServiceAccount)
+	serviceDN = u.createServiceDN(groupinfo.Groupname, UserServiceAccount)
 
 	user := ldap.NewAddRequest(serviceDN)
 	user.Attribute("objectClass", []string{"posixAccount", "person", "ldapPublicKey", "organizationalPerson", "inetOrgPerson", "shadowAccount", "top"})
@@ -1161,13 +1163,6 @@ func (u *UserInfoLDAPSource) getAllGroupsManagedByNonCached() ([][]string, error
 	}
 	return GroupandDescriptionPair, nil
 }
-
-//const allGroupsCacheDuration = time.Second * 30
-/*
-        allGroupsAndManagerCacheMutex      sync.Mutex
-	        allGroupsAndManagerCacheValue      [][]string
-		        allGroupsAndManagerCacheExpiration time.Time
-*/
 
 func (u *UserInfoLDAPSource) GetAllGroupsManagedBy() ([][]string, error) {
 

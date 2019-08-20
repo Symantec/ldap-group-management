@@ -141,7 +141,7 @@ func (m *MockLdap) CreategroupDn(groupname string) string {
 
 }
 
-func (m *MockLdap) CreateserviceDn(groupname string, accountType userinfo.AccountType) string {
+func (m *MockLdap) createServiceDN(groupname string, accountType userinfo.AccountType) string {
 	var serviceDN string
 	if accountType == UserServiceAccount {
 		serviceDN = "uid=" + groupname + "," + LdapServiceDN
@@ -381,7 +381,7 @@ func (m *MockLdap) GetEmailofusersingroup(groupname string) ([]string, error) {
 func (m *MockLdap) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
 
 	gidNum, _ := m.GetmaximumGidnumber(LdapServiceDN)
-	groupdn := m.CreateserviceDn(groupinfo.Groupname, GroupServiceAccount)
+	groupdn := m.createServiceDN(groupinfo.Groupname, GroupServiceAccount)
 	var group LdapServiceInfo
 	group.cn = groupinfo.Groupname
 	group.mail = groupinfo.Mail
@@ -389,7 +389,7 @@ func (m *MockLdap) CreateServiceAccount(groupinfo userinfo.GroupInfo) error {
 	group.gidNumber = gidNum
 	m.Services[groupdn] = group
 
-	userdn := m.CreateserviceDn(groupinfo.Groupname, UserServiceAccount)
+	userdn := m.createServiceDN(groupinfo.Groupname, UserServiceAccount)
 	var user LdapServiceInfo
 	user.cn = groupinfo.Groupname
 	user.uid = groupinfo.Groupname
