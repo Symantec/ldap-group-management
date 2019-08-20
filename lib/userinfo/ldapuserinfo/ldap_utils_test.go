@@ -153,6 +153,13 @@ func handleSearchGroup(w ldap.ResponseWriter, m *ldap.Message) {
 		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
 		w.Write(e)
 	}
+	if !hasGroupFilter || strings.Contains(r.FilterString(), "cn=group3") {
+		e := ldap.NewSearchResultEntry("cn=group3, " + string(r.BaseObject()))
+		e.AddAttribute("cn", "group3")
+		e.AddAttribute("memberUid", "valere.jeantet")
+		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
+		w.Write(e)
+	}
 
 	res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 	w.Write(res)
@@ -174,17 +181,27 @@ func handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 	default:
 	}
 
-	e := ldap.NewSearchResultEntry("cn=Valere JEANTET, " + string(r.BaseObject()))
-	e.AddAttribute("mail", "valere.jeantet@gmail.com", "mail@vjeantet.fr")
-	e.AddAttribute("company", "SODADI")
-	e.AddAttribute("department", "DSI/SEC")
-	e.AddAttribute("l", "Ferrieres en brie")
-	e.AddAttribute("mobile", "0612324567")
-	e.AddAttribute("telephoneNumber", "0612324567")
-	e.AddAttribute("cn", "Valère JEANTET")
-	e.AddAttribute("uid", "valere.jeantet")
-	e.AddAttribute("memberOf", "cn=group2, o=group, o=My Company, c=US", "cn=group3, o=group, o=My Company, c=US")
-	w.Write(e)
+	hasUserFilter := !strings.Contains(r.FilterString(), "uid=*")
+	if !hasUserFilter || strings.Contains(r.FilterString(), "uid=valere.jeantet") {
+		e := ldap.NewSearchResultEntry("cn=Valere JEANTET, " + string(r.BaseObject()))
+		e.AddAttribute("mail", "valere.jeantet@gmail.com", "mail@vjeantet.fr")
+		e.AddAttribute("company", "SODADI")
+		e.AddAttribute("department", "DSI/SEC")
+		e.AddAttribute("l", "Ferrieres en brie")
+		e.AddAttribute("mobile", "0612324567")
+		e.AddAttribute("telephoneNumber", "0612324567")
+		e.AddAttribute("cn", "Valère JEANTET")
+		e.AddAttribute("uid", "valere.jeantet")
+		e.AddAttribute("memberOf", "cn=group2, o=group, o=My Company, c=US", "cn=group3, o=group, o=My Company, c=US")
+		w.Write(e)
+	}
+	if !hasUserFilter || strings.Contains(r.FilterString(), "uid=yunchao_liu") {
+		e := ldap.NewSearchResultEntry("cn=Yunchao Liu, " + string(r.BaseObject()))
+		e.AddAttribute("mail", "yunchao_liu@example.com")
+		e.AddAttribute("cn", "Yunchao Liu")
+		e.AddAttribute("uid", "yunchao_liu")
+		w.Write(e)
+	}
 
 	res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 	w.Write(res)
@@ -268,8 +285,8 @@ func Test_GetallGroups(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
-	if len(allGroups) != 2 {
-		t.Fatalf("should have returned exactly 2 members")
+	if len(allGroups) != 3 {
+		t.Fatalf("should have returned exactly 3 groups")
 	}
 	t.Logf("GetAllGroups =%+v", allGroups)
 }
@@ -301,19 +318,26 @@ func Test_GetusersofGroup(t *testing.T) {
 }
 
 func Test_isgroupmemberornot(t *testing.T) {
-	var u UserInfoLDAPSource
-	result, description, err := u.IsgroupmemberorNot(groupname, username)
+	u := setupTestLDAPUserInfo(t)
+	expectedFalse, _, err := u.IsgroupmemberorNot("group1", "valere.jeantet")
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
-	if !result {
-		log.Println(description)
+	if expectedFalse {
+		log.Fatalf("should not be a member")
+	}
+	expectedTrue, _, err := u.IsgroupmemberorNot("group2", "valere.jeantet")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !expectedTrue {
+		log.Fatalf("should not be a member")
 	}
 }
 
 func Test_GetDescriptionvalue(t *testing.T) {
-	var u UserInfoLDAPSource
-	description, err := u.GetDescriptionvalue(groupname)
+	u := setupTestLDAPUserInfo(t)
+	description, err := u.GetDescriptionvalue("group2")
 	if err != nil {
 		log.Println(err)
 	}
@@ -323,8 +347,8 @@ func Test_GetDescriptionvalue(t *testing.T) {
 }
 
 func Test_UsernameExistsornot(t *testing.T) {
-	var u UserInfoLDAPSource
-	result, err := u.UsernameExistsornot(username)
+	u := setupTestLDAPUserInfo(t)
+	result, err := u.UsernameExistsornot("valere.jeantet")
 	if err != nil {
 		log.Println(err)
 	}
@@ -334,7 +358,7 @@ func Test_UsernameExistsornot(t *testing.T) {
 }
 
 func Test_GroupnameExistsornot(t *testing.T) {
-	var u UserInfoLDAPSource
+	u := setupTestLDAPUserInfo(t)
 	result, description, err := u.GroupnameExistsornot(groupname)
 	if err != nil {
 		log.Println(err)
