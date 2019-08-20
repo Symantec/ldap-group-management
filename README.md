@@ -1,4 +1,6 @@
 # Smallpoint
+[![Build Status](https://api.travis-ci.org/Symantec/ldap-group-management.svg?branch=master)](https://travis-ci.org/Symantec/ldap-group-management)
+
 
 Smallpoint is a LDAP group management system, it is developed to help with different operations based on LDAP database. First, super administrators can create and delete LDAP groups, then all users can ask for access to any LDAP group, and managers of the requested group can approve or decline such request. What's more, users can list all groups they belong to as well as all groups in the LDAP database. And this system is easy to use, configure and administer.
 
