@@ -224,17 +224,13 @@ func (u *UserInfoLDAPSource) GetallUsers() ([]string, error) {
 func (u *UserInfoLDAPSource) createUserDN(username string) string {
 	//uid := username
 	result := "uid=" + username + "," + u.UserSearchBaseDNs
-
 	return string(result)
-
 }
 
 //To build a GroupDN for a particular group in Target ldaputil
 func (u *UserInfoLDAPSource) createGroupDN(groupname string) string {
 	result := "cn=" + groupname + "," + u.GroupSearchBaseDNs
-
 	return string(result)
-
 }
 
 func (u *UserInfoLDAPSource) createServiceDN(groupname string, a userinfo.AccountType) string {
@@ -248,6 +244,37 @@ func (u *UserInfoLDAPSource) createServiceDN(groupname string, a userinfo.Accoun
 	return string(serviceDN)
 }
 
+////
+// GetGroupsOfUser returns the all groups of a user. --required
+func (u *UserInfoLDAPSource) getUserDN(conn *ldap.Conn, username string) (string, error) {
+	searchPaths := []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs}
+	for _, searchPath := range searchPaths {
+		searchRequest := ldap.NewSearchRequest(
+			searchPath,
+			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+			"(&(uid="+username+" ))",
+			[]string{"uid", "dn"}, //memberOf (if searching other way around using usersdn instead of groupdn)
+			nil,
+		)
+		sr, err := conn.Search(searchRequest)
+		if err != nil {
+			log.Println(err)
+			return "", err
+		}
+		if len(sr.Entries) < 1 {
+			continue
+		}
+
+		if len(sr.Entries) != 1 {
+			log.Printf("User does not exist or too many entries returned")
+			return "", errors.New("user does not exist or too many users")
+		}
+		return sr.Entries[0].DN, nil
+	}
+	return "", errors.New("no such user found")
+
+}
+
 //Creating a Group --required
 func (u *UserInfoLDAPSource) CreateGroup(groupinfo userinfo.GroupInfo) error {
 	conn, err := u.getTargetLDAPConnection()
@@ -258,7 +285,7 @@ func (u *UserInfoLDAPSource) CreateGroup(groupinfo userinfo.GroupInfo) error {
 	defer conn.Close()
 
 	entry := u.createGroupDN(groupinfo.Groupname)
-	gidnum, err := u.getMaximumGIDNumber(u.GroupSearchBaseDNs)
+	gidnum, err := u.getMaximumGIDNumber(conn, u.GroupSearchBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -594,13 +621,7 @@ func (u *UserInfoLDAPSource) UserisadminOrNot(username string) bool {
 }
 
 //it helps to findout the current maximum gid number in ldaputil.
-func (u *UserInfoLDAPSource) getMaximumGIDNumber(searchBaseDN string) (string, error) {
-	conn, err := u.getTargetLDAPConnection()
-	if err != nil {
-		log.Println(err)
-		return "error in getTargetLDAPConnection", err
-	}
-	defer conn.Close()
+func (u *UserInfoLDAPSource) getMaximumGIDNumber(conn *ldap.Conn, searchBaseDN string) (string, error) {
 	searchRequest := ldap.NewSearchRequest(
 		searchBaseDN,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
@@ -628,13 +649,7 @@ func (u *UserInfoLDAPSource) getMaximumGIDNumber(searchBaseDN string) (string, e
 	return fmt.Sprint(max + 1), nil
 }
 
-func (u *UserInfoLDAPSource) getMaximumUIDNumber(searchBaseDN string) (string, error) {
-	conn, err := u.getTargetLDAPConnection()
-	if err != nil {
-		log.Println(err)
-		return "error in getTargetLDAPConnection", err
-	}
-	defer conn.Close()
+func (u *UserInfoLDAPSource) getMaximumUIDNumber(conn *ldap.Conn, searchBaseDN string) (string, error) {
 	searchRequest := ldap.NewSearchRequest(
 		searchBaseDN,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
@@ -871,12 +886,12 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 	}
 	defer conn.Close()
 
-	gidnum, err := u.getMaximumGIDNumber(u.ServiceAccountBaseDNs)
+	gidnum, err := u.getMaximumGIDNumber(conn, u.ServiceAccountBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	uidnum, err := u.getMaximumUIDNumber(u.ServiceAccountBaseDNs)
+	uidnum, err := u.getMaximumUIDNumber(conn, u.ServiceAccountBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err
