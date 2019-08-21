@@ -6,7 +6,7 @@ GOPATH ?= $(HOME)/go
 BINARY=smallpoint
 
 # These are the values we want to pass for Version and BuildTime
-VERSION=0.1.4
+VERSION=0.2.1
 
 all: test build
 
@@ -19,6 +19,7 @@ test:
 clean:
 	go clean
 	rm -f $(BINARY_NAME)
+	rm -f ${BINARY}-${VERSION}.tar.gz
 
 deps:
 	go get -t ./...
