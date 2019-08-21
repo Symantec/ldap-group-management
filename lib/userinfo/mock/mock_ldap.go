@@ -517,15 +517,14 @@ func (m *MockLdap) ChangeDescription(groupname string, managegroup string) error
 }
 
 func (m *MockLdap) CreateUser(username string) error {
-	givenName := strings.Split(username, "_")[0]
-        userDN := u.createUserDN(username)
 
+	userdn := m.createUserDN(username)
 	var user LdapUserInfo
 	user.objectClass = []string{"posixAccount", "person", "ldapPublicKey", "organizationalPerson", "inetOrgPerson", "shadowAccount", "top", "inetUser", "pwmuser"}
 	user.uid = username
-	user.uidNumber = m.GetmaximumUidnumber(LdapUserDN)
+	user.uidNumber, _ = m.GetmaximumUidnumber(LdapUserDN)
 	user.mail = username + "@symantec.com"
 	user.cn = username
-
+	m.Users[userdn] = user
 	return nil
 }
