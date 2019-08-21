@@ -834,10 +834,6 @@ func (u *UserInfoLDAPSource) getEmailofUserInternal(conn *ldap.Conn, username st
 
 }
 
-func validateEmail(email string) bool {
-	re := regexp.MustCompile(`^[a-z0-9._%+\-]+@symantec.com$`)
-	return re.MatchString(email)
-}
 
 //get email of all users in the given group
 func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string, error) {
@@ -865,10 +861,8 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 			}
 			return nil, err
 		}
-		if !validateEmail(value[0]) {
-			return nil, errors.New("Invalid email for user " + entry)
-		}
 		userEmail = append(userEmail, value[0])
+
 	}
 	return userEmail, nil
 }
@@ -1224,14 +1218,14 @@ func (u *UserInfoLDAPSource) CreateUser(username string) error {
 	}
 	defer conn.Close()
 
-	uidnum, err := u.GetmaximumUidnumber(u.UserSearchBaseDNs)
+	uidnum, err := u.getMaximumUIDNumber(u.UserSearchBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 	
 	givenName := strings.Split(username, "_")[0]	
-	userDN := u.CreateuserDn(username)
+	userDN := u.createUserDN(username)
 
 	user := ldap.NewAddRequest(userDN)
 	user.Attribute("objectClass", []string{"posixAccount", "person", "ldapPublicKey", "organizationalPerson", "inetOrgPerson", "shadowAccount", "top", "inetUser", "pwmuser"})

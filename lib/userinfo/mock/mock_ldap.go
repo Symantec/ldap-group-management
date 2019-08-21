@@ -515,3 +515,17 @@ func (m *MockLdap) GetGroupandManagedbyAttributeValue(groupnames []string) ([][]
 func (m *MockLdap) ChangeDescription(groupname string, managegroup string) error {
 	return nil
 }
+
+func (m *MockLdap) CreateUser(username string) error {
+	givenName := strings.Split(username, "_")[0]
+        userDN := u.createUserDN(username)
+
+	var user LdapUserInfo
+	user.objectClass = []string{"posixAccount", "person", "ldapPublicKey", "organizationalPerson", "inetOrgPerson", "shadowAccount", "top", "inetUser", "pwmuser"}
+	user.uid = username
+	user.uidNumber = m.GetmaximumUidnumber(LdapUserDN)
+	user.mail = username + "@symantec.com"
+	user.cn = username
+
+	return nil
+}
