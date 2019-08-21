@@ -1116,7 +1116,19 @@ func (u *UserInfoLDAPSource) GetGroupsInfoOfUser(groupdn string, username string
 		return nil, err
 	}
 	for _, entry := range sr.Entries {
-		Groupattributes = append(Groupattributes, entry.GetAttributeValue("cn"), entry.GetAttributeValue(u.GroupManageAttribute))
+		managerValue := entry.GetAttributeValue(u.GroupManageAttribute)
+		switch strings.ToLower(u.GroupManageAttribute) {
+		case "owner":
+			groupCN, err := extractCNFromDNString([]string{managerValue})
+			if err != nil {
+				log.Println(err)
+				return nil, err
+			}
+			managerValue = groupCN[0]
+		default:
+			managerValue = managerValue
+		}
+		Groupattributes = append(Groupattributes, entry.GetAttributeValue("cn"), managerValue)
 		GroupandDescriptionPair = append(GroupandDescriptionPair, Groupattributes)
 		Groupattributes = nil
 	}
