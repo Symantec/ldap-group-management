@@ -1012,7 +1012,7 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 	pageData := createServiceAccountPageData{
 		UserName: username,
 		IsAdmin:  isAdmin,
-
+		Title:	  "Create Service Account"
 	}
 	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")
