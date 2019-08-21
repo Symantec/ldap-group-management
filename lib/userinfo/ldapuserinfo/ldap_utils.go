@@ -821,10 +821,10 @@ func (u *UserInfoLDAPSource) getEmailofUserInternal(conn *ldap.Conn, username st
 	}
 	if len(result.Entries) < 1 {
 		log.Printf("no such user")
-		return nil, fmt.Errorf("No such user")
+		return nil, userinfo.UserDoesNotExist
 	}
 	if len(result.Entries[0].GetAttributeValues("mail")) < 1 {
-		return nil, fmt.Errorf("user does not have an email address")
+		return nil, userinfo.UserDoesNotHaveEmail
 	}
 	var userEmail []string
 	userEmail = append(userEmail, result.Entries[0].GetAttributeValues("mail")[0])
@@ -853,6 +853,9 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 		value, err := u.getEmailofUserInternal(conn, entry)
 		if err != nil {
 			log.Println(err)
+			if err == userinfo.UserDoesNotHaveEmail {
+				continue
+			}
 			return nil, err
 		}
 		userEmail = append(userEmail, value[0])
