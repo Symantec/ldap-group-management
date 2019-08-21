@@ -227,38 +227,37 @@ func (state *RuntimeState) myManagedGroupsHandler(w http.ResponseWriter, r *http
 
 func (state *RuntimeState) getPendingRequestGroupsofUser(username string) ([][]string, error) {
 	go state.Userinfo.GetAllGroupsManagedBy()
+	go state.cleanupPendingRequests()
 	groupsPendingInDB, _, err := findrequestsofUserinDB(username, state)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 	log.Printf("groupsPendingInDB=%+v", groupsPendingInDB)
-	var actualPendingGroups []string
-	// TODO: replace this loop for another one where we iterate over the
-	// groups of the user. This would lead to only 1 new DB connection per
-	// pending group request
-	for _, groupname := range groupsPendingInDB {
-		//check if grop exists
-		log.Printf("groupname='%s'", groupname)
-		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupname, username)
-		if err != nil {
-			log.Println(err)
-			if err == userinfo.GroupDoesNotExist {
-				// TODO: delete from DB
-				continue
-			}
-			return nil, err
-		}
-		if Ismember {
-			err := deleteEntryInDB(username, groupname, state)
-			if err != nil {
-				log.Println(err)
-				return nil, err
-			}
-			continue
-		}
-		actualPendingGroups = append(actualPendingGroups, groupname)
+	if len(groupsPendingInDB) == 0 {
+		return [][]string{}, nil
 	}
+
+	userGroups, err := state.Userinfo.GetgroupsofUser(username)
+	if err != nil {
+		log.Printf("getPendingRequestGroupsofUser, GetgroupsofUser, err:%s", err)
+		return nil, err
+	}
+	var actualPendingGroups []string
+	var found bool
+	for _, requestedGroupName := range groupsPendingInDB {
+		found = false
+		for _, userGroup := range userGroups {
+			if requestedGroupName == userGroup {
+				found = true
+			}
+			break
+		}
+		if !found {
+			actualPendingGroups = append(actualPendingGroups, requestedGroupName)
+		}
+	}
+	log.Printf("actualPendingGroups =%+v, len=%d", actualPendingGroups, len(actualPendingGroups))
 	return state.Userinfo.GetGroupandManagedbyAttributeValue(actualPendingGroups)
 
 }
@@ -269,6 +268,7 @@ func (state *RuntimeState) pendingRequests(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
+	go state.Userinfo.GetAllGroupsManagedBy() // warm up cache
 	_, hasRequests, err := findrequestsofUserinDB(username, state)
 	if err != nil {
 		log.Println(err)
@@ -359,8 +359,8 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 	if !userExistsornot {
-		log.Println("Bad request!")
-		http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+		log.Println("requestAccessHandler: Bad request! user does not exist")
+		http.Error(w, fmt.Sprint("Bad request, user does not exist!"), http.StatusBadRequest)
 		return
 	}
 
@@ -371,7 +371,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	//log.Println(out)
+
 	//fmt.Print(out["groups"])
 	for _, entry := range out["groups"] {
 		err = state.groupExistsorNot(w, entry)
@@ -486,7 +486,6 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	var groupinfo userinfo.GroupInfo
-	groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(username))
 	groupinfo.MemberUid = append(groupinfo.MemberUid, username)
 	for _, entry := range out["groups"] {
 		groupinfo.Groupname = entry
@@ -512,12 +511,16 @@ func (state *RuntimeState) cleanupPendingRequests() error {
 		log.Printf("top of loop entry=%+v", entry)
 		groupName := entry[1]
 		requestingUser := entry[0]
+		invalidGroup := false
 		Ismember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, requestingUser)
 		if err != nil {
-			log.Printf("getUserPendingActions: isggroupmemberor not err: %s", err)
-			return err
+			if err != userinfo.GroupDoesNotExist {
+				log.Printf("getUserPendingActions: isggroupmemberor not err: %s", err)
+				continue
+			}
+			invalidGroup = true
 		}
-		if Ismember {
+		if Ismember || invalidGroup {
 			err := deleteEntryInDB(requestingUser, groupName, state)
 			if err != nil {
 				log.Println(err)
@@ -676,23 +679,22 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 				//fmt.Println("error me")
 				log.Println(err)
 			}
+			continue
 
-		} else if entryExistsorNot(entry[0], entry[1], state) {
-			var groupinfo userinfo.GroupInfo
-			groupinfo.Groupname = entry[1]
-			groupinfo.MemberUid = append(groupinfo.MemberUid, entry[0])
-			groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(entry[0]))
-			err := state.Userinfo.AddmemberstoExisting(groupinfo)
-			if err != nil {
-				log.Println(err)
-			}
+		}
+		var groupinfo userinfo.GroupInfo
+		groupinfo.Groupname = entry[1]
+		groupinfo.MemberUid = append(groupinfo.MemberUid, entry[0])
+		err = state.Userinfo.AddmemberstoExisting(groupinfo)
+		if err != nil {
+			log.Println(err)
+		}
 
-			state.sysLog.Write([]byte(fmt.Sprintf("%s"+" joined Group "+"%s"+" approved by "+"%s", entry[0], entry[1], username)))
-			err = deleteEntryInDB(entry[0], entry[1], state)
-			if err != nil {
-				fmt.Println("error here!")
-				log.Println(err)
-			}
+		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" joined Group "+"%s"+" approved by "+"%s", entry[0], entry[1], username)))
+		err = deleteEntryInDB(entry[0], entry[1], state)
+		if err != nil {
+			fmt.Println("error here!")
+			log.Println(err)
 		}
 	}
 	go state.sendApproveemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
@@ -832,7 +834,6 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 			continue
 		}
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
-		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
 	}
 
 	err = state.Userinfo.AddmemberstoExisting(groupinfo)
@@ -958,7 +959,6 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 			continue
 		}
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
-		groupinfo.Member = append(groupinfo.Member, state.Userinfo.CreateuserDn(member))
 	}
 
 	err = state.Userinfo.DeletemembersfromGroup(groupinfo)
@@ -995,7 +995,7 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 	}
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	if !isAdmin {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		http.Error(w, "you are not authorized", http.StatusForbidden)
 		return
 	}
 	pageData := createServiceAccountPageData{
@@ -1056,39 +1056,35 @@ func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "couldn't parse the URL", http.StatusInternalServerError)
 		return
 	}
+
+	go state.Userinfo.GetallUsers() //warm up cache
+
 	//var response Response
 
 	groupName := params[0] //username is "cn" Attribute of a User
-	groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupName)
+	groupMembers, managerMembers, managedby, err := state.Userinfo.GetGroupUsersAndManagers(groupName)
 	if err != nil {
 		log.Println(err)
+		if err == userinfo.GroupDoesNotExist {
+			http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
+			return
+		}
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	if !groupnameExistsorNot {
-		log.Println("Group doesn't exist!")
-		http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
-		return
+	IsgroupMember := false
+	for _, user := range groupMembers {
+		if user == username {
+			IsgroupMember = true
+			break
+		}
 	}
-	// begin change
-	_, managedby, err := state.Userinfo.GetusersofaGroup(groupName)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-
-	IsgroupMember, _, err := state.Userinfo.IsgroupmemberorNot(groupName, username)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprintln(err), http.StatusInternalServerError)
-		return
-	}
-	IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, groupName)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
+	IsgroupAdmin := false
+	for _, user := range managerMembers {
+		if user == username {
+			IsgroupAdmin = true
+			break
+		}
 	}
 
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
@@ -1118,7 +1114,7 @@ func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, 
 	}
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	if !isAdmin {
-		http.Error(w, "you are not authorized", http.StatusUnauthorized)
+		http.Error(w, "you are not authorized", http.StatusForbidden)
 		return
 	}
 	pageData := changeGroupOwnershipPageData{

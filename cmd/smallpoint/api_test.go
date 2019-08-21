@@ -18,7 +18,7 @@ const (
 	adminCookievalueTest = "hellogroup1group2"
 	adminTestusername    = "user1"
 	cookievalueTest      = "somecookie"
-	testUsername         = "userX"
+	testUsername         = "user2"
 	testdbpath           = "sqlite:./test-sqlite3.db"
 )
 

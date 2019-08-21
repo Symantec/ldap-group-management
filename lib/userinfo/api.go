@@ -5,6 +5,8 @@ import (
 )
 
 var GroupDoesNotExist = errors.New("Group does not exist")
+var UserDoesNotExist = errors.New("User does not exist")
+var UserDoesNotHaveEmail = errors.New("User does not have email addresses")
 
 type AccountType int
 
@@ -21,10 +23,6 @@ type GroupInfo struct {
 type UserInfo interface {
 	GetallUsers() ([]string, error)
 
-	CreateuserDn(username string) string
-
-	CreategroupDn(groupname string) string
-
 	CreateserviceDn(groupname string, a AccountType) string
 
 	CreateGroup(groupinfo GroupInfo) error
@@ -32,8 +30,6 @@ type UserInfo interface {
 	DeleteGroup(groupnames []string) error
 
 	AddAtributedescription(groupname string) error
-
-	DeleteDescription(groupnames []string) error
 
 	ChangeDescription(groupname string, managegroup string) error
 
@@ -43,13 +39,11 @@ type UserInfo interface {
 
 	GetusersofaGroup(groupname string) ([]string, string, error)
 
+	GetGroupUsersAndManagers(groupname string) ([]string, []string, string, error)
+
 	ParseSuperadmins() []string
 
 	UserisadminOrNot(username string) bool
-
-	GetmaximumGidnumber(searchBaseDN string) (string, error)
-
-	GetmaximumUidnumber(searchBaseDN string) (string, error)
 
 	AddmemberstoExisting(groupinfo GroupInfo) error
 
@@ -72,8 +66,6 @@ type UserInfo interface {
 	GroupnameExistsornot(groupname string) (bool, string, error)
 
 	ServiceAccountExistsornot(groupname string) (bool, string, error)
-
-	GetGroupDN(groupname string) (string, error)
 
 	GetAllGroupsManagedBy() ([][]string, error)
 
