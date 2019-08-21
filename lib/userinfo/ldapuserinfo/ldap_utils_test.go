@@ -138,7 +138,7 @@ func handleSearchGroup(w ldap.ResponseWriter, m *ldap.Message) {
 	log.Printf("Request Attributes=%s", r.Attributes())
 	log.Printf("Request TimeLimit=%d", r.TimeLimit().Int())
 
-	hasGroupFilter := strings.Contains(r.FilterString(), "cn=")
+	hasGroupFilter := strings.Contains(r.FilterString(), "cn=") || strings.Contains(r.FilterString(), "memberUid=")
 
 	if !hasGroupFilter || strings.Contains(r.FilterString(), "cn=group1") {
 		e := ldap.NewSearchResultEntry("cn=group1, " + string(r.BaseObject()))
@@ -146,14 +146,16 @@ func handleSearchGroup(w ldap.ResponseWriter, m *ldap.Message) {
 		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
 		w.Write(e)
 	}
-	if !hasGroupFilter || strings.Contains(r.FilterString(), "cn=group2") {
+	if !hasGroupFilter || strings.Contains(r.FilterString(), "cn=group2") ||
+		strings.Contains(r.FilterString(), "memberUid=valere.jeantet") {
 		e := ldap.NewSearchResultEntry("cn=group2, " + string(r.BaseObject()))
 		e.AddAttribute("cn", "group2")
 		e.AddAttribute("memberUid", "valere.jeantet")
 		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
 		w.Write(e)
 	}
-	if !hasGroupFilter || strings.Contains(r.FilterString(), "cn=group3") {
+	if !hasGroupFilter || strings.Contains(r.FilterString(), "cn=group3") ||
+		strings.Contains(r.FilterString(), "memberUid=valere.jeantet") {
 		e := ldap.NewSearchResultEntry("cn=group3, " + string(r.BaseObject()))
 		e.AddAttribute("cn", "group3")
 		e.AddAttribute("memberUid", "valere.jeantet")
@@ -366,4 +368,49 @@ func Test_GroupnameExistsornot(t *testing.T) {
 	if !result {
 		log.Println(description)
 	}
+}
+
+func Test_GetEmailofusersingroup(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+	groupEmails, err := u.GetEmailofusersingroup("group2")
+	if err != nil {
+		log.Fatal(err)
+	}
+	//Todo actua;;y check
+	t.Logf("groupEmails=%+v", groupEmails)
+}
+
+func Test_GetGroupsInfoOfUser(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+	userGroups, err := u.GetGroupsInfoOfUser("o=group,o=My Company,c=US", "valere.jeantet")
+	if err != nil {
+		log.Fatal(err)
+	}
+	//Todo actua;;y check
+	t.Logf("userGroups+Man=%+v", userGroups)
+}
+
+func Test_GetGroupUsersAndManagers(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+	members, managers, managerGroupName, err := u.GetGroupUsersAndManagers("group2")
+	if err != nil {
+		log.Fatal(err)
+	}
+	//TODO: actually check the return values
+	t.Logf("members=%+v managers=%+v, managerGroupName=%s", members, managers, managerGroupName)
+}
+
+func Test_GetAllGroupsManagedBy(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+	groupsManagers, err := u.GetAllGroupsManagedBy()
+	if err != nil {
+		log.Fatal(err)
+	}
+	t.Logf("groupManagres=%+v", groupsManagers)
+	groupsManagers2, err := u.GetAllGroupsManagedBy()
+	if err != nil {
+		log.Fatal(err)
+	}
+	t.Logf("groupManagres2=%+v", groupsManagers2)
+
 }
