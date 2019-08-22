@@ -271,7 +271,7 @@ func (u *UserInfoLDAPSource) getUserDN(conn *ldap.Conn, username string) (string
 		}
 		return sr.Entries[0].DN, nil
 	}
-	return "", errors.New("no such user found")
+	return "", userinfo.UserDoesNotExist
 
 }
 
@@ -697,7 +697,11 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) 
 	}
 	if len(groupinfo.Member) == 0 {
 		for _, memberUid := range groupinfo.MemberUid {
-			groupinfo.Member = append(groupinfo.Member, u.createUserDN(memberUid))
+			userDN, err := u.getUserDN(conn, memberUid)
+			if err != nil {
+				return err
+			}
+			groupinfo.Member = append(groupinfo.Member, userDN)
 		}
 	}
 	modify := ldap.NewModifyRequest(entry)
@@ -736,7 +740,11 @@ func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo
 
 	if len(groupinfo.Member) == 0 {
 		for _, memberUid := range groupinfo.MemberUid {
-			groupinfo.Member = append(groupinfo.Member, u.createUserDN(memberUid))
+			userDN, err := u.getUserDN(conn, memberUid)
+			if err != nil {
+				return err
+			}
+			groupinfo.Member = append(groupinfo.Member, userDN)
 		}
 	}
 
@@ -828,7 +836,10 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 	return u.getEmailofUserInternal(conn, username)
 }
 func (u *UserInfoLDAPSource) getEmailofUserInternal(conn *ldap.Conn, username string) ([]string, error) {
-	Userdn := u.createUserDN(username)
+	Userdn, err := u.getUserDN(conn, username)
+	if err != nil {
+		return nil, err
+	}
 	searchrequest := ldap.NewSearchRequest(Userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, "(&(uid="+username+"))", []string{"mail"}, nil)
 	result, err := conn.Search(searchrequest)
