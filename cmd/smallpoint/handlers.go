@@ -192,7 +192,7 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 	existInCache := state.Userinfo.UserInCache(username)
 
 	if !(freshCache && existInCache) {
-		found, err = state.Userinfo.UsernameExistsornot(username)
+		found, err := state.Userinfo.UsernameExistsornot(username)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
