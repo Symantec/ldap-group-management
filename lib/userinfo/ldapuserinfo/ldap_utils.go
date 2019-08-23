@@ -79,26 +79,6 @@ func extractCNFromDNString(input []string) (output []string, err error) {
 	return output, nil
 }
 
-func (u *UserInfoLDAPSource) objectClassExistsorNot(conn *ldap.Conn, groupname string, objectclass string) (bool, error) {
-	searchrequest := ldap.NewSearchRequest(u.GroupSearchBaseDNs, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-		0, 0, false, "(&(cn="+groupname+" )(objectClass=posixGroup))", []string{"objectClass"}, nil)
-	result, err := conn.Search(searchrequest)
-	if err != nil {
-		log.Println(err)
-		return false, err
-	}
-	if len(result.Entries) > 1 {
-		log.Println("multiple entries found")
-		return false, errors.New("Multiple entries found!")
-	}
-	for _, value := range result.Entries[0].GetAttributeValues("objectClass") {
-		if value == objectclass {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func getLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ldap.Conn, string, error) {
 
 	if u.Scheme != "ldaps" {
@@ -685,11 +665,6 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) 
 		return err
 	}
 	defer conn.Close()
-	objectExists, err := u.objectClassExistsorNot(conn, groupinfo.Groupname, objectClassgroupofNames)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
 	entry, err := u.getGroupDN(conn, groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
@@ -705,9 +680,7 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) 
 		}
 	}
 	modify := ldap.NewModifyRequest(entry)
-	if objectExists {
-		modify.Add("member", groupinfo.Member)
-	}
+	modify.Add("member", groupinfo.Member)
 	modify.Add("memberUid", groupinfo.MemberUid)
 	err = conn.Modify(modify)
 	if err != nil {
@@ -725,11 +698,7 @@ func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo
 		return err
 	}
 	defer conn.Close()
-	objectExists, err := u.objectClassExistsorNot(conn, groupinfo.Groupname, objectClassgroupofNames)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
+
 	entry, err := u.getGroupDN(conn, groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
@@ -748,9 +717,7 @@ func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo
 		}
 	}
 
-	if objectExists {
-		modify.Delete("member", groupinfo.Member)
-	}
+	modify.Delete("member", groupinfo.Member)
 	err = conn.Modify(modify)
 	if err != nil {
 		log.Println(err)
@@ -1117,7 +1084,7 @@ func (u *UserInfoLDAPSource) getGroupDN(conn *ldap.Conn, groupname string) (stri
 	}
 	if len(sr.Entries) < 1 {
 		log.Printf("No DN found for group:%s", groupname)
-		return "", errors.New("Multiple entries found, Contact the administrator!")
+		return "", userinfo.GroupDoesNotExist
 	}
 	users := sr.Entries[0].DN
 	return users, nil

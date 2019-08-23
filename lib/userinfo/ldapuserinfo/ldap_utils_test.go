@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
+
 	ldap "github.com/vjeantet/ldapserver"
 )
 
@@ -143,6 +145,7 @@ func handleSearchGroup(w ldap.ResponseWriter, m *ldap.Message) {
 	if !hasGroupFilter || strings.Contains(r.FilterString(), "cn=group1") {
 		e := ldap.NewSearchResultEntry("cn=group1, " + string(r.BaseObject()))
 		e.AddAttribute("cn", "group1")
+		e.AddAttribute("memberUid", "yunchao_liu")
 		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
 		w.Write(e)
 	}
@@ -159,6 +162,7 @@ func handleSearchGroup(w ldap.ResponseWriter, m *ldap.Message) {
 		e := ldap.NewSearchResultEntry("cn=group3, " + string(r.BaseObject()))
 		e.AddAttribute("cn", "group3")
 		e.AddAttribute("memberUid", "valere.jeantet")
+		e.AddAttribute("memberUid", "yunchao_liu")
 		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
 		w.Write(e)
 	}
@@ -202,14 +206,40 @@ func handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 		e.AddAttribute("mail", "yunchao_liu@example.com")
 		e.AddAttribute("cn", "Yunchao Liu")
 		e.AddAttribute("uid", "yunchao_liu")
+		e.AddAttribute("memberOf", "cn=group1, o=group, o=My Company, c=US", "cn=group3, o=group, o=My Company, c=US")
 		w.Write(e)
 	}
 
 	res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 	w.Write(res)
-
 }
 
+func handleModifyGroup(w ldap.ResponseWriter, m *ldap.Message) {
+	r := m.GetModifyRequest()
+	log.Printf("Modify entry: %s", r.Object())
+
+	for _, change := range r.Changes() {
+		modification := change.Modification()
+		var operationString string
+		switch change.Operation() {
+		case ldap.ModifyRequestChangeOperationAdd:
+			operationString = "Add"
+		case ldap.ModifyRequestChangeOperationDelete:
+			operationString = "Delete"
+		case ldap.ModifyRequestChangeOperationReplace:
+			operationString = "Replace"
+		}
+
+		log.Printf("%s attribute '%s'", operationString, modification.Type_())
+		for _, attributeValue := range modification.Vals() {
+			log.Printf("- value: %s", attributeValue)
+		}
+
+	}
+
+	res := ldap.NewModifyResponse(ldap.LDAPResultSuccess)
+	w.Write(res)
+}
 func init() {
 
 	//Create a new LDAP Server
@@ -223,6 +253,7 @@ func init() {
 		BaseDn("o=group,o=My Company,c=US").
 		Label("Search - Group Root")
 	routes.Search(handleSearch).Label("Search - Generic")
+	routes.Modify(handleModifyGroup).BaseDn("o=group,o=My Company,c=US")
 
 	server.Handle(routes)
 
@@ -361,12 +392,19 @@ func Test_UsernameExistsornot(t *testing.T) {
 
 func Test_GroupnameExistsornot(t *testing.T) {
 	u := setupTestLDAPUserInfo(t)
-	result, description, err := u.GroupnameExistsornot(groupname)
+	result, description, err := u.GroupnameExistsornot("invalidGroup")
 	if err != nil {
 		log.Println(err)
 	}
 	if !result {
 		log.Println(description)
+	}
+	if result {
+		log.Fatalf("group should be invalid")
+	}
+	result, _, err = u.GroupnameExistsornot("group2")
+	if !result {
+		log.Fatalf("group should be valid")
 	}
 }
 
@@ -413,4 +451,20 @@ func Test_GetAllGroupsManagedBy(t *testing.T) {
 	}
 	t.Logf("groupManagres2=%+v", groupsManagers2)
 
+}
+
+//Now we test the ones that modify
+
+func Test_AddmembersToExisting(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+
+	groupInfo := userinfo.GroupInfo{
+		Groupname: "group2",
+		MemberUid: []string{"yunchao_liu"},
+	}
+	err := u.AddmemberstoExisting(groupInfo)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// TODO: actually verify that the members where added
 }
