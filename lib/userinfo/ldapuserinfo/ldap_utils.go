@@ -53,6 +53,10 @@ type UserInfoLDAPSource struct {
 	allGroupsAndManagerCacheMutex      sync.Mutex
 	allGroupsAndManagerCacheValue      [][]string
 	allGroupsAndManagerCacheExpiration time.Time
+
+	allUsersLongRWLock          sync.RWMutex
+	allUsersLongCacheValue      []string
+	allUsersLongCacheExpiration time.Time
 }
 
 func (u *UserInfoLDAPSource) flushGroupCaches() {
@@ -642,7 +646,7 @@ func (u *UserInfoLDAPSource) getMaximumUIDNumber(searchBaseDN string) (string, e
 		[]string{"uidNumber"},
 		nil,
 	)
-	sr, err := conn.SearchWithPaging(searchRequest,1500)
+	sr, err := conn.SearchWithPaging(searchRequest, pageSearchSize)
 	if err != nil {
 		log.Println(err)
 		return "error in ldapsearch", err
@@ -833,7 +837,6 @@ func (u *UserInfoLDAPSource) getEmailofUserInternal(conn *ldap.Conn, username st
 	return userEmail, nil
 
 }
-
 
 //get email of all users in the given group
 func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string, error) {
@@ -1223,8 +1226,8 @@ func (u *UserInfoLDAPSource) CreateUser(username string) error {
 		log.Println(err)
 		return err
 	}
-	
-	givenName := strings.Split(username, "_")[0]	
+
+	givenName := strings.Split(username, "_")[0]
 	userDN := u.createUserDN(username)
 
 	user := ldap.NewAddRequest(userDN)
@@ -1255,5 +1258,36 @@ func (u *UserInfoLDAPSource) CreateUser(username string) error {
 		log.Println(err)
 		return err
 	}
+	return nil
+}
+
+func (u *UserInfoLDAPSource) AlluserFreshCache() bool {
+	if u.allUsersLongCacheExpiration.After(time.Now()) {
+		return true
+	}
+
+	return false
+}
+
+func (u *UserInfoLDAPSource) UserInCache(username string) bool {
+	for _, user := range u.allUsersLongCacheValue {
+		if username == user {
+			return true
+		}
+	}
+	return false
+}
+
+const allUsersCacheLongDuration = time.Hour * 6
+
+func (u *UserInfoLDAPSource) UpdateAlluserLocalCache() error {
+	u.allUsersLongRWLock.Lock()
+	defer u.allUsersLongRWLock.Unlock()
+	allUsers, err := u.GetallUsersNonCached()
+	if err != nil {
+		return err
+	}
+	u.allUsersLongCacheValue = allUsers
+	u.allUsersLongCacheExpiration = time.Now().Add(allUsersCacheLongDuration)
 	return nil
 }

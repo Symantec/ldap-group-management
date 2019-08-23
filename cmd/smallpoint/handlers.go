@@ -183,22 +183,40 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	userExistsornot, err := state.Userinfo.UsernameExistsornot(username)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	//@camilo I want to discuss it with you, when smallpoint first spins up, it cannot get username from the cookie, username would be empty
+	if username == "" {
 		return
 	}
-	
-	if !userExistsornot {
-		err = state.Userinfo.CreateUser(username)
+
+	freshCache := state.Userinfo.AlluserFreshCache()
+	existInCache := state.Userinfo.UserInCache(username)
+	found := false
+
+	if !(freshCache && existInCache) {
+		allUsers, err := state.Userinfo.GetallUsersNonCached()
+		for _, user := range allUsers {
+			if username == user {
+				found = true
+			}
+		}
+		log.Println(found)
+		if !found {
+			// TODO:get information from source AD, given name, last name and email.
+			err = state.Userinfo.CreateUser(username)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				return
+			}
+		}
+		err = state.Userinfo.UpdateAlluserLocalCache()
 		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-                	return
+			return
 		}
 	}
-	
+
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")
@@ -851,7 +869,7 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		}
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
 	}
-	
+
 	if len(groupinfo.Member) > 0 {
 		err = state.Userinfo.AddmemberstoExisting(groupinfo)
 		if err != nil {
@@ -1019,7 +1037,7 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 	pageData := createServiceAccountPageData{
 		UserName: username,
 		IsAdmin:  isAdmin,
-		Title:	  "Create Service Account",
+		Title:    "Create Service Account",
 	}
 	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")

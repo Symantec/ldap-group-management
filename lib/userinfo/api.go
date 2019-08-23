@@ -21,6 +21,8 @@ type GroupInfo struct {
 }
 
 type UserInfo interface {
+	GetallUsersNonCached() ([]string, error)
+
 	GetallUsers() ([]string, error)
 
 	CreateserviceDn(groupname string, a AccountType) string
@@ -74,4 +76,10 @@ type UserInfo interface {
 	GetGroupandManagedbyAttributeValue(groupnames []string) ([][]string, error)
 
 	CreateUser(username string) error
+
+	AlluserFreshCache() bool
+
+	UserInCache(username string) bool
+
+	UpdateAlluserLocalCache() error
 }
