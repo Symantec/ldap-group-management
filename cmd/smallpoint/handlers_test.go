@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -191,4 +193,36 @@ func TestRequestAccessHandler(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
+}
+
+// This should probably go into another func
+func TestAddmemberstoExistingGroupSuccess(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Println(err)
+	}
+	smtpClient = func(addr string) (smtpDialer, error) {
+		client := &smtpDialerMock{}
+		return client, nil
+	}
+
+	formValues := url.Values{"groupname": {"group1"}, "members": {"user1"}}
+	req, err := http.NewRequest("POST", addmembersbuttonPath, strings.NewReader(formValues.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := testCreateValidAdminCookie()
+	req.AddCookie(&cookie)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(state.addmemberstoExistingGroup)
+
+	handler.ServeHTTP(rr, req)
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
 }

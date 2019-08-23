@@ -842,8 +842,10 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	for _, member := range strings.Split(members, ",") {
-		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
+	if state.sysLog != nil {
+		for _, member := range strings.Split(members, ",") {
+			state.sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
+		}
 	}
 
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
