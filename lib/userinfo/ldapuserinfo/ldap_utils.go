@@ -1254,7 +1254,6 @@ func (u *UserInfoLDAPSource) CreateUser(username string) error {
 
 	err = conn.Add(user)
 	if err != nil {
-		log.Println("error starts here")
 		log.Println(err)
 		return err
 	}

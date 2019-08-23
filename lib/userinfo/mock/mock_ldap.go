@@ -528,3 +528,15 @@ func (m *MockLdap) CreateUser(username string) error {
 	m.Users[userdn] = user
 	return nil
 }
+
+func (m *MockLdap) AlluserFreshCache() bool {
+	return true
+}
+
+func (m *MockLdap) UserInCache(username string) bool {
+	return true
+}
+
+func (m *MockLdap) UpdateAlluserLocalCache() error {
+	return nil
+}
