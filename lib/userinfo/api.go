@@ -21,8 +21,6 @@ type GroupInfo struct {
 }
 
 type UserInfo interface {
-	GetallUsersNonCached() ([]string, error)
-
 	GetallUsers() ([]string, error)
 
 	CreateserviceDn(groupname string, a AccountType) string

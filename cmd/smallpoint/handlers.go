@@ -193,13 +193,12 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 	found := false
 
 	if !(freshCache && existInCache) {
-		allUsers, err := state.Userinfo.GetallUsersNonCached()
-		for _, user := range allUsers {
-			if username == user {
-				found = true
-			}
+		found, err = state.Userinfo.UsernameExistsornot(username)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
 		}
-		log.Println(found)
 		if !found {
 			// TODO:get information from source AD, given name, last name and email.
 			err = state.Userinfo.CreateUser(username)
