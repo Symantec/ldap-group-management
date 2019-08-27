@@ -50,9 +50,8 @@ type RuntimeState struct {
 	htmlTemplate *template.Template
 	sysLog       *syslog.Writer
 
-	allUsersRWLock          sync.RWMutex
-	allUsersCacheValue      []string
-	allUsersCacheExpiration time.Time
+	allUsersRWLock     sync.RWMutex
+	allUsersCacheValue map[string]time.Time
 }
 
 type cookieInfo struct {
@@ -208,6 +207,7 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	}
 	state.Userinfo = &state.Config.TargetLDAP
 	state.authcookies = make(map[string]cookieInfo)
+	state.allUsersCacheValue = make(map[string]time.Time)
 	return state, err
 }
 
@@ -324,8 +324,6 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	ticker := time.NewTicker(cacheRefreshDuration)
-	go state.UpdateLocalCacheinPeriod(ticker)
 	err = serviceServer.ListenAndServeTLS(state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename)
 	if err != nil {
 		log.Fatalf("Failed to start service server, err=%s", err)

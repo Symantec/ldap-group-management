@@ -529,7 +529,7 @@ func (m *MockLdap) CreateUser(username string) error {
 	return nil
 }
 
-func (m *MockLdap) GetallUsersNonCached() ([]string, error) {
+func (m *MockLdap) getallUsersNonCached() ([]string, error) {
 	var allusers []string
 	for _, value := range m.Users {
 		allusers = append(allusers, value.uid)

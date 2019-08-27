@@ -168,7 +168,7 @@ func (u *UserInfoLDAPSource) getTargetLDAPConnection() (*ldap.Conn, error) {
 }
 
 //Get all ldaputil users and put that in map ---required
-func (u *UserInfoLDAPSource) GetallUsersNonCached() ([]string, error) {
+func (u *UserInfoLDAPSource) getallUsersNonCached() ([]string, error) {
 
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
@@ -211,7 +211,7 @@ func (u *UserInfoLDAPSource) GetallUsers() ([]string, error) {
 		allUsers := u.allUsersCacheValue
 		return allUsers, nil
 	}
-	allUsers, err := u.GetallUsersNonCached()
+	allUsers, err := u.getallUsersNonCached()
 	if err != nil {
 		return nil, err
 	}

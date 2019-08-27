@@ -64,75 +64,31 @@ func randomStringGeneration() (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
-func (state *RuntimeState) AlluserFreshCache() bool {
-	if state.allUsersCacheExpiration.After(time.Now()) {
-		return true
-	}
-
-	return false
-}
-
-func (state *RuntimeState) UserInCache(username string) bool {
-	for _, user := range state.allUsersCacheValue {
-		if username == user {
-			return true
-		}
-	}
-
-	return false
-}
-
-const allUsersCacheDuration = time.Hour * 6
-
-func (state *RuntimeState) UpdateAlluserLocalCache() error {
-	log.Println("update local cache")
-	state.allUsersRWLock.Lock()
-	defer state.allUsersRWLock.Unlock()
-	allUsers, err := state.Userinfo.GetallUsersNonCached()
-	if err != nil {
-		return err
-	}
-	state.allUsersCacheValue = allUsers
-	state.allUsersCacheExpiration = time.Now().Add(allUsersCacheDuration)
-	return nil
-}
-
-func (state *RuntimeState) UpdateLocalCacheinPeriod(ticker *time.Ticker) {
-	for {
-		select {
-		case <-ticker.C:
-			err := state.UpdateAlluserLocalCache()
-			if err != nil {
-				log.Println(err)
-			}
-		}
-	}
-}
+const allUsersCacheDuration = time.Hour * 1
 
 func (state *RuntimeState) createUserorNot(username string) error {
-	freshCache := state.AlluserFreshCache()
-	existInCache := state.UserInCache(username)
+	state.allUsersRWLock.Lock()
+	expiration, ok := state.allUsersCacheValue[username]
+	state.allUsersRWLock.Unlock()
 
-	if !(freshCache && existInCache) {
-		found, err := state.Userinfo.UsernameExistsornot(username)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-		if !found {
-			err = state.Userinfo.CreateUser(username)
-			if err != nil {
-				log.Println(err)
-				return err
-			}
-		}
-
-		err = state.UpdateAlluserLocalCache()
+	if ok && expiration.After(time.Now()) {
+		return nil
+	}
+	found, err := state.Userinfo.UsernameExistsornot(username)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if !found {
+		err := state.Userinfo.CreateUser(username)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
 	}
+	state.allUsersRWLock.Lock()
+	state.allUsersCacheValue[username] = time.Now().Add(allUsersCacheDuration)
+	state.allUsersRWLock.Unlock()
 	return nil
 }
 

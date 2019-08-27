@@ -44,6 +44,7 @@ func setupTestState() (RuntimeState, error) {
 	mockldap := mock.New()
 	state.Userinfo = mockldap
 	state.authcookies = make(map[string]cookieInfo)
+	state.allUsersCacheValue = make(map[string]time.Time)
 	expiresAt := time.Now().Add(time.Hour * cookieExpirationHours)
 	usersession := cookieInfo{Username: testUsername, ExpiresAt: expiresAt}
 	state.authcookies[cookievalueTest] = usersession
