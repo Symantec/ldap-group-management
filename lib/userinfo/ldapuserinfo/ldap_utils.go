@@ -1219,7 +1219,7 @@ func (u *UserInfoLDAPSource) CreateUser(username string) error {
 	}
 	defer conn.Close()
 
-	uidnum, err := u.getMaximumUIDNumber(u.UserSearchBaseDNs)
+	uidnum, err := u.getMaximumUIDNumber(conn, u.UserSearchBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err
