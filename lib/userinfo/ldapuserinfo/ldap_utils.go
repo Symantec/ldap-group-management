@@ -816,7 +816,7 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 func (u *UserInfoLDAPSource) getEmailofUserInternal(conn *ldap.Conn, username string) ([]string, error) {
 	Userdn := u.createUserDN(username)
 	searchrequest := ldap.NewSearchRequest(Userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-		0, 0, false, "(&(uid="+username+")", []string{"mail"}, nil)
+		0, 0, false, "(&(uid="+username+"))", []string{"mail"}, nil)
 	result, err := conn.Search(searchrequest)
 	if err != nil {
 		log.Println(err)
