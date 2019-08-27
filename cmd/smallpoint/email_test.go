@@ -57,3 +57,35 @@ func TestSuccessRequestemail(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestApproveRequestemail(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	smtpClient = func(addr string) (smtpDialer, error) {
+		client := &smtpDialerMock{}
+		return client, nil
+	}
+	err = state.approveRequestemail("username", "approvingUser", []string{"admin@example.com"},
+		"somegroup", "127.0.0.1", "mycecret uA")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRejectRequestemail(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	smtpClient = func(addr string) (smtpDialer, error) {
+		client := &smtpDialerMock{}
+		return client, nil
+	}
+	err = state.RejectRequestemail("username", "approvingUser", []string{"admin@example.com"},
+		"somegroup", "127.0.0.1", "mycecret uA")
+	if err != nil {
+		t.Fatal(err)
+	}
+}

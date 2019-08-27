@@ -623,7 +623,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
 		return
 	}
-	username, err := state.GetRemoteUserName(w, r)
+	authUser, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
 	}
@@ -641,7 +641,9 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 
 	//check [username1 groupname1] exists or not
 	for _, entry := range userPair {
-		userExistsornot, err := state.Userinfo.UsernameExistsornot(entry[0])
+		requestingUser := entry[0]
+		requestedGroup := entry[1]
+		userExistsornot, err := state.Userinfo.UsernameExistsornot(requestingUser)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -652,11 +654,12 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
 			return
 		}
-		err = state.groupExistsorNot(w, entry[1])
+		log.Printf("after user exists check")
+		err = state.groupExistsorNot(w, requestedGroup)
 		if err != nil {
 			return
 		}
-		IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, entry[1])
+		IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(authUser, requestedGroup)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -669,12 +672,15 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 	}
 	//entry:[user group]
 	for _, entry := range userPair {
-		Isgroupmember, _, err := state.Userinfo.IsgroupmemberorNot(entry[1], entry[0])
+		requestingUser := entry[0]
+		requestedGroup := entry[1]
+		log.Printf("Loop2: requestingUser =%s requestedGroup=%s", requestingUser, requestedGroup)
+		Isgroupmember, _, err := state.Userinfo.IsgroupmemberorNot(entry[1], requestingUser)
 		if err != nil {
 			log.Println(err)
 		}
 		if Isgroupmember {
-			err = deleteEntryInDB(entry[0], entry[1], state)
+			err = deleteEntryInDB(requestingUser, entry[1], state)
 			if err != nil {
 				//fmt.Println("error me")
 				log.Println(err)
@@ -684,20 +690,23 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 		}
 		var groupinfo userinfo.GroupInfo
 		groupinfo.Groupname = entry[1]
-		groupinfo.MemberUid = append(groupinfo.MemberUid, entry[0])
+		groupinfo.MemberUid = append(groupinfo.MemberUid, requestingUser)
 		err = state.Userinfo.AddmemberstoExisting(groupinfo)
 		if err != nil {
 			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
 		}
-
-		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" joined Group "+"%s"+" approved by "+"%s", entry[0], entry[1], username)))
-		err = deleteEntryInDB(entry[0], entry[1], state)
+		if state.sysLog != nil {
+			state.sysLog.Write([]byte(fmt.Sprintf("%s"+" joined Group "+"%s"+" approved by "+"%s", requestingUser, entry[1], authUser)))
+		}
+		err = deleteEntryInDB(requestingUser, entry[1], state)
 		if err != nil {
 			fmt.Println("error here!")
 			log.Println(err)
 		}
 	}
-	go state.sendApproveemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
+	go state.sendApproveemail(authUser, out["groups"], r.RemoteAddr, r.UserAgent())
 	w.WriteHeader(http.StatusOK)
 
 }
@@ -1019,7 +1028,11 @@ func (state *RuntimeState) groupExistsorNot(w http.ResponseWriter, groupname str
 	GroupExistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupname)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		if err == userinfo.GroupDoesNotExist {
+			http.Error(w, fmt.Sprint("Bad request!"), http.StatusBadRequest)
+		} else {
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		}
 		return err
 	}
 	if !GroupExistsornot {
