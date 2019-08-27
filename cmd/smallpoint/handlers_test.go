@@ -311,3 +311,70 @@ func TestRejectHandler(t *testing.T) {
 			status, http.StatusOK)
 	}
 }
+
+func TestExitfromGroup(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Fatal(err)
+	}
+	smtpClient = func(addr string) (smtpDialer, error) {
+		client := &smtpDialerMock{}
+		return client, nil
+	}
+	// TODO: Consistency is not our forte here
+	requestData := map[string][]string{
+		"groups": []string{"group2"},
+	}
+	jsonBytes, err := json.Marshal(requestData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("POST", exitgroupPath, bytes.NewReader(jsonBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := testCreateValidCookie() //testCreateValidAdminCookie()
+	req.AddCookie(&cookie)
+	//This is actually not neded
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(state.exitfromGroup)
+
+	handler.ServeHTTP(rr, req)
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+}
+
+func TestDeletemembersfromExistingGroupMinimal(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Fatal(err)
+	}
+	smtpClient = func(addr string) (smtpDialer, error) {
+		client := &smtpDialerMock{}
+		return client, nil
+	}
+	formValues := url.Values{"groupname": {"group2"}, "members": {"user2"}}
+	req, err := http.NewRequest("POST", deletemembersbuttonPath, strings.NewReader(formValues.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := testCreateValidAdminCookie()
+	req.AddCookie(&cookie)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(state.deletemembersfromExistingGroup)
+
+	handler.ServeHTTP(rr, req)
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+}
