@@ -432,6 +432,12 @@ func (state *RuntimeState) deleteRequests(w http.ResponseWriter, r *http.Request
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
+	_, ok := out["groups"]
+	if !ok {
+		log.Println("Bad request, missing required JSON attributes")
+		http.Error(w, fmt.Sprint("Bad request!, Bad request, missing required JSON attributes"), http.StatusBadRequest)
+		return
+	}
 	for _, entry := range out["groups"] {
 		err = state.groupExistsorNot(w, entry)
 		if err != nil {
@@ -467,6 +473,12 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 		return
 
 	}
+	_, ok := out["groups"]
+	if !ok {
+		log.Println("Bad request, missing required JSON attributes")
+		http.Error(w, fmt.Sprint("Bad request!, Bad request, missing required JSON attributes"), http.StatusBadRequest)
+		return
+	}
 	for _, entry := range out["groups"] {
 		err = state.groupExistsorNot(w, entry)
 		if err != nil {
@@ -495,7 +507,9 @@ func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request)
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 			return
 		}
-		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" exited from Group "+"%s", username, entry)))
+		if state.sysLog != nil {
+			state.sysLog.Write([]byte(fmt.Sprintf("%s"+" exited from Group "+"%s", username, entry)))
+		}
 	}
 	w.WriteHeader(http.StatusOK)
 
@@ -636,7 +650,12 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	//log.Println(out["groups"])//[[username1,groupname1][username2,groupname2]]
-	var userPair = out["groups"]
+	userPair, ok := out["groups"]
+	if !ok {
+		log.Println("Bad request, missing required JSON attributes")
+		http.Error(w, fmt.Sprint("Bad request!, Bad request, missing required JSON attributes"), http.StatusBadRequest)
+		return
+	}
 	//entry:[username1 groupname1]
 
 	//check [username1 groupname1] exists or not
@@ -726,6 +745,12 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	_, ok := out["groups"]
+	if !ok {
+		log.Println("Bad request, missing required JSON attributes")
+		http.Error(w, fmt.Sprint("Bad request!, Bad request, missing required JSON attributes"), http.StatusBadRequest)
 		return
 	}
 	//this handler just deletes requests from the DB, so check if the user is authorized to reject or not.
@@ -978,8 +1003,10 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
-	for _, member := range strings.Split(members, ",") {
-		state.sysLog.Write([]byte(fmt.Sprintf("%s was deleted from Group %s by %s", member, groupinfo.Groupname, username)))
+	if state.sysLog != nil {
+		for _, member := range strings.Split(members, ",") {
+			state.sysLog.Write([]byte(fmt.Sprintf("%s was deleted from Group %s by %s", member, groupinfo.Groupname, username)))
+		}
 	}
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	pageData := simpleMessagePageData{
