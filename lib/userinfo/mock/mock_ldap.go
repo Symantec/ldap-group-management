@@ -516,3 +516,25 @@ func (m *MockLdap) GetGroupandManagedbyAttributeValue(groupnames []string) ([][]
 func (m *MockLdap) ChangeDescription(groupname string, managegroup string) error {
 	return nil
 }
+
+func (m *MockLdap) CreateUser(username string) error {
+
+	userdn := m.createUserDN(username)
+	var user LdapUserInfo
+	user.objectClass = []string{"posixAccount", "person", "ldapPublicKey", "organizationalPerson", "inetOrgPerson", "shadowAccount", "top", "inetUser", "pwmuser"}
+	user.uid = username
+	user.uidNumber, _ = m.GetmaximumUidnumber(LdapUserDN)
+	user.mail = username + "@symantec.com"
+	user.cn = username
+	m.Users[userdn] = user
+	return nil
+}
+
+func (m *MockLdap) getallUsersNonCached() ([]string, error) {
+	var allusers []string
+	for _, value := range m.Users {
+		allusers = append(allusers, value.uid)
+	}
+
+	return allusers, nil
+}

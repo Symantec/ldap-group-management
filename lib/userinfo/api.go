@@ -23,8 +23,6 @@ type GroupInfo struct {
 type UserInfo interface {
 	GetallUsers() ([]string, error)
 
-	//CreateserviceDn(groupname string, a AccountType) string
-
 	CreateGroup(groupinfo GroupInfo) error
 
 	DeleteGroup(groupnames []string) error
@@ -72,4 +70,6 @@ type UserInfo interface {
 	GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error)
 
 	GetGroupandManagedbyAttributeValue(groupnames []string) ([][]string, error)
+
+	CreateUser(username string) error
 }

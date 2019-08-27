@@ -378,3 +378,21 @@ func TestDeletemembersfromExistingGroupMinimal(t *testing.T) {
 			status, http.StatusOK)
 	}
 }
+func TestCreateUserorNot(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = state.createUserorNot("user1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = state.createUserorNot("user1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = state.createUserorNot("non-existing-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
