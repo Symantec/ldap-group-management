@@ -1210,6 +1210,7 @@ func (u *UserInfoLDAPSource) GetGroupandManagedbyAttributeValue(groupnames []str
 	return UserGroupInfo, nil
 }
 
+//TODO: add test function for this
 func (u *UserInfoLDAPSource) CreateUser(username string) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {

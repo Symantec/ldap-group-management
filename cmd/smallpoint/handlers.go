@@ -107,7 +107,7 @@ func (state *RuntimeState) loginHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	userName := userInfo.Id
+	userName := *userInfo.Username
 
 	err = state.createUserorNot(userName)
 	if err != nil {
