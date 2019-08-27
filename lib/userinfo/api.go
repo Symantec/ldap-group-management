@@ -27,8 +27,6 @@ type UserInfo interface {
 
 	DeleteGroup(groupnames []string) error
 
-	AddAtributedescription(groupname string) error
-
 	ChangeDescription(groupname string, managegroup string) error
 
 	GetallGroups() ([]string, error)

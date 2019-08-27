@@ -145,6 +145,7 @@ func handleSearchGroup(w ldap.ResponseWriter, m *ldap.Message) {
 	if !hasGroupFilter || strings.Contains(r.FilterString(), "cn=group1") {
 		e := ldap.NewSearchResultEntry("cn=group1, " + string(r.BaseObject()))
 		e.AddAttribute("cn", "group1")
+		e.AddAttribute("gidNumber", "10001")
 		e.AddAttribute("memberUid", "yunchao_liu")
 		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
 		w.Write(e)
@@ -153,6 +154,7 @@ func handleSearchGroup(w ldap.ResponseWriter, m *ldap.Message) {
 		strings.Contains(r.FilterString(), "memberUid=valere.jeantet") {
 		e := ldap.NewSearchResultEntry("cn=group2, " + string(r.BaseObject()))
 		e.AddAttribute("cn", "group2")
+		e.AddAttribute("gidNumber", "10002")
 		e.AddAttribute("memberUid", "valere.jeantet")
 		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
 		w.Write(e)
@@ -161,6 +163,7 @@ func handleSearchGroup(w ldap.ResponseWriter, m *ldap.Message) {
 		strings.Contains(r.FilterString(), "memberUid=valere.jeantet") {
 		e := ldap.NewSearchResultEntry("cn=group3, " + string(r.BaseObject()))
 		e.AddAttribute("cn", "group3")
+		e.AddAttribute("gidNumber", "10002")
 		e.AddAttribute("memberUid", "valere.jeantet")
 		e.AddAttribute("memberUid", "yunchao_liu")
 		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
@@ -467,4 +470,20 @@ func Test_AddmembersToExisting(t *testing.T) {
 		log.Fatal(err)
 	}
 	// TODO: actually verify that the members where added
+}
+
+func Test_CreateGroup(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+
+	groupInfo := userinfo.GroupInfo{
+		Groupname:   "group4",
+		Description: "self-managed",
+		MemberUid:   []string{"yunchao_liu"},
+	}
+	err := u.CreateGroup(groupInfo)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// TODO: actually verify that the members where added
+
 }

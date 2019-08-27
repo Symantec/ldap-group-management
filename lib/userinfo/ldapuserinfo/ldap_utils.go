@@ -342,62 +342,6 @@ func (u *UserInfoLDAPSource) DeleteGroup(groupnames []string) error {
 	return nil
 }
 
-//Adding an attritube called 'description' to a dn in Target Ldap
-func (u *UserInfoLDAPSource) AddAtributedescription(groupname string) error {
-	conn, err := u.getTargetLDAPConnection()
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	defer conn.Close()
-
-	entry, err := u.getGroupDN(conn, groupname)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	modify := ldap.NewModifyRequest(entry)
-	modify.Add(u.GroupManageAttribute, []string{"self-managed"})
-
-	//modify.Add("description", []string{"created by me"})
-	err = conn.Modify(modify)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	return nil
-
-}
-
-//Deleting the attribute in a dn in Target Ldap. --required
-func (u *UserInfoLDAPSource) deleteDescription(groupnames []string) error {
-
-	conn, err := u.getTargetLDAPConnection()
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	defer conn.Close()
-
-	for _, entry := range groupnames {
-		entry, err = u.getGroupDN(conn, entry)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-
-		modify := ldap.NewModifyRequest(entry)
-
-		modify.Delete(u.GroupManageAttribute, []string{"created by Midpoint"})
-		err := conn.Modify(modify)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-	}
-	return nil
-}
-
 //Change group description --required
 func (u *UserInfoLDAPSource) ChangeDescription(groupname string, managegroup string) error {
 	conn, err := u.getTargetLDAPConnection()
