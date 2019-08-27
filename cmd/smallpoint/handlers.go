@@ -840,8 +840,15 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 	if err != nil {
 		return
 	}
-	err = state.isGroupAdmin(w, username, groupinfo.Groupname)
+	isAdmin, err := state.isGroupAdmin(username, groupinfo.Groupname)
 	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !isAdmin {
+		log.Printf("User %s is not admin for group %s ", username, groupinfo.Groupname)
+		http.Error(w, "Not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -882,10 +889,10 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		}
 	}
 
-	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	isGlobalAdmin := state.Userinfo.UserisadminOrNot(username)
 	pageData := simpleMessagePageData{
 		UserName:       username,
-		IsAdmin:        isAdmin,
+		IsAdmin:        isGlobalAdmin,
 		Title:          "Members Sucessfully Added",
 		SuccessMessage: "Selected Members have been successfully added to the group",
 		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
@@ -968,8 +975,15 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	if err != nil {
 		return
 	}
-	err = state.isGroupAdmin(w, username, groupinfo.Groupname)
+	isAdmin, err := state.isGroupAdmin(username, groupinfo.Groupname)
 	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+	if !isAdmin {
+		log.Printf("Unauthorized")
+		http.Error(w, fmt.Sprint(err), http.StatusForbidden)
 		return
 	}
 
@@ -1008,10 +1022,10 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 			state.sysLog.Write([]byte(fmt.Sprintf("%s was deleted from Group %s by %s", member, groupinfo.Groupname, username)))
 		}
 	}
-	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	isGlobalAdmin := state.Userinfo.UserisadminOrNot(username)
 	pageData := simpleMessagePageData{
 		UserName:       username,
-		IsAdmin:        isAdmin,
+		IsAdmin:        isGlobalAdmin,
 		Title:          "Members Sucessfully Deleted",
 		SuccessMessage: "Selected Members have been successfully deleted from the group",
 		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
@@ -1070,19 +1084,18 @@ func (state *RuntimeState) groupExistsorNot(w http.ResponseWriter, groupname str
 	return nil
 }
 
-func (state *RuntimeState) isGroupAdmin(w http.ResponseWriter, username string, groupname string) error {
+func (state *RuntimeState) isGroupAdmin(username string, groupname string) (bool, error) {
 	IsgroupAdmin, err := state.Userinfo.IsgroupAdminorNot(username, groupname)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return err
+		if err == userinfo.GroupDoesNotExist {
+			return false, nil
+		}
+		return false, err
 	}
-	if !IsgroupAdmin && !state.Userinfo.UserisadminOrNot(username) {
-		log.Printf("isGroupAdmin: authorization failed for %s on group %s!", username, groupname)
-		http.Error(w, fmt.Sprint("you are not authorized to make changes to this group!"), http.StatusForbidden)
-		return errors.New("you are not authorized to make changes to this group!")
+	if IsgroupAdmin {
+		return true, nil
 	}
-	return nil
+	return state.Userinfo.UserisadminOrNot(username), nil
 }
 
 func (state *RuntimeState) groupInfoWebpage(w http.ResponseWriter, r *http.Request) {
