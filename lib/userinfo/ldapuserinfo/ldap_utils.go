@@ -44,6 +44,8 @@ type UserInfoLDAPSource struct {
 	MainBaseDN            string `yaml:"Main_base_dns"`
 	GroupManageAttribute  string `yaml:"group_Manage_Attribute"`
 
+	RootCAs *x509.CertPool
+
 	allUsersRWLock                     sync.RWMutex
 	allUsersCacheValue                 []string
 	allUsersCacheExpiration            time.Time
@@ -77,26 +79,6 @@ func extractCNFromDNString(input []string) (output []string, err error) {
 		}
 	}
 	return output, nil
-}
-
-func (u *UserInfoLDAPSource) objectClassExistsorNot(conn *ldap.Conn, groupname string, objectclass string) (bool, error) {
-	searchrequest := ldap.NewSearchRequest(u.GroupSearchBaseDNs, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-		0, 0, false, "(&(cn="+groupname+" )(objectClass=posixGroup))", []string{"objectClass"}, nil)
-	result, err := conn.Search(searchrequest)
-	if err != nil {
-		log.Println(err)
-		return false, err
-	}
-	if len(result.Entries) > 1 {
-		log.Println("multiple entries found")
-		return false, errors.New("Multiple entries found!")
-	}
-	for _, value := range result.Entries[0].GetAttributeValues("objectClass") {
-		if value == objectclass {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 func getLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ldap.Conn, string, error) {
@@ -147,7 +129,7 @@ func (u *UserInfoLDAPSource) getTargetLDAPConnection() (*ldap.Conn, error) {
 	}
 
 	for _, TargetLdapUrl := range ldapURL {
-		conn, _, err := getLDAPConnection(*TargetLdapUrl, ldapTimeoutSecs, nil)
+		conn, _, err := getLDAPConnection(*TargetLdapUrl, ldapTimeoutSecs, u.RootCAs)
 
 		if err != nil {
 			log.Println(err)
@@ -224,20 +206,16 @@ func (u *UserInfoLDAPSource) GetallUsers() ([]string, error) {
 func (u *UserInfoLDAPSource) createUserDN(username string) string {
 	//uid := username
 	result := "uid=" + username + "," + u.UserSearchBaseDNs
-
 	return string(result)
-
 }
 
 //To build a GroupDN for a particular group in Target ldaputil
 func (u *UserInfoLDAPSource) createGroupDN(groupname string) string {
 	result := "cn=" + groupname + "," + u.GroupSearchBaseDNs
-
 	return string(result)
-
 }
 
-func (u *UserInfoLDAPSource) CreateserviceDn(groupname string, a userinfo.AccountType) string {
+func (u *UserInfoLDAPSource) createServiceDN(groupname string, a userinfo.AccountType) string {
 	var serviceDN string
 	if a == UserServiceAccount {
 		serviceDN = "uid=" + groupname + "," + u.ServiceAccountBaseDNs
@@ -246,6 +224,37 @@ func (u *UserInfoLDAPSource) CreateserviceDn(groupname string, a userinfo.Accoun
 		serviceDN = "cn=" + groupname + "," + u.ServiceAccountBaseDNs
 	}
 	return string(serviceDN)
+}
+
+////
+// GetGroupsOfUser returns the all groups of a user. --required
+func (u *UserInfoLDAPSource) getUserDN(conn *ldap.Conn, username string) (string, error) {
+	searchPaths := []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs}
+	for _, searchPath := range searchPaths {
+		searchRequest := ldap.NewSearchRequest(
+			searchPath,
+			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+			"(&(uid="+username+" ))",
+			[]string{"uid", "dn"}, //memberOf (if searching other way around using usersdn instead of groupdn)
+			nil,
+		)
+		sr, err := conn.Search(searchRequest)
+		if err != nil {
+			log.Println(err)
+			return "", err
+		}
+		if len(sr.Entries) < 1 {
+			continue
+		}
+
+		if len(sr.Entries) != 1 {
+			log.Printf("User does not exist or too many entries returned")
+			return "", errors.New("user does not exist or too many users")
+		}
+		return sr.Entries[0].DN, nil
+	}
+	return "", userinfo.UserDoesNotExist
+
 }
 
 //Creating a Group --required
@@ -258,7 +267,7 @@ func (u *UserInfoLDAPSource) CreateGroup(groupinfo userinfo.GroupInfo) error {
 	defer conn.Close()
 
 	entry := u.createGroupDN(groupinfo.Groupname)
-	gidnum, err := u.getMaximumGIDNumber(u.GroupSearchBaseDNs)
+	gidnum, err := u.getMaximumGIDNumber(conn, u.GroupSearchBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -594,13 +603,7 @@ func (u *UserInfoLDAPSource) UserisadminOrNot(username string) bool {
 }
 
 //it helps to findout the current maximum gid number in ldaputil.
-func (u *UserInfoLDAPSource) getMaximumGIDNumber(searchBaseDN string) (string, error) {
-	conn, err := u.getTargetLDAPConnection()
-	if err != nil {
-		log.Println(err)
-		return "error in getTargetLDAPConnection", err
-	}
-	defer conn.Close()
+func (u *UserInfoLDAPSource) getMaximumGIDNumber(conn *ldap.Conn, searchBaseDN string) (string, error) {
 	searchRequest := ldap.NewSearchRequest(
 		searchBaseDN,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
@@ -628,13 +631,7 @@ func (u *UserInfoLDAPSource) getMaximumGIDNumber(searchBaseDN string) (string, e
 	return fmt.Sprint(max + 1), nil
 }
 
-func (u *UserInfoLDAPSource) getMaximumUIDNumber(searchBaseDN string) (string, error) {
-	conn, err := u.getTargetLDAPConnection()
-	if err != nil {
-		log.Println(err)
-		return "error in getTargetLDAPConnection", err
-	}
-	defer conn.Close()
+func (u *UserInfoLDAPSource) getMaximumUIDNumber(conn *ldap.Conn, searchBaseDN string) (string, error) {
 	searchRequest := ldap.NewSearchRequest(
 		searchBaseDN,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
@@ -670,11 +667,6 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) 
 		return err
 	}
 	defer conn.Close()
-	objectExists, err := u.objectClassExistsorNot(conn, groupinfo.Groupname, objectClassgroupofNames)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
 	entry, err := u.getGroupDN(conn, groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
@@ -682,13 +674,15 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) 
 	}
 	if len(groupinfo.Member) == 0 {
 		for _, memberUid := range groupinfo.MemberUid {
-			groupinfo.Member = append(groupinfo.Member, u.createUserDN(memberUid))
+			userDN, err := u.getUserDN(conn, memberUid)
+			if err != nil {
+				return err
+			}
+			groupinfo.Member = append(groupinfo.Member, userDN)
 		}
 	}
 	modify := ldap.NewModifyRequest(entry)
-	if objectExists {
-		modify.Add("member", groupinfo.Member)
-	}
+	modify.Add("member", groupinfo.Member)
 	modify.Add("memberUid", groupinfo.MemberUid)
 	err = conn.Modify(modify)
 	if err != nil {
@@ -706,11 +700,7 @@ func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo
 		return err
 	}
 	defer conn.Close()
-	objectExists, err := u.objectClassExistsorNot(conn, groupinfo.Groupname, objectClassgroupofNames)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
+
 	entry, err := u.getGroupDN(conn, groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
@@ -721,13 +711,15 @@ func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo
 
 	if len(groupinfo.Member) == 0 {
 		for _, memberUid := range groupinfo.MemberUid {
-			groupinfo.Member = append(groupinfo.Member, u.createUserDN(memberUid))
+			userDN, err := u.getUserDN(conn, memberUid)
+			if err != nil {
+				return err
+			}
+			groupinfo.Member = append(groupinfo.Member, userDN)
 		}
 	}
 
-	if objectExists {
-		modify.Delete("member", groupinfo.Member)
-	}
+	modify.Delete("member", groupinfo.Member)
 	err = conn.Modify(modify)
 	if err != nil {
 		log.Println(err)
@@ -814,7 +806,10 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 }
 
 func (u *UserInfoLDAPSource) getEmailofUserInternal(conn *ldap.Conn, username string) ([]string, error) {
-	Userdn := u.createUserDN(username)
+	Userdn, err := u.getUserDN(conn, username)
+	if err != nil {
+		return nil, err
+	}
 	searchrequest := ldap.NewSearchRequest(Userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, "(&(uid="+username+"))", []string{"mail"}, nil)
 	result, err := conn.Search(searchrequest)
@@ -875,17 +870,17 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 	}
 	defer conn.Close()
 
-	gidnum, err := u.getMaximumGIDNumber(u.ServiceAccountBaseDNs)
+	gidnum, err := u.getMaximumGIDNumber(conn, u.ServiceAccountBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	uidnum, err := u.getMaximumUIDNumber(u.ServiceAccountBaseDNs)
+	uidnum, err := u.getMaximumUIDNumber(conn, u.ServiceAccountBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	serviceDN := u.CreateserviceDn(groupinfo.Groupname, GroupServiceAccount)
+	serviceDN := u.createServiceDN(groupinfo.Groupname, GroupServiceAccount)
 
 	group := ldap.NewAddRequest(serviceDN)
 	group.Attribute("objectClass", []string{"posixGroup", "top", "groupOfNames"})
@@ -897,7 +892,7 @@ func (u *UserInfoLDAPSource) CreateServiceAccount(groupinfo userinfo.GroupInfo) 
 		return err
 	}
 
-	serviceDN = u.CreateserviceDn(groupinfo.Groupname, UserServiceAccount)
+	serviceDN = u.createServiceDN(groupinfo.Groupname, UserServiceAccount)
 
 	user := ldap.NewAddRequest(serviceDN)
 	user.Attribute("objectClass", []string{"posixAccount", "person", "ldapPublicKey", "organizationalPerson", "inetOrgPerson", "shadowAccount", "top"})
@@ -1092,7 +1087,7 @@ func (u *UserInfoLDAPSource) getGroupDN(conn *ldap.Conn, groupname string) (stri
 	}
 	if len(sr.Entries) < 1 {
 		log.Printf("No DN found for group:%s", groupname)
-		return "", errors.New("Multiple entries found, Contact the administrator!")
+		return "", userinfo.GroupDoesNotExist
 	}
 	users := sr.Entries[0].DN
 	return users, nil
@@ -1120,7 +1115,19 @@ func (u *UserInfoLDAPSource) GetGroupsInfoOfUser(groupdn string, username string
 		return nil, err
 	}
 	for _, entry := range sr.Entries {
-		Groupattributes = append(Groupattributes, entry.GetAttributeValue("cn"), entry.GetAttributeValue(u.GroupManageAttribute))
+		managerValue := entry.GetAttributeValue(u.GroupManageAttribute)
+		switch strings.ToLower(u.GroupManageAttribute) {
+		case "owner":
+			groupCN, err := extractCNFromDNString([]string{managerValue})
+			if err != nil {
+				log.Println(err)
+				return nil, err
+			}
+			managerValue = groupCN[0]
+		default:
+			managerValue = managerValue
+		}
+		Groupattributes = append(Groupattributes, entry.GetAttributeValue("cn"), managerValue)
 		GroupandDescriptionPair = append(GroupandDescriptionPair, Groupattributes)
 		Groupattributes = nil
 	}
@@ -1168,13 +1175,6 @@ func (u *UserInfoLDAPSource) getAllGroupsManagedByNonCached() ([][]string, error
 	return GroupandDescriptionPair, nil
 }
 
-//const allGroupsCacheDuration = time.Second * 30
-/*
-        allGroupsAndManagerCacheMutex      sync.Mutex
-	        allGroupsAndManagerCacheValue      [][]string
-		        allGroupsAndManagerCacheExpiration time.Time
-*/
-
 func (u *UserInfoLDAPSource) GetAllGroupsManagedBy() ([][]string, error) {
 
 	u.allGroupsAndManagerCacheMutex.Lock()
@@ -1219,7 +1219,7 @@ func (u *UserInfoLDAPSource) CreateUser(username string) error {
 	}
 	defer conn.Close()
 
-	uidnum, err := u.getMaximumUIDNumber(u.UserSearchBaseDNs)
+	uidnum, err := u.getMaximumUIDNumber(conn, u.UserSearchBaseDNs)
 	if err != nil {
 		log.Println(err)
 		return err
