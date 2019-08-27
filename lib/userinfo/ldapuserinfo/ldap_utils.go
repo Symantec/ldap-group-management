@@ -53,10 +53,6 @@ type UserInfoLDAPSource struct {
 	allGroupsAndManagerCacheMutex      sync.Mutex
 	allGroupsAndManagerCacheValue      [][]string
 	allGroupsAndManagerCacheExpiration time.Time
-
-	allUsersLongRWLock          sync.RWMutex
-	allUsersLongCacheValue      []string
-	allUsersLongCacheExpiration time.Time
 }
 
 func (u *UserInfoLDAPSource) flushGroupCaches() {
@@ -816,10 +812,11 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 
 	return u.getEmailofUserInternal(conn, username)
 }
+
 func (u *UserInfoLDAPSource) getEmailofUserInternal(conn *ldap.Conn, username string) ([]string, error) {
 	Userdn := u.createUserDN(username)
 	searchrequest := ldap.NewSearchRequest(Userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-		0, 0, false, "(&(uid="+username+"))", []string{"mail"}, nil)
+		0, 0, false, "(&(uid="+username+")", []string{"mail"}, nil)
 	result, err := conn.Search(searchrequest)
 	if err != nil {
 		log.Println(err)
@@ -1257,36 +1254,5 @@ func (u *UserInfoLDAPSource) CreateUser(username string) error {
 		log.Println(err)
 		return err
 	}
-	return nil
-}
-
-func (u *UserInfoLDAPSource) AlluserFreshCache() bool {
-	if u.allUsersLongCacheExpiration.After(time.Now()) {
-		return true
-	}
-
-	return false
-}
-
-func (u *UserInfoLDAPSource) UserInCache(username string) bool {
-	for _, user := range u.allUsersLongCacheValue {
-		if username == user {
-			return true
-		}
-	}
-	return false
-}
-
-const allUsersCacheLongDuration = time.Hour * 6
-
-func (u *UserInfoLDAPSource) UpdateAlluserLocalCache() error {
-	u.allUsersLongRWLock.Lock()
-	defer u.allUsersLongRWLock.Unlock()
-	allUsers, err := u.GetallUsersNonCached()
-	if err != nil {
-		return err
-	}
-	u.allUsersLongCacheValue = allUsers
-	u.allUsersLongCacheExpiration = time.Now().Add(allUsersCacheLongDuration)
 	return nil
 }

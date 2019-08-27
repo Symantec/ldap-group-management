@@ -64,6 +64,78 @@ func randomStringGeneration() (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
+func (state *RuntimeState) AlluserFreshCache() bool {
+	if state.allUsersCacheExpiration.After(time.Now()) {
+		return true
+	}
+
+	return false
+}
+
+func (state *RuntimeState) UserInCache(username string) bool {
+	for _, user := range state.allUsersCacheValue {
+		if username == user {
+			return true
+		}
+	}
+
+	return false
+}
+
+const allUsersCacheDuration = time.Hour * 6
+
+func (state *RuntimeState) UpdateAlluserLocalCache() error {
+	log.Println("update local cache")
+	state.allUsersRWLock.Lock()
+	defer state.allUsersRWLock.Unlock()
+	allUsers, err := state.Userinfo.GetallUsersNonCached()
+	if err != nil {
+		return err
+	}
+	state.allUsersCacheValue = allUsers
+	state.allUsersCacheExpiration = time.Now().Add(allUsersCacheDuration)
+	return nil
+}
+
+func (state *RuntimeState) UpdateLocalCacheinPeriod(ticker *time.Ticker) {
+	for {
+		select {
+		case <-ticker.C:
+			err := state.UpdateAlluserLocalCache()
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	}
+}
+
+func (state *RuntimeState) createUserorNot(username string) error {
+	freshCache := state.AlluserFreshCache()
+	existInCache := state.UserInCache(username)
+
+	if !(freshCache && existInCache) {
+		found, err := state.Userinfo.UsernameExistsornot(username)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		if !found {
+			err = state.Userinfo.CreateUser(username)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+		}
+
+		err = state.UpdateAlluserLocalCache()
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+	return nil
+}
+
 func (state *RuntimeState) loginHandler(w http.ResponseWriter, r *http.Request) {
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
@@ -71,10 +143,20 @@ func (state *RuntimeState) loginHandler(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
+
 	if userInfo == nil {
 		log.Println("null userinfo!")
 
 		http.Error(w, "null userinfo", http.StatusInternalServerError)
+		return
+	}
+
+	userName := userInfo.Id
+
+	err = state.createUserorNot(userName)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
 	randomString, err := randomStringGeneration()
@@ -111,6 +193,12 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 	if r.TLS != nil {
 		if len(r.TLS.VerifiedChains) > 0 {
 			clientName := r.TLS.VerifiedChains[0][0].Subject.CommonName
+			err = state.createUserorNot(clientName)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				return "", err
+			}
 			return clientName, nil
 		}
 	}
@@ -181,38 +269,6 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
-	}
-
-	//@camilo I want to discuss it with you, when smallpoint first spins up, it cannot get username from the cookie, username would be empty
-	if username == "" {
-		return
-	}
-
-	freshCache := state.Userinfo.AlluserFreshCache()
-	existInCache := state.Userinfo.UserInCache(username)
-
-	if !(freshCache && existInCache) {
-		found, err := state.Userinfo.UsernameExistsornot(username)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
-		if !found {
-			// TODO:get information from source AD, given name, last name and email.
-			err = state.Userinfo.CreateUser(username)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-				return
-			}
-		}
-		err = state.Userinfo.UpdateAlluserLocalCache()
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
 	}
 
 	isAdmin := state.Userinfo.UserisadminOrNot(username)

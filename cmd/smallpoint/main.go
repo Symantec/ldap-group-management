@@ -49,6 +49,10 @@ type RuntimeState struct {
 	cookiemutex  sync.Mutex
 	htmlTemplate *template.Template
 	sysLog       *syslog.Writer
+
+	allUsersRWLock          sync.RWMutex
+	allUsersCacheValue      []string
+	allUsersCacheExpiration time.Time
 }
 
 type cookieInfo struct {
@@ -90,6 +94,7 @@ var (
 )
 
 const (
+	cacheRefreshDuration        = 6 * time.Hour
 	descriptionAttribute        = "self-managed"
 	cookieExpirationHours       = 12
 	cookieName                  = "smallpointauth"
@@ -319,6 +324,8 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 	}
 
+	ticker := time.NewTicker(cacheRefreshDuration)
+	go state.UpdateLocalCacheinPeriod(ticker)
 	err = serviceServer.ListenAndServeTLS(state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename)
 	if err != nil {
 		log.Fatalf("Failed to start service server, err=%s", err)

@@ -529,14 +529,11 @@ func (m *MockLdap) CreateUser(username string) error {
 	return nil
 }
 
-func (m *MockLdap) AlluserFreshCache() bool {
-	return true
-}
+func (m *MockLdap) GetallUsersNonCached() ([]string, error) {
+	var allusers []string
+	for _, value := range m.Users {
+		allusers = append(allusers, value.uid)
+	}
 
-func (m *MockLdap) UserInCache(username string) bool {
-	return true
-}
-
-func (m *MockLdap) UpdateAlluserLocalCache() error {
-	return nil
+	return allusers, nil
 }
