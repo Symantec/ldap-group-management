@@ -72,4 +72,6 @@ type UserInfo interface {
 	GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error)
 
 	GetGroupandManagedbyAttributeValue(groupnames []string) ([][]string, error)
+
+	CreateUser(username string) error
 }

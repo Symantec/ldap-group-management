@@ -49,6 +49,9 @@ type RuntimeState struct {
 	cookiemutex  sync.Mutex
 	htmlTemplate *template.Template
 	sysLog       *syslog.Writer
+
+	allUsersRWLock     sync.RWMutex
+	allUsersCacheValue map[string]time.Time
 }
 
 type cookieInfo struct {
@@ -90,6 +93,7 @@ var (
 )
 
 const (
+	cacheRefreshDuration        = 6 * time.Hour
 	descriptionAttribute        = "self-managed"
 	cookieExpirationHours       = 12
 	cookieName                  = "smallpointauth"
@@ -203,6 +207,7 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	}
 	state.Userinfo = &state.Config.TargetLDAP
 	state.authcookies = make(map[string]cookieInfo)
+	state.allUsersCacheValue = make(map[string]time.Time)
 	return state, err
 }
 

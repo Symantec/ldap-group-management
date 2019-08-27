@@ -64,6 +64,34 @@ func randomStringGeneration() (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
+const allUsersCacheDuration = time.Hour * 1
+
+func (state *RuntimeState) createUserorNot(username string) error {
+	state.allUsersRWLock.Lock()
+	expiration, ok := state.allUsersCacheValue[username]
+	state.allUsersRWLock.Unlock()
+
+	if ok && expiration.After(time.Now()) {
+		return nil
+	}
+	found, err := state.Userinfo.UsernameExistsornot(username)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if !found {
+		err := state.Userinfo.CreateUser(username)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+	state.allUsersRWLock.Lock()
+	state.allUsersCacheValue[username] = time.Now().Add(allUsersCacheDuration)
+	state.allUsersRWLock.Unlock()
+	return nil
+}
+
 func (state *RuntimeState) loginHandler(w http.ResponseWriter, r *http.Request) {
 	userInfo, err := authSource.GetRemoteUserInfo(r)
 	if err != nil {
@@ -71,10 +99,20 @@ func (state *RuntimeState) loginHandler(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
+
 	if userInfo == nil {
 		log.Println("null userinfo!")
 
 		http.Error(w, "null userinfo", http.StatusInternalServerError)
+		return
+	}
+
+	userName := *userInfo.Username
+
+	err = state.createUserorNot(userName)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
 	randomString, err := randomStringGeneration()
@@ -111,6 +149,12 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 	if r.TLS != nil {
 		if len(r.TLS.VerifiedChains) > 0 {
 			clientName := r.TLS.VerifiedChains[0][0].Subject.CommonName
+			err = state.createUserorNot(clientName)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				return "", err
+			}
 			return clientName, nil
 		}
 	}
@@ -307,7 +351,7 @@ func (state *RuntimeState) creategroupWebpageHandler(w http.ResponseWriter, r *h
 	pageData := createGroupPageData{
 		UserName: username,
 		IsAdmin:  isAdmin,
-		Title:    "Pending Group Requests",
+		Title:    "Create Group",
 	}
 	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")
@@ -391,7 +435,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 	pageData := simpleMessagePageData{
 		UserName:       username,
 		IsAdmin:        isAdmin,
-		Title:          "Request sent Sucessfully",
+		Title:          "Request sent Successfully",
 		SuccessMessage: "Requests sent successfully, to manage your requests please visit My Pending Requests.",
 	}
 	setSecurityHeaders(w)
@@ -836,11 +880,13 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
 	}
 
-	err = state.Userinfo.AddmemberstoExisting(groupinfo)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
+	if len(groupinfo.Member) > 0 {
+		err = state.Userinfo.AddmemberstoExisting(groupinfo)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
 	}
 	for _, member := range strings.Split(members, ",") {
 		state.sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
@@ -850,7 +896,7 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 	pageData := simpleMessagePageData{
 		UserName:       username,
 		IsAdmin:        isAdmin,
-		Title:          "Members Sucessfully Added",
+		Title:          "Members Successfully Added",
 		SuccessMessage: "Selected Members have been successfully added to the group",
 		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
 	}
@@ -974,7 +1020,7 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 	pageData := simpleMessagePageData{
 		UserName:       username,
 		IsAdmin:        isAdmin,
-		Title:          "Members Sucessfully Deleted",
+		Title:          "Members Successfully Deleted",
 		SuccessMessage: "Selected Members have been successfully deleted from the group",
 		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
 	}
@@ -1001,7 +1047,7 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 	pageData := createServiceAccountPageData{
 		UserName: username,
 		IsAdmin:  isAdmin,
-		Title:    "Members Sucessfully Deleted",
+		Title:    "Create Service Account",
 	}
 	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")
