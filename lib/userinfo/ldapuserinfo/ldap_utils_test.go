@@ -10,6 +10,7 @@ import (
 
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 
+	"github.com/vjeantet/goldap/message"
 	ldap "github.com/vjeantet/ldapserver"
 )
 
@@ -100,6 +101,29 @@ const (
 	username  = "yunchao_liu"
 )
 
+var testBaseGroupData = map[string]map[string][]string{
+	"group1": map[string][]string{
+		"cn":        []string{"group1"},
+		"gidNumber": []string{"10001"},
+		"owner":     []string{"cn=group1,o=group, o=My Company, c=US"},
+		"memberUid": []string{"yunchao_liu"},
+	},
+	"group2": map[string][]string{
+		"cn":        []string{"group2"},
+		"gidNumber": []string{"10002"},
+		"owner":     []string{"cn=group1,o=group, o=My Company, c=US"},
+		"memberUid": []string{"valere.jeantet"},
+	},
+	"group3": map[string][]string{
+		"cn":        []string{"group3"},
+		"gidNumber": []string{"10003"},
+		"owner":     []string{"cn=group1,o=group, o=My Company, c=US"},
+		"memberUid": []string{"valere.jeantet", "yunchao_liu"},
+	},
+}
+
+var testGroupData = map[string]map[string][]string{}
+
 // getTLSconfig returns a tls configuration used
 // to build a TLSlistener for TLS or StartTLS
 func getTLSconfig() (*tls.Config, error) {
@@ -141,35 +165,18 @@ func handleSearchGroup(w ldap.ResponseWriter, m *ldap.Message) {
 	log.Printf("Request TimeLimit=%d", r.TimeLimit().Int())
 
 	hasGroupFilter := strings.Contains(r.FilterString(), "cn=") || strings.Contains(r.FilterString(), "memberUid=")
-
-	if !hasGroupFilter || strings.Contains(r.FilterString(), "cn=group1") {
-		e := ldap.NewSearchResultEntry("cn=group1, " + string(r.BaseObject()))
-		e.AddAttribute("cn", "group1")
-		e.AddAttribute("gidNumber", "10001")
-		e.AddAttribute("memberUid", "yunchao_liu")
-		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
-		w.Write(e)
+	for groupName, groupData := range testGroupData {
+		searchPattern := "cn=" + groupName
+		if !hasGroupFilter || strings.Contains(r.FilterString(), searchPattern) {
+			e := ldap.NewSearchResultEntry("cn=" + groupName + "," + string(r.BaseObject()))
+			for attributeName, attributeDataArray := range groupData {
+				for _, attributeValue := range attributeDataArray {
+					e.AddAttribute(message.AttributeDescription(attributeName), message.AttributeValue(attributeValue))
+				}
+			}
+			w.Write(e)
+		}
 	}
-	if !hasGroupFilter || strings.Contains(r.FilterString(), "cn=group2") ||
-		strings.Contains(r.FilterString(), "memberUid=valere.jeantet") {
-		e := ldap.NewSearchResultEntry("cn=group2, " + string(r.BaseObject()))
-		e.AddAttribute("cn", "group2")
-		e.AddAttribute("gidNumber", "10002")
-		e.AddAttribute("memberUid", "valere.jeantet")
-		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
-		w.Write(e)
-	}
-	if !hasGroupFilter || strings.Contains(r.FilterString(), "cn=group3") ||
-		strings.Contains(r.FilterString(), "memberUid=valere.jeantet") {
-		e := ldap.NewSearchResultEntry("cn=group3, " + string(r.BaseObject()))
-		e.AddAttribute("cn", "group3")
-		e.AddAttribute("gidNumber", "10002")
-		e.AddAttribute("memberUid", "valere.jeantet")
-		e.AddAttribute("memberUid", "yunchao_liu")
-		e.AddAttribute("owner", "cn=group1,o=group, o=My Company, c=US")
-		w.Write(e)
-	}
-
 	res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 	w.Write(res)
 }
@@ -201,6 +208,7 @@ func handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 		e.AddAttribute("telephoneNumber", "0612324567")
 		e.AddAttribute("cn", "Valère JEANTET")
 		e.AddAttribute("uid", "valere.jeantet")
+		e.AddAttribute("uidNumber", "5000")
 		e.AddAttribute("memberOf", "cn=group2, o=group, o=My Company, c=US", "cn=group3, o=group, o=My Company, c=US")
 		w.Write(e)
 	}
@@ -209,6 +217,7 @@ func handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 		e.AddAttribute("mail", "yunchao_liu@example.com")
 		e.AddAttribute("cn", "Yunchao Liu")
 		e.AddAttribute("uid", "yunchao_liu")
+		e.AddAttribute("uidNumber", "5001")
 		e.AddAttribute("memberOf", "cn=group1, o=group, o=My Company, c=US", "cn=group3, o=group, o=My Company, c=US")
 		w.Write(e)
 	}
@@ -243,6 +252,27 @@ func handleModifyGroup(w ldap.ResponseWriter, m *ldap.Message) {
 	res := ldap.NewModifyResponse(ldap.LDAPResultSuccess)
 	w.Write(res)
 }
+
+func handleAddGroup(w ldap.ResponseWriter, m *ldap.Message) {
+	r := m.GetAddRequest()
+	log.Printf("Adding entry: %s", r.Entry())
+	//attributes values
+	for _, attribute := range r.Attributes() {
+		for _, attributeValue := range attribute.Vals() {
+			log.Printf("- %s:%s", attribute.Type_(), attributeValue)
+		}
+	}
+	res := ldap.NewAddResponse(ldap.LDAPResultSuccess)
+	w.Write(res)
+}
+
+func handleDeleteGroup(w ldap.ResponseWriter, m *ldap.Message) {
+	r := m.GetDeleteRequest()
+	log.Printf("Deleting entry: %s", r)
+	res := ldap.NewDeleteResponse(ldap.LDAPResultSuccess)
+	w.Write(res)
+}
+
 func init() {
 
 	//Create a new LDAP Server
@@ -257,6 +287,12 @@ func init() {
 		Label("Search - Group Root")
 	routes.Search(handleSearch).Label("Search - Generic")
 	routes.Modify(handleModifyGroup).BaseDn("o=group,o=My Company,c=US")
+
+	routes.Add(handleAddGroup).BaseDn("o=group,o=My Company,c=US")
+	routes.Delete(handleDeleteGroup).BaseDn("o=group,o=My Company,c=US")
+
+	//This should be modified for other
+	routes.Add(handleAddGroup).BaseDn("ou=services,o=My Company,c=US")
 
 	server.Handle(routes)
 
@@ -286,8 +322,17 @@ func setupTestLDAPUserInfo(t *testing.T) *UserInfoLDAPSource {
 	u.UserSearchFilter = "(&(uid=*)(objectClass=person))"
 	u.GroupSearchBaseDNs = "o=group,o=My Company,c=US"
 	u.GroupSearchFilter = "(|(objectClass=posixGroup)(objectClass=groupofNames))"
+	u.ServiceAccountBaseDNs = "ou=services,o=My Company,c=US"
 	u.GroupManageAttribute = "owner"
 	u.MainBaseDN = "o=My Company,c=US"
+
+	for k := range testGroupData {
+		delete(testGroupData, k)
+	}
+
+	for k, v := range testBaseGroupData {
+		testGroupData[k] = v
+	}
 
 	return &u
 }
@@ -481,6 +526,33 @@ func Test_CreateGroup(t *testing.T) {
 		MemberUid:   []string{"yunchao_liu"},
 	}
 	err := u.CreateGroup(groupInfo)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// TODO: actually verify that the members where added
+
+}
+
+func Test_DeleteGroup(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+
+	err := u.DeleteGroup([]string{"group3"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	// TODO: actually verify that the members where added
+
+}
+
+func Test_CreateServiceAccount(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+
+	groupInfo := userinfo.GroupInfo{
+		Groupname:   "serviceaccount-f00",
+		Description: "self-managed",
+	}
+
+	err := u.CreateServiceAccount(groupInfo)
 	if err != nil {
 		log.Fatal(err)
 	}
