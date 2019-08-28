@@ -57,6 +57,64 @@ type UserInfoLDAPSource struct {
 	allGroupsAndManagerCacheExpiration time.Time
 }
 
+type SourceADInfo struct {
+	BindUsername       string `yaml:"bind_username"`
+	BindPassword       string `yaml:"bind_password"`
+	LDAPTargetURLs     string `yaml:"ldap_target_urls"`
+	UserSearchBaseDNs  string `yaml:"user_search_base_dns"`
+	UserSearchFilter   string `yaml:"user_search_filter"`
+	GroupSearchBaseDNs string `yaml:"group_search_base_dns"`
+	GroupSearchFilter  string `yaml:"group_search_filter"`
+	Admins             string `yaml:"super_admins"`
+}
+
+func (s *SourceADInfo) GetInfoFromAD(username string) ([]string, error) {
+	conn, err := s.getSourceLDAPConnection()
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer conn.Close()
+
+	email, err := getEmailofUserInternal(conn, username, nil, s)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return email, nil
+}
+
+func (s *SourceADInfo) getSourceLDAPConnection() (*ldap.Conn, error) {
+	var ldapURL []*url.URL
+	for _, ldapURLString := range strings.Split(s.LDAPTargetURLs, ",") {
+		newURL, err := authutil.ParseLDAPURL(ldapURLString)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		ldapURL = append(ldapURL, newURL)
+	}
+	for _, TargetLdapUrl := range ldapURL {
+		conn, _, err := getLDAPConnection(*TargetLdapUrl, ldapTimeoutSecs, nil)
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		timeout := time.Duration(time.Duration(ldapTimeoutSecs) * time.Second)
+		conn.SetTimeout(timeout)
+		conn.Start()
+
+		err = conn.Bind(s.BindUsername, s.BindPassword)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		return conn, nil
+	}
+	return nil, errors.New("cannot connect to LDAP server")
+}
+
 func (u *UserInfoLDAPSource) flushGroupCaches() {
 	u.allGroupsMutex.Lock()
 	defer u.allGroupsMutex.Unlock()
@@ -228,8 +286,13 @@ func (u *UserInfoLDAPSource) createServiceDN(groupname string, a userinfo.Accoun
 
 ////
 // GetGroupsOfUser returns the all groups of a user. --required
-func (u *UserInfoLDAPSource) getUserDN(conn *ldap.Conn, username string) (string, error) {
-	searchPaths := []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs}
+func getUserDN(conn *ldap.Conn, username string, u *UserInfoLDAPSource, s *SourceADInfo) (string, error) {
+	var searchPaths []string
+	if s != nil {
+		searchPaths = []string{s.UserSearchBaseDNs}
+	} else {
+		searchPaths = []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs}
+	}
 	for _, searchPath := range searchPaths {
 		searchRequest := ldap.NewSearchRequest(
 			searchPath,
@@ -674,7 +737,7 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) 
 	}
 	if len(groupinfo.Member) == 0 {
 		for _, memberUid := range groupinfo.MemberUid {
-			userDN, err := u.getUserDN(conn, memberUid)
+			userDN, err := getUserDN(conn, memberUid, u, nil)
 			if err != nil {
 				return err
 			}
@@ -711,7 +774,7 @@ func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo
 
 	if len(groupinfo.Member) == 0 {
 		for _, memberUid := range groupinfo.MemberUid {
-			userDN, err := u.getUserDN(conn, memberUid)
+			userDN, err := getUserDN(conn, memberUid, u, nil)
 			if err != nil {
 				return err
 			}
@@ -802,11 +865,11 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 	}
 	defer conn.Close()
 
-	return u.getEmailofUserInternal(conn, username)
+	return getEmailofUserInternal(conn, username, u, nil)
 }
 
-func (u *UserInfoLDAPSource) getEmailofUserInternal(conn *ldap.Conn, username string) ([]string, error) {
-	Userdn, err := u.getUserDN(conn, username)
+func getEmailofUserInternal(conn *ldap.Conn, username string, u *UserInfoLDAPSource, s *SourceADInfo) ([]string, error) {
+	Userdn, err := getUserDN(conn, username, u, s)
 	if err != nil {
 		return nil, err
 	}
@@ -848,7 +911,7 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 	var userEmail []string
 	log.Printf("GetEmailofusersingroup:%s, %+v", groupname, groupUsers)
 	for _, entry := range groupUsers {
-		value, err := u.getEmailofUserInternal(conn, entry)
+		value, err := getEmailofUserInternal(conn, entry, u, nil)
 		if err != nil {
 			log.Println(err)
 			if err == userinfo.UserDoesNotHaveEmail {

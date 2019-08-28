@@ -73,3 +73,7 @@ type UserInfo interface {
 
 	CreateUser(username string) error
 }
+
+type SourceInfo interface {
+	GetInfoFromAD(username string) ([]string, error)
+}

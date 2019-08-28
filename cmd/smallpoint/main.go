@@ -36,7 +36,7 @@ type baseConfig struct {
 
 type AppConfigFile struct {
 	Base       baseConfig                      `yaml:"base"`
-	SourceLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"source_config"`
+	SourceLDAP ldapuserinfo.SourceADInfo       `yaml:"source_config"`
 	TargetLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"target_config"`
 }
 
@@ -45,6 +45,7 @@ type RuntimeState struct {
 	dbType       string
 	db           *sql.DB
 	Userinfo     userinfo.UserInfo
+	SourceADinfo userinfo.SourceInfo
 	authcookies  map[string]cookieInfo
 	cookiemutex  sync.Mutex
 	htmlTemplate *template.Template
@@ -208,6 +209,7 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	state.Userinfo = &state.Config.TargetLDAP
 	state.authcookies = make(map[string]cookieInfo)
 	state.allUsersCacheValue = make(map[string]time.Time)
+	state.SourceADinfo = &state.Config.SourceLDAP
 	return state, err
 }
 

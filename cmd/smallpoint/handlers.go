@@ -71,6 +71,12 @@ func (state *RuntimeState) createUserorNot(username string) error {
 	expiration, ok := state.allUsersCacheValue[username]
 	state.allUsersRWLock.Unlock()
 
+	email, err := state.SourceADinfo.GetInfoFromAD(username)
+	log.Println(email)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
 	if ok && expiration.After(time.Now()) {
 		return nil
 	}
