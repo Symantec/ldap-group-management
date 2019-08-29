@@ -79,10 +79,20 @@ func (s *SourceADInfo) GetInfoFromAD(username string) ([]string, []string, error
 	}
 	defer conn.Close()
 
-	email, givenName, err := getInfoofUserInternal(conn, username, searchADparam, []string{s.UserSearchBaseDNs})
+	result, err := getInfoofUserInternal(conn, username, searchADparam, []string{s.UserSearchBaseDNs}, []string{"mail", "givenName"})
 	if err != nil {
 		log.Println(err)
 		return nil, nil, err
+	}
+	email, ok := result["mail"]
+	if !ok {
+		log.Println("error parse mail")
+		return nil, nil, errors.New("error parse mail")
+	}
+	givenName, ok := result["givenName"]
+	if !ok {
+		log.Println("error parse givenName")
+		return nil, nil, errors.New("error parse givenName")
 	}
 	return email, givenName, nil
 }
@@ -858,39 +868,44 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 		return nil, err
 	}
 	defer conn.Close()
-	email, _, err := getInfoofUserInternal(conn, username, searchLDAPparam, []string{u.UserSearchBaseDNs})
+	result, err := getInfoofUserInternal(conn, username, searchLDAPparam, []string{u.UserSearchBaseDNs}, []string{"mail"})
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
+	email, ok := result["mail"]
+	if !ok {
+		log.Println("Failed to parse email")
+		return nil, errors.New("Failed to parse email")
+	}
 	return email, nil
 }
 
-func getInfoofUserInternal(conn *ldap.Conn, username, userparameter string, searchPath []string) ([]string, []string, error) {
+func getInfoofUserInternal(conn *ldap.Conn, username, userparameter string, searchPath, searchParams []string) (map[string][]string, error) {
 	Userdn, err := getUserDN(conn, username, userparameter, searchPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	searchrequest := ldap.NewSearchRequest(Userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-		0, 0, false, "(&("+userparameter+"="+username+"))", []string{"mail", "givenName"}, nil)
+		0, 0, false, "(&("+userparameter+"="+username+"))", searchParams, nil)
 	result, err := conn.Search(searchrequest)
 	if err != nil {
 		log.Println(err)
-		return nil, nil, err
+		return nil, err
 	}
 	if len(result.Entries) < 1 {
 		log.Printf("no such user")
-		return nil, nil, userinfo.UserDoesNotExist
+		return nil, userinfo.UserDoesNotExist
 	}
-	if len(result.Entries[0].GetAttributeValues("mail")) < 1 {
-		return nil, nil, userinfo.UserDoesNotHaveEmail
-	}
-	var userEmail []string
-	userEmail = append(userEmail, result.Entries[0].GetAttributeValues("mail")[0])
-	var givenName []string
-	givenName = append(givenName, result.Entries[0].GetAttributeValues("givenName")[0])
-	return userEmail, givenName, nil
 
+	resultInfo := make(map[string][]string)
+	for _, param := range searchParams {
+		if len(result.Entries[0].GetAttributeValues(param)) < 1 {
+			return nil, errors.New("User does not have " + param)
+		}
+		resultInfo[param] = result.Entries[0].GetAttributeValues(param)
+	}
+	return resultInfo, nil
 }
 
 //get email of all users in the given group
@@ -911,7 +926,7 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 	var userEmail []string
 	log.Printf("GetEmailofusersingroup:%s, %+v", groupname, groupUsers)
 	for _, entry := range groupUsers {
-		value, _, err := getInfoofUserInternal(conn, entry, searchLDAPparam, []string{u.UserSearchBaseDNs})
+		value, err := getInfoofUserInternal(conn, entry, searchLDAPparam, []string{u.UserSearchBaseDNs}, []string{"mail"})
 		if err != nil {
 			log.Println(err)
 			if err == userinfo.UserDoesNotHaveEmail {
@@ -919,7 +934,12 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 			}
 			return nil, err
 		}
-		userEmail = append(userEmail, value[0])
+		mail, ok := value["mail"]
+		if !ok {
+			log.Println("error parse user email")
+			return nil, errors.New("error parse user email")
+		}
+		userEmail = append(userEmail, mail[0])
 
 	}
 	return userEmail, nil
