@@ -79,7 +79,7 @@ func (s *SourceADInfo) GetInfoFromAD(username string) ([]string, []string, error
 	}
 	defer conn.Close()
 
-	email, givenName, err := getEmailofUserInternal(conn, username, searchADparam, []string{s.UserSearchBaseDNs})
+	email, givenName, err := getInfoofUserInternal(conn, username, searchADparam, []string{s.UserSearchBaseDNs})
 	if err != nil {
 		log.Println(err)
 		return nil, nil, err
@@ -858,7 +858,7 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 		return nil, err
 	}
 	defer conn.Close()
-	email, _, err := getEmailofUserInternal(conn, username, searchLDAPparam, []string{u.UserSearchBaseDNs})
+	email, _, err := getInfoofUserInternal(conn, username, searchLDAPparam, []string{u.UserSearchBaseDNs})
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -866,7 +866,7 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 	return email, nil
 }
 
-func getEmailofUserInternal(conn *ldap.Conn, username, userparameter string, searchPath []string) ([]string, []string, error) {
+func getInfoofUserInternal(conn *ldap.Conn, username, userparameter string, searchPath []string) ([]string, []string, error) {
 	Userdn, err := getUserDN(conn, username, userparameter, searchPath)
 	if err != nil {
 		return nil, nil, err
@@ -911,7 +911,7 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 	var userEmail []string
 	log.Printf("GetEmailofusersingroup:%s, %+v", groupname, groupUsers)
 	for _, entry := range groupUsers {
-		value, _, err := getEmailofUserInternal(conn, entry, searchLDAPparam, []string{u.UserSearchBaseDNs})
+		value, _, err := getInfoofUserInternal(conn, entry, searchLDAPparam, []string{u.UserSearchBaseDNs})
 		if err != nil {
 			log.Println(err)
 			if err == userinfo.UserDoesNotHaveEmail {
