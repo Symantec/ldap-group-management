@@ -596,14 +596,14 @@ const deleteGroupPageText = `
 `
 
 type simpleMessagePageData struct {
-	Title   string
-	IsAdmin bool
+	Title   string `json:",omitempty"`
+	IsAdmin bool   `json:",omitempty"`
 
 	UserName       string
-	JSSources      []string
-	SuccessMessage string
-	ContinueURL    string
-	ErrorMessage   string
+	JSSources      []string `json:",omitempty"`
+	SuccessMessage string   `json:",omitempty"`
+	ContinueURL    string   `json:",omitempty"`
+	ErrorMessage   string   `json:",omitempty"`
 }
 
 const simpleMessagePageText = `

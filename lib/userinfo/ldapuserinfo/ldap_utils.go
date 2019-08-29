@@ -295,13 +295,16 @@ func (u *UserInfoLDAPSource) CreateGroup(groupinfo userinfo.GroupInfo) error {
 			groupinfo.Member = append(groupinfo.Member, u.createUserDN(memberUid))
 		}
 	}
+	log.Printf("groupinfo=%+v", groupinfo)
 
 	group := ldap.NewAddRequest(entry)
 	group.Attribute("objectClass", []string{"posixGroup", "top", "groupOfNames"})
 	group.Attribute("cn", []string{groupinfo.Groupname})
 	group.Attribute(u.GroupManageAttribute, []string{managerAttributeValue})
-	group.Attribute("member", groupinfo.Member)
-	group.Attribute("memberUid", groupinfo.MemberUid)
+	if len(groupinfo.MemberUid) > 0 {
+		group.Attribute("member", groupinfo.Member)
+		group.Attribute("memberUid", groupinfo.MemberUid)
+	}
 	group.Attribute("gidNumber", []string{gidnum})
 	err = conn.Add(group)
 	if err != nil {

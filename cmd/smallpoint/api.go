@@ -26,6 +26,37 @@ func (state *RuntimeState) getPreferredAcceptType(r *http.Request) string {
 	return preferredAcceptType
 }
 
+func (state *RuntimeState) renderTemplateOrReturnJson(w http.ResponseWriter, r *http.Request, templateName string, pageData interface{}) error {
+	preferredAcceptType := state.getPreferredAcceptType(r)
+	switch preferredAcceptType {
+	case "text/html":
+		setSecurityHeaders(w)
+		cacheControlValue := "private, max-age=60"
+		if templateName != "simpleMessagePage" {
+			cacheControlValue = "private, max-age=5"
+		}
+		w.Header().Set("Cache-Control", cacheControlValue)
+		err := state.htmlTemplate.ExecuteTemplate(w, templateName, pageData)
+		if err != nil {
+			log.Printf("Failed to execute %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
+			return err
+		}
+	default:
+		b, err := json.Marshal(pageData)
+		if err != nil {
+			log.Printf("Failed marshal %v", err)
+			http.Error(w, "error", http.StatusInternalServerError)
+			return err
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			log.Printf("Incomplete write %v", err)
+		}
+	}
+	return nil
+}
+
 // Create a group handler --required
 func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
@@ -76,13 +107,16 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 			return
 		}
 		if !descriptiongroupExistsorNot {
-			http.Error(w, fmt.Sprint("Managed by group doesn't exists!"), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Managed by group doesn't exists! managerGroup='%s'", groupinfo.Description), http.StatusInternalServerError)
 			return
 		}
 	}
 
 	//check if all the users to be added exists or not.
 	for _, member := range strings.Split(members, ",") {
+		if len(member) < 1 {
+			continue
+		}
 		userExistsorNot, err := state.Userinfo.UsernameExistsornot(member)
 		if err != nil {
 			log.Println(err)
@@ -116,14 +150,8 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		Title:          "Group Creation Success",
 		SuccessMessage: "Group has been successfully Created",
 	}
-	setSecurityHeaders(w)
-	w.Header().Set("Cache-Control", "private, max-age=10")
-	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
-	if err != nil {
-		log.Printf("Failed to execute %v", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
-	}
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
+
 }
 
 //Delete groups handler --required
@@ -192,14 +220,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		Title:          "Group Deletion Suucess",
 		SuccessMessage: "Group has been successfully Deleted",
 	}
-	setSecurityHeaders(w)
-	w.Header().Set("Cache-Control", "private, max-age=10")
-	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
-	if err != nil {
-		log.Printf("Failed to execute %v", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
-	}
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
 
 }
 
@@ -277,14 +298,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		Title:          "Service Account Creation Success",
 		SuccessMessage: "Service Account successfully created",
 	}
-	setSecurityHeaders(w)
-	w.Header().Set("Cache-Control", "private, max-age=10")
-	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
-	if err != nil {
-		log.Printf("Failed to execute %v", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
-	}
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
 }
 
 func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Request) {
@@ -335,14 +349,7 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		Title:          "Change Ownership success",
 		SuccessMessage: "Group(s) have successfuly changed ownership",
 	}
-	setSecurityHeaders(w)
-	w.Header().Set("Cache-Control", "private, max-age=10")
-	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
-	if err != nil {
-		log.Printf("Failed to execute %v", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
-	}
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
 }
 
 // TODO: figure out how to do this with templates or even better migrate to AJAX to get data

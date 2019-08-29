@@ -438,14 +438,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		Title:          "Request sent Successfully",
 		SuccessMessage: "Requests sent successfully, to manage your requests please visit My Pending Requests.",
 	}
-	setSecurityHeaders(w)
-	w.Header().Set("Cache-Control", "private, max-age=30")
-	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
-	if err != nil {
-		log.Printf("Failed to execute %v", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
-	}
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
 }
 
 //delete access requests made by user
@@ -943,14 +936,7 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		SuccessMessage: "Selected Members have been successfully added to the group",
 		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
 	}
-	setSecurityHeaders(w)
-	w.Header().Set("Cache-Control", "private, max-age=30")
-	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
-	if err != nil {
-		log.Printf("Failed to execute %v", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
-	}
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
 }
 
 func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
@@ -1076,14 +1062,7 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		SuccessMessage: "Selected Members have been successfully deleted from the group",
 		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
 	}
-	setSecurityHeaders(w)
-	w.Header().Set("Cache-Control", "private, max-age=30")
-	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
-	if err != nil {
-		log.Printf("Failed to execute %v", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
-	}
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
 }
 
 func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter, r *http.Request) {
