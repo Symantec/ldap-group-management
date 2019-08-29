@@ -71,8 +71,9 @@ func (state *RuntimeState) createUserorNot(username string) error {
 	expiration, ok := state.allUsersCacheValue[username]
 	state.allUsersRWLock.Unlock()
 
-	email, err := state.SourceADinfo.GetInfoFromAD(username)
+	email, givenName, err := state.SourceADinfo.GetInfoFromAD(username)
 	log.Println(email)
+	log.Println(givenName)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -86,7 +87,7 @@ func (state *RuntimeState) createUserorNot(username string) error {
 		return err
 	}
 	if !found {
-		err := state.Userinfo.CreateUser(username)
+		err := state.Userinfo.CreateUser(username, givenName, email)
 		if err != nil {
 			log.Println(err)
 			return err

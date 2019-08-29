@@ -71,9 +71,9 @@ type UserInfo interface {
 
 	GetGroupandManagedbyAttributeValue(groupnames []string) ([][]string, error)
 
-	CreateUser(username string) error
+	CreateUser(username string, givenName, email []string) error
 }
 
 type SourceInfo interface {
-	GetInfoFromAD(username string) ([]string, error)
+	GetInfoFromAD(username string) ([]string, []string, error)
 }
