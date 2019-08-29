@@ -52,6 +52,7 @@ func (state *RuntimeState) renderTemplateOrReturnJson(w http.ResponseWriter, r *
 		_, err = w.Write(b)
 		if err != nil {
 			log.Printf("Incomplete write %v", err)
+			return err
 		}
 	}
 	return nil
@@ -60,7 +61,7 @@ func (state *RuntimeState) renderTemplateOrReturnJson(w http.ResponseWriter, r *
 // Create a group handler --required
 func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
@@ -157,7 +158,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 //Delete groups handler --required
 func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
@@ -191,7 +192,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 
 		}
 		if !groupnameExistsorNot {
-			http.Error(w, fmt.Sprintf("Group %s doesn't exist!", eachGroup), http.StatusBadRequest)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Group %s doesn't exist!", eachGroup), http.StatusBadRequest)
 			return
 		}
 		groupnames = append(groupnames, eachGroup)
@@ -226,7 +227,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 
 func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
@@ -303,7 +304,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 
 func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
@@ -372,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "GET Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
@@ -496,7 +497,7 @@ type usersJSONData struct {
 
 func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "GET Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	_, err := state.GetRemoteUserName(w, r)

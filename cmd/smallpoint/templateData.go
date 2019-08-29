@@ -79,7 +79,9 @@ const sidebarHTMLText = `
             <img src="/images/avatar2.png" class="w3-circle w3-margin-right" style="width:46px">
         </div>
         <div class="w3-col s8 w3-bar">
+	    {{if .UserName}}
             <span>Welcome, <strong>{{.UserName}}</strong></span><br>
+	    {{end}}
         </div>
     </div>
     <hr>
@@ -599,7 +601,7 @@ type simpleMessagePageData struct {
 	Title   string `json:",omitempty"`
 	IsAdmin bool   `json:",omitempty"`
 
-	UserName       string
+	UserName       string   `json:",omitempty"`
 	JSSources      []string `json:",omitempty"`
 	SuccessMessage string   `json:",omitempty"`
 	ContinueURL    string   `json:",omitempty"`
@@ -621,6 +623,9 @@ const simpleMessagePageText = `
   <div id="content">
      <p>
      {{.SuccessMessage}}
+     {{if .ErrorMessage}}
+     {{.ErrorMessage}}
+     {{end}}
      </p>
      {{if .ContinueURL}}<p>Click <a href="{{.ContinueURL}}">Here </a> to continue</p>{{end}}
   </div><!-- end of content div -->
