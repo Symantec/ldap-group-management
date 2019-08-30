@@ -113,7 +113,6 @@ func (state *RuntimeState) loginHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	userName := *userInfo.Username
-
 	err = state.createUserorNot(userName)
 	if err != nil {
 		log.Println(err)

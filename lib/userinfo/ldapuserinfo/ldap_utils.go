@@ -77,6 +77,7 @@ func (s *SourceADInfo) GetInfoFromAD(username string) ([]string, []string, error
 		log.Println(err)
 		return nil, nil, err
 	}
+
 	result, err := getInfoofUserInternal(conn, username, searchADparam, []string{s.UserSearchBaseDNs}, []string{"mail", "givenName"})
 	if err != nil {
 		log.Println(err)
