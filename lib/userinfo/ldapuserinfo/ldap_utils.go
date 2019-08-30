@@ -370,7 +370,6 @@ func (u *UserInfoLDAPSource) ChangeDescription(groupname string, managegroup str
 	default:
 		attributeValue = managegroup
 	}
-	log.Printf("attributeValue=%s", attributeValue)
 	modify := ldap.NewModifyRequest(entry)
 	modify.Replace(u.GroupManageAttribute, []string{attributeValue})
 	err = conn.Modify(modify)

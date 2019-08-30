@@ -326,10 +326,15 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		}
 		return
 	}
-	groups := strings.Split(r.PostFormValue("groupnames"), ",")
+	groupList := strings.Split(r.PostFormValue("groupnames"), ",")
 	managegroup := r.PostFormValue("managegroup")
 	//check if given member exists or not and see if he is already a groupmember if yes continue.
-	for _, group := range groups[:len(groups)-1] {
+	for _, group := range groupList {
+		// Our UI likes to put commas as the end of the group, so we get usually "foo,bar,"... resulting in a list
+		// with an empty value.
+		if len(group) < 1 {
+			continue
+		}
 		groupinfo := userinfo.GroupInfo{}
 		groupinfo.Groupname = group
 		err = state.groupExistsorNot(w, groupinfo.Groupname)
