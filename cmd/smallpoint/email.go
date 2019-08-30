@@ -3,9 +3,38 @@ package main
 import (
 	"fmt"
 	"github.com/mssola/user_agent"
+	"io"
 	"log"
+	"net"
 	"net/smtp"
 	texttemplate "text/template"
+)
+
+// From: https://blog.andreiavram.ro/golang-unit-testing-interfaces/
+type smtpDialer interface {
+	Close() error
+	Data() (io.WriteCloser, error)
+	//Hello(localName string) error
+	Mail(from string) error
+	Rcpt(to string) error
+}
+
+var (
+	smtpClient = func(addr string) (smtpDialer, error) {
+		// Dial the tcp connection
+		conn, err := net.Dial("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+
+		// Connect to the SMTP server
+		c, err := smtp.NewClient(conn, addr)
+		if err != nil {
+			return nil, err
+		}
+
+		return c, nil
+	}
 )
 
 ////Request Access email  start.....//////
@@ -49,7 +78,7 @@ Please take a review at https://small-point.example.com/pending-actions`
 func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail []string,
 	groupname string, remoteAddr string, userAgent string) error {
 	// Connect to the remote SMTP server.
-	c, err := smtp.Dial(state.Config.Base.SMTPserver)
+	c, err := smtpClient(state.Config.Base.SMTPserver)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -149,7 +178,7 @@ func (state *RuntimeState) sendApproveemail(username string,
 func (state *RuntimeState) approveRequestemail(requesteduser string, otheruser string, usersEmail []string,
 	groupname string, remoteAddr string, userAgent string) error {
 	// Connect to the remote SMTP server.
-	c, err := smtp.Dial(state.Config.Base.SMTPserver)
+	c, err := smtpClient(state.Config.Base.SMTPserver)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -257,7 +286,7 @@ func (state *RuntimeState) sendRejectemail(username string, userPair [][]string,
 func (state *RuntimeState) RejectRequestemail(requesteduser string, otheruser string, usersEmail []string,
 	groupname string, remoteAddr string, userAgent string) error {
 	// Connect to the remote SMTP server.
-	c, err := smtp.Dial(state.Config.Base.SMTPserver)
+	c, err := smtpClient(state.Config.Base.SMTPserver)
 	if err != nil {
 		log.Println(err)
 		return err
