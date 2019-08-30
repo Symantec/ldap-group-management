@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -193,6 +195,189 @@ func TestRequestAccessHandler(t *testing.T) {
 	}
 }
 
+// This should probably go into another func
+func TestAddmemberstoExistingGroupSuccess(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Println(err)
+	}
+	smtpClient = func(addr string) (smtpDialer, error) {
+		client := &smtpDialerMock{}
+		return client, nil
+	}
+
+	formValues := url.Values{"groupname": {"group1"}, "members": {"user1"}}
+	req, err := http.NewRequest("POST", addmembersbuttonPath, strings.NewReader(formValues.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := testCreateValidAdminCookie()
+	req.AddCookie(&cookie)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(state.addmemberstoExistingGroup)
+
+	handler.ServeHTTP(rr, req)
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+}
+
+func TestApproveHandler(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Fatal(err)
+	}
+	smtpClient = func(addr string) (smtpDialer, error) {
+		client := &smtpDialerMock{}
+		return client, nil
+	}
+	//Need to add a request to the DB
+	err = insertRequestInDB("user2", []string{"group3"}, &state)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// TODO: Consistency is not our forte here
+	requestData := map[string][][]string{
+		"groups": [][]string{[]string{"user2", "group3"}},
+	}
+	jsonBytes, err := json.Marshal(requestData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest("POST", approverequestPath, bytes.NewReader(jsonBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := testCreateValidCookie() //testCreateValidAdminCookie()
+	req.AddCookie(&cookie)
+	//This is actually not neded
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(state.approveHandler)
+
+	handler.ServeHTTP(rr, req)
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+}
+
+func TestRejectHandler(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Fatal(err)
+	}
+	smtpClient = func(addr string) (smtpDialer, error) {
+		client := &smtpDialerMock{}
+		return client, nil
+	}
+	//Need to add a request to the DB
+	err = insertRequestInDB("user2", []string{"group3"}, &state)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// TODO: Consistency is not our forte here
+	requestData := map[string][][]string{
+		"groups": [][]string{[]string{"user2", "group3"}},
+	}
+	jsonBytes, err := json.Marshal(requestData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest("POST", rejectrequestPath, bytes.NewReader(jsonBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := testCreateValidCookie() //testCreateValidAdminCookie()
+	req.AddCookie(&cookie)
+	//This is actually not neded
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(state.rejectHandler)
+
+	handler.ServeHTTP(rr, req)
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+}
+
+func TestExitfromGroup(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Fatal(err)
+	}
+	smtpClient = func(addr string) (smtpDialer, error) {
+		client := &smtpDialerMock{}
+		return client, nil
+	}
+	// TODO: Consistency is not our forte here
+	requestData := map[string][]string{
+		"groups": []string{"group2"},
+	}
+	jsonBytes, err := json.Marshal(requestData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("POST", exitgroupPath, bytes.NewReader(jsonBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := testCreateValidCookie() //testCreateValidAdminCookie()
+	req.AddCookie(&cookie)
+	//This is actually not neded
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(state.exitfromGroup)
+
+	handler.ServeHTTP(rr, req)
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+}
+
+func TestDeletemembersfromExistingGroupMinimal(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Fatal(err)
+	}
+	smtpClient = func(addr string) (smtpDialer, error) {
+		client := &smtpDialerMock{}
+		return client, nil
+	}
+	formValues := url.Values{"groupname": {"group2"}, "members": {"user2"}}
+	req, err := http.NewRequest("POST", deletemembersbuttonPath, strings.NewReader(formValues.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := testCreateValidAdminCookie()
+	req.AddCookie(&cookie)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(state.deletemembersfromExistingGroup)
+
+	handler.ServeHTTP(rr, req)
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+}
 func TestCreateUserorNot(t *testing.T) {
 	state, err := setupTestState()
 	if err != nil {
