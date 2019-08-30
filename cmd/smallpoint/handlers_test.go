@@ -206,9 +206,8 @@ func TestCreateUserorNot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	/*
-		err = state.createUserorNot("non-existing-user")
-		if err != nil {
-			t.Fatal(err)
-		}*/
+	err = state.createUserorNot("non-existing-user")
+	if err != nil {
+		t.Fatal(err)
+	}
 }

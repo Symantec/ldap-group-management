@@ -6,7 +6,7 @@ import (
 
 var GroupDoesNotExist = errors.New("Group does not exist")
 var UserDoesNotExist = errors.New("User does not exist")
-var UserDoesNotHaveEmail = errors.New("User does not have email addresses")
+var UserDoesNotHaveEmail = errors.New("User does not have mail")
 
 type AccountType int
 

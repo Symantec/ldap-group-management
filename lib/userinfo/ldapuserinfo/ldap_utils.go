@@ -77,8 +77,6 @@ func (s *SourceADInfo) GetInfoFromAD(username string) ([]string, []string, error
 		log.Println(err)
 		return nil, nil, err
 	}
-	defer conn.Close()
-
 	result, err := getInfoofUserInternal(conn, username, searchADparam, []string{s.UserSearchBaseDNs}, []string{"mail", "givenName"})
 	if err != nil {
 		log.Println(err)
@@ -95,35 +93,6 @@ func (s *SourceADInfo) GetInfoFromAD(username string) ([]string, []string, error
 		return nil, nil, errors.New("error parse givenName")
 	}
 	return email, givenName, nil
-}
-
-func (s *SourceADInfo) getUserEmail(conn *ldap.Conn, username string) ([]string, error) {
-	Userdn, err := getUserDN(conn, username, searchADparam, []string{s.UserSearchBaseDNs})
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	log.Println(Userdn)
-	searchrequest := ldap.NewSearchRequest(Userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-		0, 0, false, "(&(sAMAccountName="+username+"))", []string{"mail", "givenName"}, nil)
-	result, err := conn.Search(searchrequest)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-
-	if len(result.Entries) < 1 {
-		log.Printf("no such user")
-		return nil, userinfo.UserDoesNotExist
-	}
-	if len(result.Entries[0].GetAttributeValues("mail")) < 1 {
-		return nil, userinfo.UserDoesNotHaveEmail
-	}
-	log.Println(result.Entries[0].GetAttributeValues("givenName"))
-	var userEmail []string
-	userEmail = append(userEmail, result.Entries[0].GetAttributeValues("mail")[0])
-	return userEmail, nil
-
 }
 
 func (u *UserInfoLDAPSource) flushGroupCaches() {
@@ -307,7 +276,6 @@ func getUserDN(conn *ldap.Conn, username, userParameter string, searchPaths []st
 		)
 		sr, err := conn.Search(searchRequest)
 		if err != nil {
-			log.Println(err)
 			return "", err
 		}
 		if len(sr.Entries) < 1 {
@@ -741,6 +709,7 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) 
 	}
 	if len(groupinfo.Member) == 0 {
 		for _, memberUid := range groupinfo.MemberUid {
+			log.Println(memberUid)
 			userDN, err := getUserDN(conn, memberUid, searchLDAPparam, []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs})
 			if err != nil {
 				return err

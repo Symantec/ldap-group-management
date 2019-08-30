@@ -71,10 +71,6 @@ func (state *RuntimeState) createUserorNot(username string) error {
 	expiration, ok := state.allUsersCacheValue[username]
 	state.allUsersRWLock.Unlock()
 
-	userEmail, err := state.Userinfo.GetEmailofauser(username)
-	if err != nil {
-		log.Println(userEmail)
-	}
 	if ok && expiration.After(time.Now()) {
 		return nil
 	}
@@ -889,6 +885,7 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
 	}
 
+	log.Println(len(groupinfo.Member))
 	if len(groupinfo.Member) > 0 {
 		err = state.Userinfo.AddmemberstoExisting(groupinfo)
 		if err != nil {
