@@ -36,7 +36,7 @@ type baseConfig struct {
 
 type AppConfigFile struct {
 	Base       baseConfig                      `yaml:"base"`
-	SourceLDAP ldapuserinfo.SourceADInfo       `yaml:"source_config"`
+	SourceLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"source_config"`
 	TargetLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"target_config"`
 }
 
@@ -45,7 +45,7 @@ type RuntimeState struct {
 	dbType       string
 	db           *sql.DB
 	Userinfo     userinfo.UserInfo
-	SourceADinfo userinfo.SourceInfo
+	SourceADinfo userinfo.UserInfo
 	authcookies  map[string]cookieInfo
 	cookiemutex  sync.Mutex
 	htmlTemplate *template.Template

@@ -18,6 +18,8 @@ import (
 const postMethod = "POST"
 const getMethod = "GET"
 
+const searchADparam = "sAMAccountName"
+
 func checkCSRF(w http.ResponseWriter, r *http.Request) (bool, error) {
 	if r.Method != getMethod {
 		referer := r.Referer()
@@ -80,7 +82,7 @@ func (state *RuntimeState) createUserorNot(username string) error {
 		return err
 	}
 	if !found {
-		email, givenName, err := state.SourceADinfo.GetInfoFromAD(username)
+		email, givenName, err := state.SourceADinfo.GetInfoFromAD(username, searchADparam)
 		if err != nil {
 			log.Println(err)
 			return err

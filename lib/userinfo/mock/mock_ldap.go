@@ -44,6 +44,7 @@ type LdapUserInfo struct {
 	mail        string
 	cn          string
 	description string
+	givenName   string
 }
 type LdapServiceInfo struct {
 	dn          string
@@ -88,16 +89,16 @@ func New() *MockLdap {
 
 	testldap.Users["uid=user1,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{dn: "uid=user1,ou=people,dc=mgmt,dc=example,dc=com",
 		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com"},
-		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user1", cn: "user1", mail: "user1@example.com",
+		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user1", cn: "user1", mail: "user1@example.com", givenName: "user1",
 	}
 	testldap.Users["uid=user2,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{dn: "uid=user2,ou=people,dc=mgmt,dc=example,dc=com",
 		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com"},
-		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user2", cn: "user2", mail: "user2@example.com",
+		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user2", cn: "user2", mail: "user2@example.com", givenName: "user2",
 	}
 	testldap.Users["uid=user3,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{
 		dn:          "uid=user3,ou=people,dc=mgmt,dc=example,dc=com",
 		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"},
-		uid:         "user3", cn: "user3", mail: "user3@example.com",
+		uid:         "user3", cn: "user3", mail: "user3@example.com", givenName: "user3",
 	}
 
 	testldap.Services["cn=group1,ou=services,dc=mgmt,dc=example,dc=com"] = LdapServiceInfo{cn: "group1",
@@ -537,4 +538,11 @@ func (m *MockLdap) getallUsersNonCached() ([]string, error) {
 	}
 
 	return allusers, nil
+}
+
+func (m *MockLdap) GetInfoFromAD(username, userattribute string) ([]string, []string, error) {
+	userdn := m.createUserDN(username)
+	usersinfo := m.Users[userdn]
+
+	return []string{usersinfo.mail}, []string{usersinfo.givenName}, nil
 }

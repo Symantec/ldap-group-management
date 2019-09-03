@@ -199,6 +199,8 @@ func handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 		e.AddAttribute("cn", "Valère JEANTET")
 		e.AddAttribute("uid", "valere.jeantet")
 		e.AddAttribute("memberOf", "cn=group2, o=group, o=My Company, c=US", "cn=group3, o=group, o=My Company, c=US")
+		e.AddAttribute("givenName", "valere")
+		e.AddAttribute("sAMAccountName", "valere.jeantet")
 		w.Write(e)
 	}
 	if !hasUserFilter || strings.Contains(r.FilterString(), "uid=yunchao_liu") {
@@ -207,6 +209,8 @@ func handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 		e.AddAttribute("cn", "Yunchao Liu")
 		e.AddAttribute("uid", "yunchao_liu")
 		e.AddAttribute("memberOf", "cn=group1, o=group, o=My Company, c=US", "cn=group3, o=group, o=My Company, c=US")
+		e.AddAttribute("givenName", "yunchao")
+		e.AddAttribute("sAMAccountName", "yunchao_liu")
 		w.Write(e)
 	}
 
@@ -467,4 +471,14 @@ func Test_AddmembersToExisting(t *testing.T) {
 		log.Fatal(err)
 	}
 	// TODO: actually verify that the members where added
+}
+
+func Test_GetInfoFromAD(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+	mail, givenName, err := u.GetInfoFromAD("yunchao_liu", searchLDAPparam)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	t.Logf("email=%+v givenName=%+v", mail, givenName)
 }
