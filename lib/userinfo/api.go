@@ -75,9 +75,3 @@ type UserInfo interface {
 
 	GetInfoFromAD(username, userattribute string) ([]string, []string, error)
 }
-
-/*
-type SourceInfo interface {
-	GetInfoFromAD(username string) ([]string, []string, error)
-}
-*/

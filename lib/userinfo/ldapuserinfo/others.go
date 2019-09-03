@@ -17,7 +17,7 @@ func (u *UserInfoLDAPSource) getDisabledAccountsinLDAP() ([]string, error) {
 	searchrequest := ldap.NewSearchRequest(u.UserSearchBaseDNs, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
 		0, 0, false, u.UserSearchFilter, Attributes, nil)
 
-	conn, err := getTargetLDAPConnection(u.LDAPTargetURLs, u.BindUsername, u.BindPassword, u.RootCAs)
+	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -42,7 +42,7 @@ func (u *UserInfoLDAPSource) getDisabledAccountsinLDAP() ([]string, error) {
 //function which compares the users disabled accounts in Source LDAP and Target LDAP and adds the attribute nsaccountLock in TARGET LDAP for the disbaled USer.
 //---required
 func (u *UserInfoLDAPSource) DisableaccountsinLdap(result []string) error {
-	conn, err := getTargetLDAPConnection(u.LDAPTargetURLs, u.BindUsername, u.BindPassword, u.RootCAs)
+	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		return err
 	}

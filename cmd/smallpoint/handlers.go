@@ -927,7 +927,6 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
 	}
 
-	log.Println(len(groupinfo.Member))
 	if len(groupinfo.Member) > 0 {
 		err = state.Userinfo.AddmemberstoExisting(groupinfo)
 		if err != nil {
