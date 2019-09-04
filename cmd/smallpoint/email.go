@@ -178,7 +178,6 @@ func (state *RuntimeState) sendApproveemail(username string,
 func (state *RuntimeState) approveRequestemail(requesteduser string, otheruser string, usersEmail []string,
 	groupname string, remoteAddr string, userAgent string) error {
 	// Connect to the remote SMTP server.
-	//c, err := smtp.Dial(state.Config.Base.SMTPserver)
 	c, err := smtpClient(state.Config.Base.SMTPserver)
 	if err != nil {
 		log.Println(err)
@@ -287,7 +286,6 @@ func (state *RuntimeState) sendRejectemail(username string, userPair [][]string,
 func (state *RuntimeState) RejectRequestemail(requesteduser string, otheruser string, usersEmail []string,
 	groupname string, remoteAddr string, userAgent string) error {
 	// Connect to the remote SMTP server.
-	//c, err := smtp.Dial(state.Config.Base.SMTPserver)
 	c, err := smtpClient(state.Config.Base.SMTPserver)
 	if err != nil {
 		log.Println(err)

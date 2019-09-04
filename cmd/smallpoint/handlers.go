@@ -721,7 +721,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			log.Println(err)
 		}
 		if Isgroupmember {
-			err = deleteEntryInDB(requestingUser, entry[1], state)
+			err = deleteEntryInDB(requestingUser, requestedGroup, state)
 			if err != nil {
 				//fmt.Println("error me")
 				log.Println(err)
@@ -730,7 +730,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 
 		}
 		var groupinfo userinfo.GroupInfo
-		groupinfo.Groupname = entry[1]
+		groupinfo.Groupname = requestedGroup
 		groupinfo.MemberUid = append(groupinfo.MemberUid, requestingUser)
 		err = state.Userinfo.AddmemberstoExisting(groupinfo)
 		if err != nil {
@@ -739,9 +739,9 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			return
 		}
 		if state.sysLog != nil {
-			state.sysLog.Write([]byte(fmt.Sprintf("%s"+" joined Group "+"%s"+" approved by "+"%s", requestingUser, entry[1], authUser)))
+			state.sysLog.Write([]byte(fmt.Sprintf("%s"+" joined Group "+"%s"+" approved by "+"%s", requestingUser, requestedGroup, authUser)))
 		}
-		err = deleteEntryInDB(requestingUser, entry[1], state)
+		err = deleteEntryInDB(requestingUser, requestedGroup, state)
 		if err != nil {
 			fmt.Println("error here!")
 			log.Println(err)
