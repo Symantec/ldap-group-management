@@ -562,3 +562,13 @@ func Test_CreateServiceAccount(t *testing.T) {
 	}
 	// TODO: actually verify that the members where added
 }
+
+func Test_GetInfoFromAD(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+	mail, givenName, err := u.GetInfoFromAD("yunchao_liu", searchLDAPparam)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	t.Logf("email=%+v givenName=%+v", mail, givenName)
+}
