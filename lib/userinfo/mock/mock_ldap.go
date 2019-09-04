@@ -177,25 +177,6 @@ func (m *MockLdap) DeleteGroup(groupnames []string) error {
 
 }
 
-func (m *MockLdap) AddAtributedescription(groupname string) error {
-	groupdn := m.CreategroupDn(groupname)
-	GroupInfo := m.Groups[groupdn]
-	GroupInfo.description = descriptionAttribute
-	m.Groups[groupdn] = GroupInfo
-	return nil
-
-}
-
-func (m *MockLdap) DeleteDescription(groupnames []string) error {
-	for _, groupname := range groupnames {
-		groupdn := m.CreategroupDn(groupname)
-		GroupInfo := m.Groups[groupdn]
-		GroupInfo.description = ""
-		m.Groups[groupdn] = GroupInfo
-	}
-	return nil
-}
-
 func (m *MockLdap) GetallGroups() ([]string, error) {
 	var groups []string
 	for _, value := range m.Groups {
