@@ -347,7 +347,9 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
-		state.sysLog.Write([]byte(fmt.Sprintf("Group %s is managed by %s now, this change was made by %s.", group, managegroup, username)))
+		if state.sysLog != nil {
+			state.sysLog.Write([]byte(fmt.Sprintf("Group %s is managed by %s now, this change was made by %s.", group, managegroup, username)))
+		}
 	}
 	pageData := simpleMessagePageData{
 		UserName:       username,
