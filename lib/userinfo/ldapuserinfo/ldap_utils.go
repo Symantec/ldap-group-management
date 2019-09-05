@@ -843,7 +843,8 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 		}
 		mail, ok := value["mail"]
 		if !ok {
-			continue
+			log.Println("error get user email")
+			return nil, errors.New("error get user email")
 		}
 		userEmail = append(userEmail, mail[0])
 
