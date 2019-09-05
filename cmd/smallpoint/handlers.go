@@ -81,8 +81,9 @@ func (state *RuntimeState) createUserorNot(username string) error {
 		log.Println(err)
 		return err
 	}
+
 	if !found {
-		email, givenName, err := state.SourceADinfo.GetInfoFromAD(username, searchADparam)
+		email, givenName, err := state.UserSourceinfo.GetUserAttributes(username)
 		if err != nil {
 			log.Println(err)
 			return err

@@ -329,7 +329,7 @@ func setupTestLDAPUserInfo(t *testing.T) *UserInfoLDAPSource {
 	u.ServiceAccountBaseDNs = "ou=services,o=My Company,c=US"
 	u.GroupManageAttribute = "owner"
 	u.MainBaseDN = "o=My Company,c=US"
-
+	u.SearchAttribute = "uid"
 	for k := range testGroupData {
 		delete(testGroupData, k)
 	}
@@ -565,7 +565,7 @@ func Test_CreateServiceAccount(t *testing.T) {
 
 func Test_GetInfoFromAD(t *testing.T) {
 	u := setupTestLDAPUserInfo(t)
-	mail, givenName, err := u.GetInfoFromAD("yunchao_liu", searchLDAPparam)
+	mail, givenName, err := u.GetUserAttributes("yunchao_liu")
 	if err != nil {
 		log.Fatal(err)
 	}

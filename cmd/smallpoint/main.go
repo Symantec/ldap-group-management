@@ -41,15 +41,15 @@ type AppConfigFile struct {
 }
 
 type RuntimeState struct {
-	Config       AppConfigFile
-	dbType       string
-	db           *sql.DB
-	Userinfo     userinfo.UserInfo
-	SourceADinfo userinfo.UserInfo
-	authcookies  map[string]cookieInfo
-	cookiemutex  sync.Mutex
-	htmlTemplate *template.Template
-	sysLog       *syslog.Writer
+	Config         AppConfigFile
+	dbType         string
+	db             *sql.DB
+	Userinfo       userinfo.UserInfo
+	UserSourceinfo userinfo.UserInfo
+	authcookies    map[string]cookieInfo
+	cookiemutex    sync.Mutex
+	htmlTemplate   *template.Template
+	sysLog         *syslog.Writer
 
 	allUsersRWLock     sync.RWMutex
 	allUsersCacheValue map[string]time.Time
@@ -209,7 +209,7 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	state.Userinfo = &state.Config.TargetLDAP
 	state.authcookies = make(map[string]cookieInfo)
 	state.allUsersCacheValue = make(map[string]time.Time)
-	state.SourceADinfo = &state.Config.SourceLDAP
+	state.UserSourceinfo = &state.Config.SourceLDAP
 	return state, err
 }
 

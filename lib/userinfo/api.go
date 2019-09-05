@@ -71,5 +71,5 @@ type UserInfo interface {
 
 	CreateUser(username string, givenName, email []string) error
 
-	GetInfoFromAD(username, userattribute string) ([]string, []string, error)
+	GetUserAttributes(username string) ([]string, []string, error)
 }

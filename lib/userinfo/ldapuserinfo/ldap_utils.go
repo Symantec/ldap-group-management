@@ -46,6 +46,7 @@ type UserInfoLDAPSource struct {
 	ServiceAccountBaseDNs string `yaml:"service_search_base_dns"`
 	MainBaseDN            string `yaml:"Main_base_dns"`
 	GroupManageAttribute  string `yaml:"group_Manage_Attribute"`
+	SearchAttribute       string `yaml:"searchAttribute"`
 
 	RootCAs *x509.CertPool
 
@@ -58,17 +59,14 @@ type UserInfoLDAPSource struct {
 	allGroupsAndManagerCacheMutex      sync.Mutex
 	allGroupsAndManagerCacheValue      [][]string
 	allGroupsAndManagerCacheExpiration time.Time
-
-	userAttribute string
 }
 
-func (u *UserInfoLDAPSource) GetInfoFromAD(username, userattribute string) ([]string, []string, error) {
+func (u *UserInfoLDAPSource) GetUserAttributes(username string) ([]string, []string, error) {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
 		return nil, nil, err
 	}
-	u.userAttribute = userattribute
 	result, err := u.getInfoofUserInternal(conn, username, []string{u.UserSearchBaseDNs}, []string{"mail", "givenName"})
 	if err != nil {
 		log.Println(err)
@@ -262,7 +260,7 @@ func (u *UserInfoLDAPSource) getUserDN(conn *ldap.Conn, username string, searchP
 		searchRequest := ldap.NewSearchRequest(
 			searchPath,
 			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-			"(&("+u.userAttribute+"="+username+"))",
+			"(&("+u.SearchAttribute+"="+username+"))",
 			[]string{"uid", "dn"}, //memberOf (if searching other way around using usersdn instead of groupdn)
 			nil,
 		)
@@ -644,7 +642,6 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) 
 		log.Println(err)
 		return err
 	}
-	u.userAttribute = searchLDAPparam
 	if len(groupinfo.Member) == 0 {
 		for _, memberUid := range groupinfo.MemberUid {
 			userDN, err := u.getUserDN(conn, memberUid, []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs})
@@ -682,7 +679,6 @@ func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo
 	modify := ldap.NewModifyRequest(entry)
 	modify.Delete("memberUid", groupinfo.MemberUid)
 
-	u.userAttribute = searchLDAPparam
 	if len(groupinfo.Member) == 0 {
 		for _, memberUid := range groupinfo.MemberUid {
 			userDN, err := u.getUserDN(conn, memberUid, []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs})
@@ -775,7 +771,6 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 		return nil, err
 	}
 	defer conn.Close()
-	u.userAttribute = searchLDAPparam
 	result, err := u.getInfoofUserInternal(conn, username, []string{u.UserSearchBaseDNs}, []string{"mail"})
 	if err != nil {
 		log.Println(err)
@@ -796,7 +791,7 @@ func (u *UserInfoLDAPSource) getInfoofUserInternal(conn *ldap.Conn, username str
 	}
 
 	searchrequest := ldap.NewSearchRequest(Userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-		0, 0, false, "(&("+u.userAttribute+"="+username+"))", searchParams, nil)
+		0, 0, false, "(&("+u.SearchAttribute+"="+username+"))", searchParams, nil)
 	result, err := conn.Search(searchrequest)
 	if err != nil {
 		log.Println(err)
@@ -834,7 +829,6 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 
 	var userEmail []string
 	log.Printf("GetEmailofusersingroup:%s, %+v", groupname, groupUsers)
-	u.userAttribute = searchLDAPparam
 	for _, entry := range groupUsers {
 		value, err := u.getInfoofUserInternal(conn, entry, []string{u.UserSearchBaseDNs}, []string{"mail"})
 		if err != nil {

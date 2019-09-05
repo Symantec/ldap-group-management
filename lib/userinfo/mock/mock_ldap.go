@@ -521,7 +521,7 @@ func (m *MockLdap) getallUsersNonCached() ([]string, error) {
 	return allusers, nil
 }
 
-func (m *MockLdap) GetInfoFromAD(username, userattribute string) ([]string, []string, error) {
+func (m *MockLdap) GetUserAttributes(username string) ([]string, []string, error) {
 	userdn := m.createUserDN(username)
 	usersinfo := m.Users[userdn]
 
