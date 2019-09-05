@@ -31,9 +31,6 @@ const (
 
 const LoginShell = "/bin/bash"
 
-const searchLDAPparam = "uid"
-const searchADparam = "sAMAccountName"
-
 type UserInfoLDAPSource struct {
 	BindUsername          string `yaml:"bind_username"`
 	BindPassword          string `yaml:"bind_password"`

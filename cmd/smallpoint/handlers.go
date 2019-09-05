@@ -18,8 +18,6 @@ import (
 const postMethod = "POST"
 const getMethod = "GET"
 
-const searchADparam = "sAMAccountName"
-
 func checkCSRF(w http.ResponseWriter, r *http.Request) (bool, error) {
 	if r.Method != getMethod {
 		referer := r.Referer()
