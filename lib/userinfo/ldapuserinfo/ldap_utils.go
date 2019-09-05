@@ -64,20 +64,20 @@ func (u *UserInfoLDAPSource) GetUserAttributes(username string) ([]string, []str
 		log.Println(err)
 		return nil, nil, err
 	}
-	result, err := u.getInfoofUserInternal(conn, username, []string{u.UserSearchBaseDNs}, []string{"mail", "givenName"})
+	result, err := u.getInfoofUserInternal(conn, username, []string{"mail", "givenName"})
 	if err != nil {
 		log.Println(err)
 		return nil, nil, err
 	}
 	email, ok := result["mail"]
 	if !ok {
-		log.Println("error parse mail")
-		return nil, nil, errors.New("error parse mail")
+		log.Println("error get mail")
+		return nil, nil, errors.New("error get mail")
 	}
 	givenName, ok := result["givenName"]
 	if !ok {
-		log.Println("error parse givenName")
-		return nil, nil, errors.New("error parse givenName")
+		log.Println("error get givenName")
+		return nil, nil, errors.New("error get givenName")
 	}
 	return email, givenName, nil
 }
@@ -252,7 +252,8 @@ func (u *UserInfoLDAPSource) createServiceDN(groupname string, a userinfo.Accoun
 
 ////
 // GetGroupsOfUser returns the all groups of a user. --required
-func (u *UserInfoLDAPSource) getUserDN(conn *ldap.Conn, username string, searchPaths []string) (string, error) {
+func (u *UserInfoLDAPSource) getUserDN(conn *ldap.Conn, username string) (string, error) {
+	searchPaths := []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs}
 	for _, searchPath := range searchPaths {
 		searchRequest := ldap.NewSearchRequest(
 			searchPath,
@@ -641,7 +642,7 @@ func (u *UserInfoLDAPSource) AddmemberstoExisting(groupinfo userinfo.GroupInfo) 
 	}
 	if len(groupinfo.Member) == 0 {
 		for _, memberUid := range groupinfo.MemberUid {
-			userDN, err := u.getUserDN(conn, memberUid, []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs})
+			userDN, err := u.getUserDN(conn, memberUid)
 			if err != nil {
 				return err
 			}
@@ -678,7 +679,7 @@ func (u *UserInfoLDAPSource) DeletemembersfromGroup(groupinfo userinfo.GroupInfo
 
 	if len(groupinfo.Member) == 0 {
 		for _, memberUid := range groupinfo.MemberUid {
-			userDN, err := u.getUserDN(conn, memberUid, []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs})
+			userDN, err := u.getUserDN(conn, memberUid)
 			if err != nil {
 				return err
 			}
@@ -768,21 +769,21 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 		return nil, err
 	}
 	defer conn.Close()
-	result, err := u.getInfoofUserInternal(conn, username, []string{u.UserSearchBaseDNs}, []string{"mail"})
+	result, err := u.getInfoofUserInternal(conn, username, []string{"mail"})
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 	email, ok := result["mail"]
 	if !ok {
-		log.Println("Failed to parse email")
-		return nil, errors.New("Failed to parse email")
+		log.Println("Failed to get email")
+		return nil, errors.New("Failed to get email")
 	}
 	return email, nil
 }
 
-func (u *UserInfoLDAPSource) getInfoofUserInternal(conn *ldap.Conn, username string, searchPath, searchParams []string) (map[string][]string, error) {
-	Userdn, err := u.getUserDN(conn, username, searchPath)
+func (u *UserInfoLDAPSource) getInfoofUserInternal(conn *ldap.Conn, username string, searchParams []string) (map[string][]string, error) {
+	Userdn, err := u.getUserDN(conn, username)
 	if err != nil {
 		return nil, err
 	}
@@ -827,7 +828,7 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 	var userEmail []string
 	log.Printf("GetEmailofusersingroup:%s, %+v", groupname, groupUsers)
 	for _, entry := range groupUsers {
-		value, err := u.getInfoofUserInternal(conn, entry, []string{u.UserSearchBaseDNs}, []string{"mail"})
+		value, err := u.getInfoofUserInternal(conn, entry, []string{"mail"})
 		if err != nil {
 			log.Println(err)
 			if err == userinfo.UserDoesNotHaveEmail {
@@ -837,8 +838,8 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 		}
 		mail, ok := value["mail"]
 		if !ok {
-			log.Println("error parse user email")
-			return nil, errors.New("error parse user email")
+			log.Println("error get user email")
+			return nil, errors.New("error get user email")
 		}
 		userEmail = append(userEmail, mail[0])
 
