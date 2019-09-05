@@ -803,7 +803,12 @@ func (u *UserInfoLDAPSource) getInfoofUserInternal(conn *ldap.Conn, username str
 	resultInfo := make(map[string][]string)
 	for _, param := range searchParams {
 		if len(result.Entries[0].GetAttributeValues(param)) < 1 {
-			return nil, errors.New("User does not have " + param)
+			switch param {
+			case "mail":
+				return nil, userinfo.UserDoesNotHaveEmail
+			case "givenName":
+				return nil, userinfo.UserDoesNotHaveGivenName
+			}
 		}
 		resultInfo[param] = result.Entries[0].GetAttributeValues(param)
 	}
@@ -838,8 +843,7 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 		}
 		mail, ok := value["mail"]
 		if !ok {
-			log.Println("error get user email")
-			return nil, errors.New("error get user email")
+			continue
 		}
 		userEmail = append(userEmail, mail[0])
 
