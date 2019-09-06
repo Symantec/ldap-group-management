@@ -89,8 +89,14 @@ func (state *RuntimeState) createUserorNot(username string) error {
 		log.Println(err)
 		return err
 	}
+
 	if !found {
-		err := state.Userinfo.CreateUser(username)
+		email, givenName, err := state.UserSourceinfo.GetUserAttributes(username)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		err = state.Userinfo.CreateUser(username, givenName, email)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -118,7 +124,6 @@ func (state *RuntimeState) loginHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	userName := *userInfo.Username
-
 	err = state.createUserorNot(userName)
 	if err != nil {
 		log.Println(err)
@@ -899,7 +904,7 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		groupinfo.MemberUid = append(groupinfo.MemberUid, member)
 	}
 
-	if len(groupinfo.Member) > 0 {
+	if len(groupinfo.MemberUid) > 0 {
 		err = state.Userinfo.AddmemberstoExisting(groupinfo)
 		if err != nil {
 			log.Println(err)

@@ -210,6 +210,8 @@ func handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 		e.AddAttribute("uid", "valere.jeantet")
 		e.AddAttribute("uidNumber", "5000")
 		e.AddAttribute("memberOf", "cn=group2, o=group, o=My Company, c=US", "cn=group3, o=group, o=My Company, c=US")
+		e.AddAttribute("givenName", "valere")
+		e.AddAttribute("sAMAccountName", "valere.jeantet")
 		w.Write(e)
 	}
 	if !hasUserFilter || strings.Contains(r.FilterString(), "uid=yunchao_liu") {
@@ -219,6 +221,8 @@ func handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 		e.AddAttribute("uid", "yunchao_liu")
 		e.AddAttribute("uidNumber", "5001")
 		e.AddAttribute("memberOf", "cn=group1, o=group, o=My Company, c=US", "cn=group3, o=group, o=My Company, c=US")
+		e.AddAttribute("givenName", "yunchao")
+		e.AddAttribute("sAMAccountName", "yunchao_liu")
 		w.Write(e)
 	}
 
@@ -325,7 +329,7 @@ func setupTestLDAPUserInfo(t *testing.T) *UserInfoLDAPSource {
 	u.ServiceAccountBaseDNs = "ou=services,o=My Company,c=US"
 	u.GroupManageAttribute = "owner"
 	u.MainBaseDN = "o=My Company,c=US"
-
+	u.SearchAttribute = "uid"
 	for k := range testGroupData {
 		delete(testGroupData, k)
 	}
@@ -557,5 +561,14 @@ func Test_CreateServiceAccount(t *testing.T) {
 		log.Fatal(err)
 	}
 	// TODO: actually verify that the members where added
+}
 
+func Test_GetInfoFromAD(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+	mail, givenName, err := u.GetUserAttributes("yunchao_liu")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	t.Logf("email=%+v givenName=%+v", mail, givenName)
 }

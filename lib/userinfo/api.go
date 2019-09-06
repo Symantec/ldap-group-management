@@ -6,7 +6,8 @@ import (
 
 var GroupDoesNotExist = errors.New("Group does not exist")
 var UserDoesNotExist = errors.New("User does not exist")
-var UserDoesNotHaveEmail = errors.New("User does not have email addresses")
+var UserDoesNotHaveEmail = errors.New("User does not have mail")
+var UserDoesNotHaveGivenName = errors.New("User does not have givenName")
 
 type AccountType int
 
@@ -69,5 +70,7 @@ type UserInfo interface {
 
 	GetGroupandManagedbyAttributeValue(groupnames []string) ([][]string, error)
 
-	CreateUser(username string) error
+	CreateUser(username string, givenName, email []string) error
+
+	GetUserAttributes(username string) ([]string, []string, error)
 }

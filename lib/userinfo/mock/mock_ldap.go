@@ -44,6 +44,7 @@ type LdapUserInfo struct {
 	mail        string
 	cn          string
 	description string
+	givenName   string
 }
 type LdapServiceInfo struct {
 	dn          string
@@ -88,16 +89,16 @@ func New() *MockLdap {
 
 	testldap.Users["uid=user1,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{dn: "uid=user1,ou=people,dc=mgmt,dc=example,dc=com",
 		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com"},
-		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user1", cn: "user1", mail: "user1@example.com",
+		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user1", cn: "user1", mail: "user1@example.com", givenName: "user1",
 	}
 	testldap.Users["uid=user2,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{dn: "uid=user2,ou=people,dc=mgmt,dc=example,dc=com",
 		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com"},
-		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user2", cn: "user2", mail: "user2@example.com",
+		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user2", cn: "user2", mail: "user2@example.com", givenName: "user2",
 	}
 	testldap.Users["uid=user3,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{
 		dn:          "uid=user3,ou=people,dc=mgmt,dc=example,dc=com",
 		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"},
-		uid:         "user3", cn: "user3", mail: "user3@example.com",
+		uid:         "user3", cn: "user3", mail: "user3@example.com", givenName: "user3",
 	}
 
 	testldap.Services["cn=group1,ou=services,dc=mgmt,dc=example,dc=com"] = LdapServiceInfo{cn: "group1",
@@ -498,14 +499,14 @@ func (m *MockLdap) ChangeDescription(groupname string, managegroup string) error
 	return nil
 }
 
-func (m *MockLdap) CreateUser(username string) error {
+func (m *MockLdap) CreateUser(username string, givenName, email []string) error {
 
 	userdn := m.createUserDN(username)
 	var user LdapUserInfo
 	user.objectClass = []string{"posixAccount", "person", "ldapPublicKey", "organizationalPerson", "inetOrgPerson", "shadowAccount", "top", "inetUser", "pwmuser"}
 	user.uid = username
 	user.uidNumber, _ = m.GetmaximumUidnumber(LdapUserDN)
-	user.mail = username + "@symantec.com"
+	user.mail = email[0]
 	user.cn = username
 	m.Users[userdn] = user
 	return nil
@@ -518,4 +519,11 @@ func (m *MockLdap) getallUsersNonCached() ([]string, error) {
 	}
 
 	return allusers, nil
+}
+
+func (m *MockLdap) GetUserAttributes(username string) ([]string, []string, error) {
+	userdn := m.createUserDN(username)
+	usersinfo := m.Users[userdn]
+
+	return []string{usersinfo.mail}, []string{usersinfo.givenName}, nil
 }

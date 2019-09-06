@@ -43,6 +43,7 @@ type UserInfoLDAPSource struct {
 	ServiceAccountBaseDNs string `yaml:"service_search_base_dns"`
 	MainBaseDN            string `yaml:"Main_base_dns"`
 	GroupManageAttribute  string `yaml:"group_Manage_Attribute"`
+	SearchAttribute       string `yaml:"searchAttribute"`
 
 	RootCAs *x509.CertPool
 
@@ -55,6 +56,30 @@ type UserInfoLDAPSource struct {
 	allGroupsAndManagerCacheMutex      sync.Mutex
 	allGroupsAndManagerCacheValue      [][]string
 	allGroupsAndManagerCacheExpiration time.Time
+}
+
+func (u *UserInfoLDAPSource) GetUserAttributes(username string) ([]string, []string, error) {
+	conn, err := u.getTargetLDAPConnection()
+	if err != nil {
+		log.Println(err)
+		return nil, nil, err
+	}
+	result, err := u.getInfoofUserInternal(conn, username, []string{"mail", "givenName"})
+	if err != nil {
+		log.Println(err)
+		return nil, nil, err
+	}
+	email, ok := result["mail"]
+	if !ok {
+		log.Println("error get mail")
+		return nil, nil, errors.New("error get mail")
+	}
+	givenName, ok := result["givenName"]
+	if !ok {
+		log.Println("error get givenName")
+		return nil, nil, errors.New("error get givenName")
+	}
+	return email, givenName, nil
 }
 
 func (u *UserInfoLDAPSource) flushGroupCaches() {
@@ -151,7 +176,6 @@ func (u *UserInfoLDAPSource) getTargetLDAPConnection() (*ldap.Conn, error) {
 
 //Get all ldaputil users and put that in map ---required
 func (u *UserInfoLDAPSource) getallUsersNonCached() ([]string, error) {
-
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
@@ -234,7 +258,7 @@ func (u *UserInfoLDAPSource) getUserDN(conn *ldap.Conn, username string) (string
 		searchRequest := ldap.NewSearchRequest(
 			searchPath,
 			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-			"(&(uid="+username+" ))",
+			"(&("+u.SearchAttribute+"="+username+"))",
 			[]string{"uid", "dn"}, //memberOf (if searching other way around using usersdn instead of groupdn)
 			nil,
 		)
@@ -747,17 +771,27 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 		return nil, err
 	}
 	defer conn.Close()
-
-	return u.getEmailofUserInternal(conn, username)
+	result, err := u.getInfoofUserInternal(conn, username, []string{"mail"})
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	email, ok := result["mail"]
+	if !ok {
+		log.Println("Failed to get email")
+		return nil, errors.New("Failed to get email")
+	}
+	return email, nil
 }
 
-func (u *UserInfoLDAPSource) getEmailofUserInternal(conn *ldap.Conn, username string) ([]string, error) {
+func (u *UserInfoLDAPSource) getInfoofUserInternal(conn *ldap.Conn, username string, searchParams []string) (map[string][]string, error) {
 	Userdn, err := u.getUserDN(conn, username)
 	if err != nil {
 		return nil, err
 	}
+
 	searchrequest := ldap.NewSearchRequest(Userdn, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-		0, 0, false, "(&(uid="+username+"))", []string{"mail"}, nil)
+		0, 0, false, "(&("+u.SearchAttribute+"="+username+"))", searchParams, nil)
 	result, err := conn.Search(searchrequest)
 	if err != nil {
 		log.Println(err)
@@ -767,13 +801,20 @@ func (u *UserInfoLDAPSource) getEmailofUserInternal(conn *ldap.Conn, username st
 		log.Printf("no such user")
 		return nil, userinfo.UserDoesNotExist
 	}
-	if len(result.Entries[0].GetAttributeValues("mail")) < 1 {
-		return nil, userinfo.UserDoesNotHaveEmail
-	}
-	var userEmail []string
-	userEmail = append(userEmail, result.Entries[0].GetAttributeValues("mail")[0])
-	return userEmail, nil
 
+	resultInfo := make(map[string][]string)
+	for _, param := range searchParams {
+		if len(result.Entries[0].GetAttributeValues(param)) < 1 {
+			switch param {
+			case "mail":
+				return nil, userinfo.UserDoesNotHaveEmail
+			case "givenName":
+				return nil, userinfo.UserDoesNotHaveGivenName
+			}
+		}
+		resultInfo[param] = result.Entries[0].GetAttributeValues(param)
+	}
+	return resultInfo, nil
 }
 
 //get email of all users in the given group
@@ -794,7 +835,7 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 	var userEmail []string
 	log.Printf("GetEmailofusersingroup:%s, %+v", groupname, groupUsers)
 	for _, entry := range groupUsers {
-		value, err := u.getEmailofUserInternal(conn, entry)
+		value, err := u.getInfoofUserInternal(conn, entry, []string{"mail"})
 		if err != nil {
 			log.Println(err)
 			if err == userinfo.UserDoesNotHaveEmail {
@@ -802,7 +843,12 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 			}
 			return nil, err
 		}
-		userEmail = append(userEmail, value[0])
+		mail, ok := value["mail"]
+		if !ok {
+			log.Println("error get user email")
+			return nil, errors.New("error get user email")
+		}
+		userEmail = append(userEmail, mail[0])
 
 	}
 	return userEmail, nil
@@ -1156,8 +1202,7 @@ func (u *UserInfoLDAPSource) GetGroupandManagedbyAttributeValue(groupnames []str
 	return UserGroupInfo, nil
 }
 
-//TODO: add test function for this
-func (u *UserInfoLDAPSource) CreateUser(username string) error {
+func (u *UserInfoLDAPSource) CreateUser(username string, givenName, email []string) error {
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
@@ -1171,7 +1216,6 @@ func (u *UserInfoLDAPSource) CreateUser(username string) error {
 		return err
 	}
 
-	givenName := strings.Split(username, "_")[0]
 	userDN := u.createUserDN(username)
 
 	user := ldap.NewAddRequest(userDN)
@@ -1179,7 +1223,7 @@ func (u *UserInfoLDAPSource) CreateUser(username string) error {
 	user.Attribute("cn", []string{username})
 	user.Attribute("uid", []string{username})
 	user.Attribute("gecos", []string{username})
-	user.Attribute("givenName", []string{givenName})
+	user.Attribute("givenName", givenName)
 	user.Attribute("displayName", []string{username})
 	user.Attribute("sn", []string{username})
 
@@ -1192,7 +1236,7 @@ func (u *UserInfoLDAPSource) CreateUser(username string) error {
 	user.Attribute("shadowMax", []string{"99999"})
 	user.Attribute("shadowMin", []string{"0"})
 	user.Attribute("shadowWarning", []string{"7"})
-	user.Attribute("mail", []string{username + "@symantec.com"})
+	user.Attribute("mail", email)
 	user.Attribute("uidNumber", []string{uidnum})
 	user.Attribute("gidNumber", []string{"100"})
 
