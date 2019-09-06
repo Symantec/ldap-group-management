@@ -54,6 +54,16 @@ func setSecurityHeaders(w http.ResponseWriter) {
 			" img-src 'self' cdn.datatables.net")
 }
 
+func (state *RuntimeState) writeFailureResponse(w http.ResponseWriter, r *http.Request, message string, code int) {
+	pageData := simpleMessagePageData{
+		Title:        "Error",
+		ErrorMessage: fmt.Sprintf("%d %s. %s\n", code, http.StatusText(code), message),
+	}
+	w.WriteHeader(code)
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
+
+}
+
 func randomStringGeneration() (string, error) {
 	const size = 32
 	bytes := make([]byte, size)
@@ -191,32 +201,7 @@ func (state *RuntimeState) allGroupsHandler(w http.ResponseWriter, r *http.Reque
 		IsAdmin:  isAdmin,
 		Title:    "All Groups",
 	}
-
-	returnAcceptType := state.getPreferredAcceptType(r)
-	switch returnAcceptType {
-	case "text/html":
-		setSecurityHeaders(w)
-		w.Header().Set("Cache-Control", "private, max-age=30")
-
-		err = state.htmlTemplate.ExecuteTemplate(w, "allGroupsPage", pageData)
-		if err != nil {
-			log.Printf("Failed to execute %v", err)
-			http.Error(w, "error", http.StatusInternalServerError)
-			return
-		}
-		return
-	default:
-		b, err := json.MarshalIndent(pageData, "", " ")
-		if err != nil {
-			log.Printf("Failed marshal %v", err)
-			http.Error(w, "error", http.StatusInternalServerError)
-			return
-		}
-		_, err = w.Write(b)
-		if err != nil {
-			log.Printf("Incomplete write %v", err)
-		}
-	}
+	state.renderTemplateOrReturnJson(w, r, "allGroupsPage", pageData)
 	return
 }
 
@@ -388,7 +373,7 @@ func (state *RuntimeState) deletegroupWebpageHandler(w http.ResponseWriter, r *h
 //requesting access by users to join in groups...
 func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
@@ -438,20 +423,13 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		Title:          "Request sent Successfully",
 		SuccessMessage: "Requests sent successfully, to manage your requests please visit My Pending Requests.",
 	}
-	setSecurityHeaders(w)
-	w.Header().Set("Cache-Control", "private, max-age=30")
-	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
-	if err != nil {
-		log.Printf("Failed to execute %v", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
-	}
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
 }
 
 //delete access requests made by user
 func (state *RuntimeState) deleteRequests(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
@@ -502,7 +480,7 @@ func (state *RuntimeState) deleteRequests(w http.ResponseWriter, r *http.Request
 
 func (state *RuntimeState) exitfromGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
@@ -678,7 +656,7 @@ func (state *RuntimeState) pendingActions(w http.ResponseWriter, r *http.Request
 //Approving
 func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	authUser, err := state.GetRemoteUserName(w, r)
@@ -777,7 +755,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 //Reject handler
 func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
@@ -861,7 +839,7 @@ func (state *RuntimeState) addmemberstoGroupWebpageHandler(w http.ResponseWriter
 
 func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
@@ -943,14 +921,7 @@ func (state *RuntimeState) addmemberstoExistingGroup(w http.ResponseWriter, r *h
 		SuccessMessage: "Selected Members have been successfully added to the group",
 		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
 	}
-	setSecurityHeaders(w)
-	w.Header().Set("Cache-Control", "private, max-age=30")
-	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
-	if err != nil {
-		log.Printf("Failed to execute %v", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
-	}
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
 }
 
 func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseWriter, r *http.Request) {
@@ -976,7 +947,7 @@ func (state *RuntimeState) deletemembersfromGroupWebpageHandler(w http.ResponseW
 
 func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
-		http.Error(w, "you are not authorized", http.StatusMethodNotAllowed)
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
@@ -1076,14 +1047,7 @@ func (state *RuntimeState) deletemembersfromExistingGroup(w http.ResponseWriter,
 		SuccessMessage: "Selected Members have been successfully deleted from the group",
 		ContinueURL:    groupinfoPath + "?groupname=" + groupinfo.Groupname,
 	}
-	setSecurityHeaders(w)
-	w.Header().Set("Cache-Control", "private, max-age=30")
-	err = state.htmlTemplate.ExecuteTemplate(w, "simpleMessagePage", pageData)
-	if err != nil {
-		log.Printf("Failed to execute %v", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
-	}
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
 }
 
 func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter, r *http.Request) {

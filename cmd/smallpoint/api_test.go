@@ -51,10 +51,12 @@ func setupTestState() (RuntimeState, error) {
 	adminSession := cookieInfo{Username: adminTestusername, ExpiresAt: expiresAt}
 	state.authcookies[adminCookievalueTest] = adminSession
 	state.Config.Base.TemplatesPath = "."
+	log.Printf("before loading templates")
 	err = state.loadTemplates()
 	if err != nil {
 		return state, err
 	}
+	log.Printf("after loading templates")
 	return state, nil
 }
 func getTestApiEndpoints(state *RuntimeState) map[string]http.HandlerFunc {

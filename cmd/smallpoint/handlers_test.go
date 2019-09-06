@@ -53,6 +53,27 @@ func TestNonAdminWebPathsHandlerSuccess(t *testing.T) {
 				status, http.StatusOK)
 		}
 	}
+
+	//now test with explicit accept for web browser
+	for path, testFunc := range testWebEndpoints {
+		req, err := http.NewRequest("GET", path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.AddCookie(&cookie)
+		req.Header.Set("Accept", "text/html")
+
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(testFunc)
+
+		handler.ServeHTTP(rr, req)
+		// Check the status code is what we expect.
+		if status := rr.Code; status != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v",
+				status, http.StatusOK)
+		}
+	}
+
 	//now ensure unathenticated failed
 	for path, testFunc := range testWebEndpoints {
 		req, err := http.NewRequest("GET", path, nil)
@@ -378,6 +399,7 @@ func TestDeletemembersfromExistingGroupMinimal(t *testing.T) {
 			status, http.StatusOK)
 	}
 }
+
 func TestCreateUserorNot(t *testing.T) {
 	state, err := setupTestState()
 	if err != nil {
@@ -395,4 +417,67 @@ func TestCreateUserorNot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestTenderTemplateOrReturnJson(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	req, err := http.NewRequest("POST", "whateverpath", nil)
+	req.Header.Set("Accept", "text/html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pageData := simpleMessagePageData{
+		SuccessMessage: "Any Message",
+	}
+	//renderTemplateOrReturnJson(w http.ResponseWriter, r *http.Request, templateName string, pageData interface{})
+	err = state.renderTemplateOrReturnJson(rr, req, "simpleMessagePage", pageData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// now with invalid template name, should fail
+	req2, err := http.NewRequest("POST", "whateverpath", nil)
+	req2.Header.Set("Accept", "text/html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	someIncompatibleData := []string{"someString"}
+	err = state.renderTemplateOrReturnJson(rr, req2, "simpleMessagePage", someIncompatibleData)
+	if err == nil {
+		t.Fatal(err)
+	}
+	// now with a bad name
+	req3, err := http.NewRequest("POST", "whateverpath", nil)
+	req3.Header.Set("Accept", "text/html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = state.renderTemplateOrReturnJson(rr, req2, "invalidName", pageData)
+	if err == nil {
+		t.Fatal(err)
+	}
+	// now we test with an encodible JSON object
+	req4, err := http.NewRequest("POST", "whateverpath", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = state.renderTemplateOrReturnJson(rr, req4, "invalidName", pageData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// and now witn an unencodibl JSON object
+	req5, err := http.NewRequest("POST", "whateverpath", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := make(chan int)
+	err = state.renderTemplateOrReturnJson(rr, req5, "simpleMessagePage", c)
+	if err == nil {
+		t.Fatal(err)
+	}
+
 }
