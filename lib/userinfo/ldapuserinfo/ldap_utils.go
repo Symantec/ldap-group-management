@@ -995,34 +995,34 @@ func (u *UserInfoLDAPSource) GroupnameExistsornot(groupname string) (bool, strin
 	}
 	defer conn.Close()
 
-	searchrequest := ldap.NewSearchRequest(u.GroupSearchBaseDNs, ldap.ScopeWholeSubtree,
-		ldap.NeverDerefAliases, 0, 0, false, "(&(cn="+groupname+")(objectClass=posixGroup))",
-		nil, nil)
+	groupSearchPaths := []string{u.GroupSearchBaseDNs, u.ServiceAccountBaseDNs}
+	for _, groupPath := range groupSearchPaths {
+		searchrequest := ldap.NewSearchRequest(groupPath, ldap.ScopeWholeSubtree,
+			ldap.NeverDerefAliases, 0, 0, false, "(&(cn="+groupname+")(objectClass=posixGroup))",
+			nil, nil)
 
-	result, err := conn.Search(searchrequest)
-	if err != nil {
-		log.Println("Error in ldap search")
-		return false, "", err
-	}
+		result, err := conn.Search(searchrequest)
+		if err != nil {
+			log.Println("Error in ldap search")
+			return false, "", err
+		}
 
-	if len(result.Entries) == 0 {
-		log.Println("No records found")
-		return false, "", nil
-	}
-	if len(result.Entries) > 1 {
-		log.Println("duplicate entries!")
-		return true, "", errors.New("Multiple entries available! Contact the administration!")
-	}
-	if groupname != result.Entries[0].GetAttributeValue("cn") {
-		return false, "", errors.New("something wrong in ldapsearch!")
-	}
+		if len(result.Entries) < 1 {
+			continue
+		}
+		if len(result.Entries) > 1 {
+			log.Println("duplicate entries!")
+			return true, "", errors.New("Multiple entries available! Contact the administration!")
+		}
+		if result.Entries[0].GetAttributeValues(u.GroupManageAttribute) == nil {
+			return true, "", nil
+		}
+		Groupmanagedby := result.Entries[0].GetAttributeValue(u.GroupManageAttribute)
 
-	if result.Entries[0].GetAttributeValues(u.GroupManageAttribute) == nil {
-		return true, "", nil
+		return true, Groupmanagedby, nil
 	}
-	Groupmanagedby := result.Entries[0].GetAttributeValue(u.GroupManageAttribute)
-
-	return true, Groupmanagedby, nil
+	log.Printf("GroupnameExistsornot: No records found for group %s", groupname)
+	return false, "", nil
 }
 
 func (u *UserInfoLDAPSource) ServiceAccountExistsornot(groupname string) (bool, string, error) {
@@ -1061,28 +1061,32 @@ func (u *UserInfoLDAPSource) ServiceAccountExistsornot(groupname string) (bool, 
 }
 
 func (u *UserInfoLDAPSource) getGroupDN(conn *ldap.Conn, groupname string) (string, error) {
-	searchRequest := ldap.NewSearchRequest(
-		u.GroupSearchBaseDNs,
-		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		"(&(cn="+groupname+" ))",
-		nil,
-		nil,
-	)
-	sr, err := conn.Search(searchRequest)
-	if err != nil {
-		log.Println(err)
-		return "", err
+	groupSearchPaths := []string{u.GroupSearchBaseDNs, u.ServiceAccountBaseDNs}
+	for _, groupPath := range groupSearchPaths {
+		searchRequest := ldap.NewSearchRequest(
+			groupPath,
+			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+			"(&(cn="+groupname+" ))",
+			nil,
+			nil,
+		)
+		sr, err := conn.Search(searchRequest)
+		if err != nil {
+			log.Println(err)
+			return "", err
+		}
+		if len(sr.Entries) > 1 {
+			log.Println("Duplicate entries found")
+			return "", errors.New("Multiple entries found, Contact the administrator!")
+		}
+		if len(sr.Entries) < 1 {
+			continue
+		}
+		users := sr.Entries[0].DN
+		return users, nil
 	}
-	if len(sr.Entries) > 1 {
-		log.Println("Duplicate entries found")
-		return "", errors.New("Multiple entries found, Contact the administrator!")
-	}
-	if len(sr.Entries) < 1 {
-		log.Printf("No DN found for group:%s", groupname)
-		return "", userinfo.GroupDoesNotExist
-	}
-	users := sr.Entries[0].DN
-	return users, nil
+	log.Printf("No DN found for group:%s", groupname)
+	return "", userinfo.GroupDoesNotExist
 }
 
 func (u *UserInfoLDAPSource) GetGroupsInfoOfUser(groupdn string, username string) ([][]string, error) {
