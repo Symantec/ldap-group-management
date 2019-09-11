@@ -328,6 +328,11 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 	}
 	groupList := strings.Split(r.PostFormValue("groupnames"), ",")
 	managegroup := r.PostFormValue("managegroup")
+	if len(groupList) < 1 {
+		state.writeFailureResponse(w, r, "groupnamesParameter is missing", http.StatusBadRequest)
+		return
+	}
+	donecount := 0
 	//check if given member exists or not and see if he is already a groupmember if yes continue.
 	for _, group := range groupList {
 		// Our UI likes to put commas as the end of the group, so we get usually "foo,bar,"... resulting in a list
@@ -350,6 +355,11 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		if state.sysLog != nil {
 			state.sysLog.Write([]byte(fmt.Sprintf("Group %s is managed by %s now, this change was made by %s.", group, managegroup, username)))
 		}
+		donecount += 1
+	}
+	if donecount == 0 {
+		state.writeFailureResponse(w, r, "Invalid groupnames parameter", http.StatusBadRequest)
+		return
 	}
 	pageData := simpleMessagePageData{
 		UserName:       username,
