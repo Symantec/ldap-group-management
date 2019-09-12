@@ -412,7 +412,7 @@ function members_func(value) {
 	var buttonid="button-"+value;
 	
 	document.getElementById(optionid).remove();
-        $("div.suggestion").append($('<div class="borderbox" id='+value+'><b>' + value +
+        $("div.suggestion").append($('<div class="borderbox" id='+value+' style="padding: 5px"><b>' + value +
             '</b><button id='+buttonid+' type="button" class="close" aria-label="Close">\n' +
             '<span  aria-hidden="true">&times;</span>\n' +
             '</button></div>'));
@@ -509,7 +509,7 @@ function deletegroups_func(value) {
 
         document.getElementById(optionid).remove();
 
-        $("div.suggestion").append($('<div class="borderbox" id='+value+'><b>' + value +
+        $("div.suggestion").append($('<div class="borderbox" id='+value+' style="padding: 5px"><b>' + value +
             '</b><button id='+buttonid+' type="button" class="close" aria-label="Close">\n' +
             '<span  aria-hidden="true">&times;</span>\n' +
             '</button></div>'));
@@ -548,7 +548,7 @@ function members_removemodal(value) {
 	
 	$("#select_members_remove option[id='" + optionid + "']").remove();
 
-        $("div.suggestion_removemembers").append($('<div class="borderbox" id='+value+'><b>' + value +
+        $("div.suggestion_removemembers").append($('<div class="borderbox" id='+value+' style="padding: 5px"><b>' + value +
             '</b><button id='+buttonid+' type="button" class="close" aria-label="Close">\n' +
             '<span  aria-hidden="true">&times;</span>\n' +
             '</button></div>'));
