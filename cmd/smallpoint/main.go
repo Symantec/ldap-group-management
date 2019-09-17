@@ -11,7 +11,6 @@ import (
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
 	"github.com/cviecco/go-simple-oidc-auth/authhandler"
-	//"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v2"
@@ -100,8 +99,6 @@ var (
 	Version        = "No version provided"
 	configFilename = flag.String("config", "/etc/smallpoint/config.yml", "The filename of the configuration")
 	authSource     *authhandler.SimpleOIDCAuth
-
-	metricsMutex = &sync.Mutex{}
 )
 
 const (
@@ -272,7 +269,6 @@ func main() {
 	}
 	defer state.sysLog.Close()
 
-	//http.Handle
 	http.Handle(metricsPath, promhttp.Handler())
 	http.Handle(creategroupWebPagePath, http.HandlerFunc(state.creategroupWebpageHandler))
 	http.Handle(deletegroupWebPagePath, http.HandlerFunc(state.deletegroupWebpageHandler))
