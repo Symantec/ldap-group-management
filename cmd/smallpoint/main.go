@@ -7,9 +7,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/Symantec/keymaster/lib/instrumentedwriter"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
 	"github.com/cviecco/go-simple-oidc-auth/authhandler"
+	//"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v2"
 	"html/template"
 	"io/ioutil"
@@ -32,6 +36,7 @@ type baseConfig struct {
 	SMTPserver            string `yaml:"smtp_server"`
 	SmtpSenderAddress     string `yaml:"smtp_sender_address"`
 	ClientCAFilename      string `yaml:"client_ca_filename"`
+	LogDirectory          string `yaml:"log_directory"`
 }
 
 type AppConfigFile struct {
@@ -87,13 +92,20 @@ type Response struct {
 	GroupUsers          []string
 }
 
+type httpLogger struct {
+	AccessLogger *log.Logger
+}
+
 var (
 	Version        = "No version provided"
 	configFilename = flag.String("config", "/etc/smallpoint/config.yml", "The filename of the configuration")
 	authSource     *authhandler.SimpleOIDCAuth
+
+	metricsMutex = &sync.Mutex{}
 )
 
 const (
+	metricsPath                 = "/metrics"
 	cacheRefreshDuration        = 6 * time.Hour
 	descriptionAttribute        = "self-managed"
 	cookieExpirationHours       = 12
@@ -131,6 +143,14 @@ const (
 	imagesPath = "/images/"
 	jsPath     = "/js/"
 )
+
+func (l httpLogger) Log(record instrumentedwriter.LogRecord) {
+	if l.AccessLogger != nil {
+		l.AccessLogger.Printf("%s -  %s [%s] \"%s %s %s\" %d %d \"%s\"\n",
+			record.Ip, record.Username, record.Time, record.Method,
+			record.Uri, record.Protocol, record.Status, record.Size, record.UserAgent)
+	}
+}
 
 func (state *RuntimeState) loadTemplates() (err error) {
 
@@ -252,6 +272,8 @@ func main() {
 	}
 	defer state.sysLog.Close()
 
+	//http.Handle
+	http.Handle(metricsPath, promhttp.Handler())
 	http.Handle(creategroupWebPagePath, http.HandlerFunc(state.creategroupWebpageHandler))
 	http.Handle(deletegroupWebPagePath, http.HandlerFunc(state.deletegroupWebpageHandler))
 	http.Handle(creategroupPath, http.HandlerFunc(state.createGrouphandler))
@@ -318,8 +340,17 @@ func main() {
 		ClientCAs:  clientCACertPool,
 	}
 
+	l := &lumberjack.Logger{
+		Filename:   filepath.Join(state.Config.Base.LogDirectory, "access"),
+		MaxSize:    20, // megabytes
+		MaxBackups: 3,
+		MaxAge:     28,   //days
+		Compress:   true, // disabled by default
+	}
+	accessLogger := httpLogger{AccessLogger: log.New(l, "", 0)}
 	serviceServer := &http.Server{
 		Addr:         state.Config.Base.HttpAddress,
+		Handler:      instrumentedwriter.NewLoggingHandler(http.DefaultServeMux, accessLogger),
 		TLSConfig:    tlsConfig,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
