@@ -13,6 +13,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Symantec/keymaster/lib/instrumentedwriter"
 )
 
 const postMethod = "POST"
@@ -152,6 +154,13 @@ func (state *RuntimeState) loginHandler(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, indexPath, http.StatusFound)
 }
 
+func setLoggerUsername(w http.ResponseWriter, authUser string) {
+	_, ok := w.(*instrumentedwriter.LoggingWriter)
+	if ok {
+		w.(*instrumentedwriter.LoggingWriter).SetUsername(authUser)
+	}
+}
+
 func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Request) (string, error) {
 	_, err := checkCSRF(w, r)
 	if err != nil {
@@ -170,6 +179,7 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 				return "", err
 			}
+			setLoggerUsername(w, clientName)
 			return clientName, nil
 		}
 	}
@@ -191,6 +201,7 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 		http.Redirect(w, r, loginPath, http.StatusFound)
 		return "", nil
 	}
+	setLoggerUsername(w, cookieInfo.Username)
 	return cookieInfo.Username, nil
 }
 
