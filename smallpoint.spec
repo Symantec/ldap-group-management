@@ -1,5 +1,5 @@
 Name:		smallpoint
-Version:	0.2.4
+Version:	0.2.5
 Release:	1%{?dist}
 Summary:	LDAP group management tool
 
