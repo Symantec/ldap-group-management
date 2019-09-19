@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Symantec/keymaster/lib/authutil"
+	"github.com/Symantec/ldap-group-management/lib/prometheus"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"gopkg.in/ldap.v2"
 	"log"
@@ -107,7 +108,6 @@ func extractCNFromDNString(input []string) (output []string, err error) {
 }
 
 func getLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ldap.Conn, string, error) {
-
 	if u.Scheme != "ldaps" {
 		err := errors.New("Invalid ldaputil scheme (we only support ldaps)")
 		log.Println(err)
@@ -139,6 +139,7 @@ func getLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ld
 
 	// we dont close the tls connection directly  close defer to the new ldaputil connection
 	conn := ldap.NewConn(tlsConn, true)
+	prometheus.MetricLogExternalServiceDuration("ldap", time.Since(start))
 	return conn, server, nil
 }
 
