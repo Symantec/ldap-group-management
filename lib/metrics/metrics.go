@@ -18,6 +18,10 @@ var (
 	)
 )
 
+func init() {
+	prometheus.MustRegister(externalServiceDurationTotal)
+}
+
 func MetricLogExternalServiceDuration(service string, duration time.Duration) {
 	val := duration.Seconds() * 1000
 	metricsMutex.Lock()
