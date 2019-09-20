@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Symantec/keymaster/lib/authutil"
-	"github.com/Symantec/ldap-group-management/lib/prometheus"
+	"github.com/Symantec/ldap-group-management/lib/metrics"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"gopkg.in/ldap.v2"
 	"log"
@@ -139,7 +139,7 @@ func getLDAPConnection(u url.URL, timeoutSecs uint, rootCAs *x509.CertPool) (*ld
 
 	// we dont close the tls connection directly  close defer to the new ldaputil connection
 	conn := ldap.NewConn(tlsConn, true)
-	prometheus.MetricLogExternalServiceDuration("ldap", time.Since(start))
+	metrics.MetricLogExternalServiceDuration("ldap", time.Since(start))
 	return conn, server, nil
 }
 

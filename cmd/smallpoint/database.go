@@ -3,7 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"github.com/Symantec/ldap-group-management/lib/prometheus"
+	"github.com/Symantec/ldap-group-management/lib/metrics"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
@@ -260,7 +260,7 @@ func getDBentries(state *RuntimeState) ([][]string, error) {
 		}
 	}
 	defer rows.Close()
-	prometheus.MetricLogExternalServiceDuration("storage", time.Since(start))
+	metrics.MetricLogExternalServiceDuration("storage", time.Since(start))
 	var eachEntry1 string
 	var eachEntry2 string
 	for rows.Next() {
