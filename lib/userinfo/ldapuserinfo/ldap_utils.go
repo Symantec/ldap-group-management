@@ -525,8 +525,8 @@ func (u *UserInfoLDAPSource) getGroupUsersInternal(conn *ldap.Conn, groupname st
 		return nil, "", err
 	}
 	if len(sr.Entries) > 1 {
-		log.Println("Duplicate entries found")
-		return nil, "", errors.New("Multiple entries found, Contact the administrator!")
+		log.Println("getGroupUsersInternal: Duplicate entries found")
+		return nil, "", errors.New("getGroupUsersInternal: Multiple entries found, Contact the administrator!")
 	}
 	if len(sr.Entries) < 1 {
 		return nil, "", userinfo.GroupDoesNotExist
@@ -736,7 +736,7 @@ func (u *UserInfoLDAPSource) GetDescriptionvalue(groupname string) (string, erro
 		return "", err
 	}
 	if len(sr.Entries) > 1 {
-		log.Println("Duplicate entries found")
+		log.Println("GetDescriptionValue: Duplicate entries found")
 		return "", errors.New("Multiple entries found, Contact the administrator!")
 	}
 	if len(sr.Entries) < 1 {
@@ -1066,7 +1066,7 @@ func (u *UserInfoLDAPSource) getGroupDN(conn *ldap.Conn, groupname string) (stri
 		searchRequest := ldap.NewSearchRequest(
 			groupPath,
 			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-			"(&(cn="+groupname+" ))",
+			"(&(cn="+groupname+" )(|(objectClass=posixGroup)(objectClass=groupOfNames)))",
 			nil,
 			nil,
 		)
@@ -1076,7 +1076,7 @@ func (u *UserInfoLDAPSource) getGroupDN(conn *ldap.Conn, groupname string) (stri
 			return "", err
 		}
 		if len(sr.Entries) > 1 {
-			log.Println("Duplicate entries found")
+			log.Println("getGroupDN: Duplicate entries found")
 			return "", errors.New("Multiple entries found, Contact the administrator!")
 		}
 		if len(sr.Entries) < 1 {
