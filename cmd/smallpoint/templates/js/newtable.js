@@ -42,7 +42,7 @@ function array(groupnames) {//[["1","2"]]
         if(groupnames[i][1]==="self-managed") {
             groupname[2] ='<a title="click for groupinfo" href=/group_info/?groupname='+groupnames[i][0]+'>'+groupnames[i][1]+'</a>';
         }else{
-            groupname[2] ='<a title="click for groupinfo" href=/group_info/?groupname='+groupnames[i][0]+'>'+groupnames[i][1]+'</a>';
+            groupname[2] ='<a title="click for groupinfo" href=/group_info/?groupname='+groupnames[i][1]+'>'+groupnames[i][1]+'</a>';
         }
         groupname[0]='';
         group_description[i]=groupname;
