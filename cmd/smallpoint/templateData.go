@@ -744,7 +744,7 @@ const groupInfoPageText = `
     <script type="text/javascript" src="/getUsers.js?type=group&groupName={{.GroupName}}"></script>
     <script type="text/javascript" src="/getUsers.js"></script>
     </head>
-<body class="w3-light-grey" style="height:100%;">
+<body class="w3-light-grey">
 {{template "header" .}}
 
 <!-- !PAGE CONTENT! -->
@@ -760,7 +760,7 @@ const groupInfoPageText = `
     <h4><b>Group Managed Attribute:<strong id="group_managedby">{{.GroupManagedbyValue}}</strong></b></h4>
 </header>
 
-<div class="w3-panel" style="margin-bottom:5px;">
+<div class="w3-panel">
     {{if .IsGroupAdmin}}
     <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn" data-toggle="modal" data-target="#myModalAddMember">Add Members</button>
     <button class="w3-button w3-right w3-text-new-white w3-new-blue" id="length_btn" data-toggle="modal" data-target="#myModalRemoveMembers">Remove Members</button>    
