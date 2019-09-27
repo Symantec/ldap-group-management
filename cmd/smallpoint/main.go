@@ -304,8 +304,6 @@ func main() {
 	http.Handle(deleterequestsPath, http.HandlerFunc(state.deleteRequests))
 	http.Handle(exitgroupPath, http.HandlerFunc(state.exitfromGroup))
 
-	http.Handle(loginPath, simpleOidcAuth.Handler(http.HandlerFunc(state.loginHandler)))
-
 	http.Handle(approverequestPath, http.HandlerFunc(state.approveHandler))
 	http.Handle(rejectrequestPath, http.HandlerFunc(state.rejectHandler))
 

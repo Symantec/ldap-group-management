@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -66,16 +64,6 @@ func (state *RuntimeState) writeFailureResponse(w http.ResponseWriter, r *http.R
 
 }
 
-func randomStringGeneration() (string, error) {
-	const size = 32
-	bytes := make([]byte, size)
-	_, err := rand.Read(bytes)
-	if err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(bytes), nil
-}
-
 const allUsersCacheDuration = time.Hour * 1
 
 func (state *RuntimeState) createUserorNot(username string) error {
@@ -110,50 +98,6 @@ func (state *RuntimeState) createUserorNot(username string) error {
 	return nil
 }
 
-func (state *RuntimeState) loginHandler(w http.ResponseWriter, r *http.Request) {
-	userInfo, err := authSource.GetRemoteUserInfo(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-
-	if userInfo == nil {
-		log.Println("null userinfo!")
-
-		http.Error(w, "null userinfo", http.StatusInternalServerError)
-		return
-	}
-
-	userName := *userInfo.Username
-	err = state.createUserorNot(userName)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-	randomString, err := randomStringGeneration()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "cannot generate random string", http.StatusInternalServerError)
-		return
-	}
-
-	expires := time.Now().Add(time.Hour * cookieExpirationHours)
-
-	usercookie := http.Cookie{Name: cookieName, Value: randomString, Path: indexPath, Expires: expires, HttpOnly: true, Secure: true}
-
-	http.SetCookie(w, &usercookie)
-
-	Cookieinfo := cookieInfo{*userInfo.Username, usercookie.Expires}
-
-	state.cookiemutex.Lock()
-	state.authcookies[usercookie.Value] = Cookieinfo
-	state.cookiemutex.Unlock()
-
-	http.Redirect(w, r, indexPath, http.StatusFound)
-}
-
 func setLoggerUsername(w http.ResponseWriter, authUser string) {
 	_, ok := w.(*instrumentedwriter.LoggingWriter)
 	if ok {
@@ -168,43 +112,12 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 		http.Error(w, fmt.Sprint(err), http.StatusUnauthorized)
 		return "", err
 	}
-	return state.authenticator.GetRemoteUserName(w, r)
-	/*
-		//If having a verified cert, no need for cookies
-		if r.TLS != nil {
-			if len(r.TLS.VerifiedChains) > 0 {
-				clientName := r.TLS.VerifiedChains[0][0].Subject.CommonName
-				err = state.createUserorNot(clientName)
-				if err != nil {
-					log.Println(err)
-					http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-					return "", err
-				}
-				setLoggerUsername(w, clientName)
-				return clientName, nil
-			}
-		}
-		remoteCookie, err := r.Cookie(cookieName)
-		if err != nil {
-			log.Println(err)
-			http.Redirect(w, r, loginPath, http.StatusFound)
-			return "", err
-		}
-		state.cookiemutex.Lock()
-		cookieInfo, ok := state.authcookies[remoteCookie.Value]
-		state.cookiemutex.Unlock()
-
-		if !ok {
-			http.Redirect(w, r, loginPath, http.StatusFound)
-			return "", nil
-		}
-		if cookieInfo.ExpiresAt.Before(time.Now()) {
-			http.Redirect(w, r, loginPath, http.StatusFound)
-			return "", nil
-		}
-		setLoggerUsername(w, cookieInfo.Username)
-		return cookieInfo.Username, nil
-	*/
+	username, err := state.authenticator.GetRemoteUserName(w, r)
+	if err != nil {
+		return "", err
+	}
+	setLoggerUsername(w, username)
+	return username, err
 }
 
 //Main page with all LDAP groups displayed
