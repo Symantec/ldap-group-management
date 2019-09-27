@@ -6,7 +6,7 @@ GOPATH ?= $(HOME)/go
 BINARY=smallpoint
 
 # These are the values we want to pass for Version and BuildTime
-VERSION=0.2.6
+VERSION=0.2.7
 
 all: test build
 
