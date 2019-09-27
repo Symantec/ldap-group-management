@@ -43,6 +43,20 @@ type openidConnectUserInfo struct {
 	Email             string `json:"email,omitempty"`
 }
 
+func (s *Authenticator) performStateCleanup(secsBetweenCleanup int) {
+	for {
+		s.cookieMutex.Lock()
+		for key, authCookie := range s.authCookie {
+			log.Printf("about to delete cookie (authenticator Cleanup) key=%s val=%+v", key, authCookie)
+			if authCookie.ExpiresAt.Before(time.Now()) {
+				delete(s.authCookie, key)
+			}
+		}
+		s.cookieMutex.Unlock()
+		time.Sleep(time.Duration(secsBetweenCleanup) * time.Second)
+	}
+}
+
 func randomStringGeneration() (string, error) {
 	const size = 32
 	bytes := make([]byte, size)
@@ -53,7 +67,6 @@ func randomStringGeneration() (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
-const authCookieName = "authn_cookie"
 const cookieExpirationHours = 2
 
 func (s *Authenticator) setAndStoreAuthCookie(w http.ResponseWriter, username string) error {
@@ -63,7 +76,7 @@ func (s *Authenticator) setAndStoreAuthCookie(w http.ResponseWriter, username st
 		return err
 	}
 	expires := time.Now().Add(time.Hour * cookieExpirationHours)
-	userCookie := http.Cookie{Name: authCookieName, Value: randomString, Path: "/", Expires: expires, HttpOnly: true, Secure: true}
+	userCookie := http.Cookie{Name: AuthCookieName, Value: randomString, Path: "/", Expires: expires, HttpOnly: true, Secure: true}
 	http.SetCookie(w, &userCookie)
 	Cookieinfo := AuthCookie{username, userCookie.Expires}
 	s.cookieMutex.Lock()
@@ -314,7 +327,7 @@ func (s *Authenticator) getRemoteUserName(w http.ResponseWriter, r *http.Request
 	}
 	//setupSecurityHeaders(w)
 
-	remoteCookie, err := r.Cookie(authCookieName)
+	remoteCookie, err := r.Cookie(AuthCookieName)
 	if err != nil {
 		//s.logger.Debugf(1, "Err cookie %s", err)
 		s.oauth2DoRedirectoToProviderHandler(w, r)

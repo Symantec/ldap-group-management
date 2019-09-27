@@ -168,41 +168,43 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 		http.Error(w, fmt.Sprint(err), http.StatusUnauthorized)
 		return "", err
 	}
-
-	//If having a verified cert, no need for cookies
-	if r.TLS != nil {
-		if len(r.TLS.VerifiedChains) > 0 {
-			clientName := r.TLS.VerifiedChains[0][0].Subject.CommonName
-			err = state.createUserorNot(clientName)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-				return "", err
+	return state.authenticator.GetRemoteUserName(w, r)
+	/*
+		//If having a verified cert, no need for cookies
+		if r.TLS != nil {
+			if len(r.TLS.VerifiedChains) > 0 {
+				clientName := r.TLS.VerifiedChains[0][0].Subject.CommonName
+				err = state.createUserorNot(clientName)
+				if err != nil {
+					log.Println(err)
+					http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+					return "", err
+				}
+				setLoggerUsername(w, clientName)
+				return clientName, nil
 			}
-			setLoggerUsername(w, clientName)
-			return clientName, nil
 		}
-	}
-	remoteCookie, err := r.Cookie(cookieName)
-	if err != nil {
-		log.Println(err)
-		http.Redirect(w, r, loginPath, http.StatusFound)
-		return "", err
-	}
-	state.cookiemutex.Lock()
-	cookieInfo, ok := state.authcookies[remoteCookie.Value]
-	state.cookiemutex.Unlock()
+		remoteCookie, err := r.Cookie(cookieName)
+		if err != nil {
+			log.Println(err)
+			http.Redirect(w, r, loginPath, http.StatusFound)
+			return "", err
+		}
+		state.cookiemutex.Lock()
+		cookieInfo, ok := state.authcookies[remoteCookie.Value]
+		state.cookiemutex.Unlock()
 
-	if !ok {
-		http.Redirect(w, r, loginPath, http.StatusFound)
-		return "", nil
-	}
-	if cookieInfo.ExpiresAt.Before(time.Now()) {
-		http.Redirect(w, r, loginPath, http.StatusFound)
-		return "", nil
-	}
-	setLoggerUsername(w, cookieInfo.Username)
-	return cookieInfo.Username, nil
+		if !ok {
+			http.Redirect(w, r, loginPath, http.StatusFound)
+			return "", nil
+		}
+		if cookieInfo.ExpiresAt.Before(time.Now()) {
+			http.Redirect(w, r, loginPath, http.StatusFound)
+			return "", nil
+		}
+		setLoggerUsername(w, cookieInfo.Username)
+		return cookieInfo.Username, nil
+	*/
 }
 
 //Main page with all LDAP groups displayed

@@ -38,6 +38,9 @@ type Authenticator struct {
 }
 
 const Oauth2redirectPath = "/oauth2/redirect"
+const AuthCookieName = "authn_cookie"
+
+const secsBetweenCleanup = 30
 
 func NewAuthenticator(config OpenIDConfig, appName string, netClient *http.Client,
 	sharedSecrets []string, logger *log.Logger,
@@ -55,11 +58,33 @@ func NewAuthenticator(config OpenIDConfig, appName string, netClient *http.Clien
 	if netClient == nil {
 		authenticator.netClient = http.DefaultClient
 	}
+	if len(sharedSecrets) < 1 {
+		randString, err := randomStringGeneration()
+		if err != nil {
+			panic(err)
+		}
+		authenticator.sharedSecrets = append(authenticator.sharedSecrets, randString)
+	}
 
 	authenticator.authCookie = make(map[string]AuthCookie)
+
+	go authenticator.performStateCleanup(secsBetweenCleanup)
 	return &authenticator
 }
 
 func (a *Authenticator) GetRemoteUserName(w http.ResponseWriter, r *http.Request) (string, error) {
 	return a.getRemoteUserName(w, r)
+}
+func (a *Authenticator) Oauth2RedirectPathHandler(w http.ResponseWriter, r *http.Request) {
+	a.oauth2RedirectPathHandler(w, r)
+}
+
+// This function is only for testing purposes, should not be used in prod
+func (a *Authenticator) SetExplicitAuthCookie(cookieValue, username string) error {
+	expires := time.Now().Add(time.Second * time.Duration(60))
+	Cookieinfo := AuthCookie{Username: username, ExpiresAt: expires}
+	a.cookieMutex.Lock()
+	a.authCookie[cookieValue] = Cookieinfo
+	a.cookieMutex.Unlock()
+	return nil
 }

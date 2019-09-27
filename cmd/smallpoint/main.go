@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/Symantec/ldap-group-management/lib/authn"
 )
 
 type baseConfig struct {
@@ -40,19 +42,9 @@ type baseConfig struct {
 	SharedSecrets               []string
 }
 
-type OpenIDConfig struct {
-	ClientID     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
-	ProviderURL  string `yaml:"provider_url"`
-	AuthURL      string `yaml:"auth_url"`
-	TokenURL     string `yaml:"token_url"`
-	UserinfoURL  string `yaml:"userinfo_url"`
-	Scopes       string `yaml:"scopes"`
-}
-
 type AppConfigFile struct {
 	Base       baseConfig                      `yaml:"base"`
-	OpenID     OpenIDConfig                    `yaml:"openid"`
+	OpenID     authn.OpenIDConfig              `yaml:"openid"`
 	SourceLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"source_config"`
 	TargetLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"target_config"`
 }
@@ -67,6 +59,7 @@ type RuntimeState struct {
 	cookiemutex    sync.Mutex
 	htmlTemplate   *template.Template
 	sysLog         *syslog.Writer
+	authenticator  *authn.Authenticator
 
 	allUsersRWLock     sync.RWMutex
 	allUsersCacheValue map[string]time.Time
@@ -240,6 +233,12 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	state.authcookies = make(map[string]cookieInfo)
 	state.allUsersCacheValue = make(map[string]time.Time)
 	state.UserSourceinfo = &state.Config.SourceLDAP
+
+	//
+	state.authenticator = authn.NewAuthenticator(state.Config.OpenID, "smallpoint", nil,
+		[]string{}, nil,
+		nil)
+
 	return state, err
 }
 
@@ -275,6 +274,11 @@ func main() {
 	}
 	authSource = simpleOidcAuth
 
+	/*
+		state.authenticator :i= authn.NewAuthenticator(state.Config.OpenID, "smallpoint", nil,
+			[]string{"TODO:UPDATESECRET"}, nil,
+			nil)
+	*/
 	//start to log
 	state.sysLog, err = syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
 	if err != nil {
@@ -283,6 +287,9 @@ func main() {
 	defer state.sysLog.Close()
 
 	http.Handle(metricsPath, promhttp.Handler())
+
+	http.HandleFunc(authn.Oauth2redirectPath, state.authenticator.Oauth2RedirectPathHandler)
+
 	http.Handle(creategroupWebPagePath, http.HandlerFunc(state.creategroupWebpageHandler))
 	http.Handle(deletegroupWebPagePath, http.HandlerFunc(state.deletegroupWebpageHandler))
 	http.Handle(creategroupPath, http.HandlerFunc(state.createGrouphandler))
