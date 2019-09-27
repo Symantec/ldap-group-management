@@ -47,7 +47,7 @@ func (s *Authenticator) performStateCleanup(secsBetweenCleanup int) {
 	for {
 		s.cookieMutex.Lock()
 		for key, authCookie := range s.authCookie {
-			log.Printf("about to delete cookie (authenticator Cleanup) key=%s val=%+v", key, authCookie)
+			//log.Printf("about to delete cookie (authenticator Cleanup) key=%s val=%+v", key, authCookie)
 			if authCookie.ExpiresAt.Before(time.Now()) {
 				delete(s.authCookie, key)
 			}
