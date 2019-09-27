@@ -26,20 +26,33 @@ import (
 )
 
 type baseConfig struct {
-	HttpAddress           string `yaml:"http_address"`
-	TLSCertFilename       string `yaml:"tls_cert_filename"`
-	TLSKeyFilename        string `yaml:"tls_key_filename"`
-	StorageURL            string `yaml:"storage_url"`
-	OpenIDCConfigFilename string `yaml:"openidc_config_filename"`
-	TemplatesPath         string `yaml:"templates_path"`
-	SMTPserver            string `yaml:"smtp_server"`
-	SmtpSenderAddress     string `yaml:"smtp_sender_address"`
-	ClientCAFilename      string `yaml:"client_ca_filename"`
-	LogDirectory          string `yaml:"log_directory"`
+	HttpAddress                 string `yaml:"http_address"`
+	TLSCertFilename             string `yaml:"tls_cert_filename"`
+	TLSKeyFilename              string `yaml:"tls_key_filename"`
+	StorageURL                  string `yaml:"storage_url"`
+	OpenIDCConfigFilename       string `yaml:"openidc_config_filename"`
+	TemplatesPath               string `yaml:"templates_path"`
+	SMTPserver                  string `yaml:"smtp_server"`
+	SmtpSenderAddress           string `yaml:"smtp_sender_address"`
+	ClientCAFilename            string `yaml:"client_ca_filename"`
+	LogDirectory                string `yaml:"log_directory"`
+	ClusterSharedSecretFilename string `yaml:"cluster_shared_secret_filename"`
+	SharedSecrets               []string
+}
+
+type OpenIDConfig struct {
+	ClientID     string `yaml:"client_id"`
+	ClientSecret string `yaml:"client_secret"`
+	ProviderURL  string `yaml:"provider_url"`
+	AuthURL      string `yaml:"auth_url"`
+	TokenURL     string `yaml:"token_url"`
+	UserinfoURL  string `yaml:"userinfo_url"`
+	Scopes       string `yaml:"scopes"`
 }
 
 type AppConfigFile struct {
 	Base       baseConfig                      `yaml:"base"`
+	OpenID     OpenIDConfig                    `yaml:"openid"`
 	SourceLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"source_config"`
 	TargetLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"target_config"`
 }
