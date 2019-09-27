@@ -63,11 +63,10 @@ const headerHTMLText = `
 
 const footerHTMLText = `
 {{define "footer"}}
-        <footer class="w3-container w3-padding-16 w3-light-grey w3-bottom">
-            <hr>
-            <p>Copyright 2018-2019 Symantec Corporation. | <a href="https://confluence.ges.symantec.com" target="_blank">Documentation</a></p>
-        </footer>
-        <!-- End page content -->
+<footer class="w3-container w3-padding-16 w3-light-grey w3-bottom">
+        <p>Copyright 2018-2019 Symantec Corporation. | <a href="https://confluence.ges.symantec.com/display/CPEINFRAENG/Smallpoint+Usage+Guide" target="_blank">Documentation</a></p>
+</footer>
+
 {{end}}`
 
 const sidebarHTMLText = `
@@ -137,7 +136,7 @@ const myGroupsPageText = `
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
   <header class="w3-container" style="padding-top:12px">
     <h5><b><i class="fa fa-group"></i>{{.Title}}</b>
         <button class="w3-button w3-right w3-text-new-white w3-red" id="length_btn" data-toggle="modal" data-target="#myModal">Exit Group</button>
@@ -165,7 +164,7 @@ const myGroupsPageText = `
     </h5>
   </header>
   <div class="w3-panel">
-    <table class="w3-table w3-striped w3-white" id="display">
+    <table class="w3-table w3-striped w3-white" id="display" style="width:100%;margin:0;">
     </table>
   </div>
 </div>
@@ -198,7 +197,7 @@ const allGroupsPageText = `
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
 
   <header class="w3-container" style="padding-top:12px">
     <h5><b><i class="fa fa-group"></i>All Ldap Groups</b>
@@ -228,7 +227,7 @@ const allGroupsPageText = `
         </div>
     </div>
 
-    <table class="w3-table w3-striped w3-white" id="display">
+    <table class="w3-table w3-striped w3-white" id="display" style="width:100%;margin:0;">
 
     </table>
 
@@ -265,7 +264,7 @@ const pendingRequestsPageText = `
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
 
 
 {{if .HasPendingRequests}}
@@ -298,7 +297,7 @@ const pendingRequestsPageText = `
     </div>
 
 
-    <table class="w3-table w3-striped w3-white" id="display">
+    <table class="w3-table w3-striped w3-white" id="display" style="width:100%;margin:0;">
 
     </table>
 
@@ -348,7 +347,7 @@ const pendingActionsPageText = `
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
 
 {{if .HasPendingActions}}
 
@@ -402,7 +401,7 @@ const pendingActionsPageText = `
     </div>
 
 
-    <table class="w3-table w3-striped w3-white" id="pending_actions">
+    <table class="w3-table w3-striped w3-white" id="pending_actions" style="width:100%;margin:0;">
 
     </table>
 
@@ -454,7 +453,7 @@ const createGroupPageText = `
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
 
 
 <!-- Header -->
@@ -544,7 +543,7 @@ const deleteGroupPageText = `
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
 
 
 <header class="w3-container" style="padding-top:12px">
@@ -620,7 +619,7 @@ const simpleMessagePageText = `
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
      <p>
      {{.SuccessMessage}}
      {{if .ErrorMessage}}
@@ -660,7 +659,7 @@ const addMembersToGroupPageText = `
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
 
 <!-- Header -->
 <header class="w3-container" style="padding-top:12px">
@@ -745,12 +744,12 @@ const groupInfoPageText = `
     <script type="text/javascript" src="/getUsers.js?type=group&groupName={{.GroupName}}"></script>
     <script type="text/javascript" src="/getUsers.js"></script>
     </head>
-<body class="w3-light-grey" >
+<body class="w3-light-grey">
 {{template "header" .}}
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
 
 
 <!-- Header -->
@@ -890,14 +889,12 @@ const groupInfoPageText = `
   
     {{end}}
 
-    <table class="w3-table w3-striped w3-white" id="table_groupinfo">
+    <table class="w3-table w3-striped w3-white" id="table_groupinfo" style="width:100%;margin:0;">
 
     </table>
 
 
 </div>
-
-
   </div><!-- end of content div -->
 {{template "footer"}}
 </div>
@@ -928,7 +925,7 @@ const createServiceAccountPageText = `
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
 
 
 
@@ -992,7 +989,7 @@ const changeGroupOwnershipPageText = `
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
 
 <header class="w3-container" style="padding-top:12px">
     <h5><b><i class="fa fa-group"></i>Change Group Ownership(RegExp)</b></h5>
@@ -1081,7 +1078,7 @@ const deleteMembersFromGroupPageText = `
 
 <!-- !PAGE CONTENT! -->
 <div class="w3-main" style="margin-left:300px;margin-top:43px;">
-  <div id="content">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
 
 
 <!-- Header -->
