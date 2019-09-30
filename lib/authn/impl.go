@@ -80,19 +80,6 @@ func randomStringGeneration() (string, error) {
 const cookieExpirationHours = 2
 
 func (a *Authenticator) genUserCookieValue(username string, expires time.Time) (string, error) {
-	/*
-		cookieValue, err := randomStringGeneration()
-		if err != nil {
-			a.logger.Println(err)
-			return "", err
-		}
-		Cookieinfo := AuthCookie{username, expires}
-		a.cookieMutex.Lock()
-		a.authCookie[cookieValue] = Cookieinfo
-		a.cookieMutex.Unlock()
-
-		return cookieValue, nil
-	*/
 	if len(a.sharedSecrets[0]) < 1 {
 		return "", errors.New("invalid authenticator state, no shared secrets")
 	}
@@ -113,9 +100,6 @@ func (a *Authenticator) genUserCookieValue(username string, expires time.Time) (
 		IssuedAt:   now,
 		Expiration: expires.Unix()}
 	return jwt.Signed(sig).Claims(stateToken).CompactSerialize()
-
-	//return cookieValue, nil
-
 }
 
 func (s *Authenticator) setAndStoreAuthCookie(w http.ResponseWriter, username string) error {
