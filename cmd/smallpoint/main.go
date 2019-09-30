@@ -10,7 +10,6 @@ import (
 	"github.com/Symantec/keymaster/lib/instrumentedwriter"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
-	//"github.com/cviecco/go-simple-oidc-auth/authhandler"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v2"
@@ -28,18 +27,16 @@ import (
 )
 
 type baseConfig struct {
-	HttpAddress                 string `yaml:"http_address"`
-	TLSCertFilename             string `yaml:"tls_cert_filename"`
-	TLSKeyFilename              string `yaml:"tls_key_filename"`
-	StorageURL                  string `yaml:"storage_url"`
-	OpenIDCConfigFilename       string `yaml:"openidc_config_filename"`
-	TemplatesPath               string `yaml:"templates_path"`
-	SMTPserver                  string `yaml:"smtp_server"`
-	SmtpSenderAddress           string `yaml:"smtp_sender_address"`
-	ClientCAFilename            string `yaml:"client_ca_filename"`
-	LogDirectory                string `yaml:"log_directory"`
-	ClusterSharedSecretFilename string `yaml:"cluster_shared_secret_filename"`
-	SharedSecrets               []string
+	HttpAddress           string `yaml:"http_address"`
+	TLSCertFilename       string `yaml:"tls_cert_filename"`
+	TLSKeyFilename        string `yaml:"tls_key_filename"`
+	StorageURL            string `yaml:"storage_url"`
+	OpenIDCConfigFilename string `yaml:"openidc_config_filename"`
+	TemplatesPath         string `yaml:"templates_path"`
+	SMTPserver            string `yaml:"smtp_server"`
+	SmtpSenderAddress     string `yaml:"smtp_sender_address"`
+	ClientCAFilename      string `yaml:"client_ca_filename"`
+	LogDirectory          string `yaml:"log_directory"`
 }
 
 type AppConfigFile struct {
@@ -98,7 +95,6 @@ type httpLogger struct {
 var (
 	Version        = "No version provided"
 	configFilename = flag.String("config", "/etc/smallpoint/config.yml", "The filename of the configuration")
-	//authSource     *authhandler.SimpleOIDCAuth
 )
 
 const (
@@ -257,8 +253,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	//var openidConfigFilename = state.Config.Base.OpenIDCConfigFilename //"/etc/openidc_config_keymaster.yml"
 
 	//start to log
 	state.sysLog, err = syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
