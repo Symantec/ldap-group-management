@@ -113,8 +113,11 @@ func TestGetRemoteUserNameHandler(t *testing.T) {
 
 	//now succeed with known cookie
 	expires := time.Now().Add(time.Hour * cookieExpirationHours)
-	Cookieinfo := AuthCookie{"username", expires}
-	authenticator.authCookie[cookieVal] = Cookieinfo
+	cookieValue, err := authenticator.GenUserCookieValue("username", expires)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authCookie.Value = cookieValue
 	knownCookieReq, err := http.NewRequest("GET", "/", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -124,14 +127,17 @@ func TestGetRemoteUserNameHandler(t *testing.T) {
 	_, err = checkRequestHandlerCode(knownCookieReq, func(w http.ResponseWriter, r *http.Request) {
 		_, err := authenticator.getRemoteUserName(w, r)
 		if err != nil {
-			t.Fatal("GetRemoteUsername should have failed")
+			t.Fatal("GetRemoteUsername should not have failed")
 		}
 	}, http.StatusFound)
 
 	//now fail with expired cookie
 	expired := time.Now().Add(-1 * time.Hour * cookieExpirationHours)
-	Cookieinfo = AuthCookie{"username", expired}
-	authenticator.authCookie[cookieVal] = Cookieinfo
+	expiredCookieValue, err := authenticator.GenUserCookieValue("username", expired)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authCookie.Value = expiredCookieValue
 	expiredCookieReq, err := http.NewRequest("GET", "/", nil)
 	if err != nil {
 		t.Fatal(err)
