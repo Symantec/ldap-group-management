@@ -23,16 +23,22 @@ const (
 	testdbpath           = "sqlite:./test-sqlite3.db"
 )
 
-func testCreateValidCookie() http.Cookie {
+func testGenValidCookie(authenticator *authn.Authenticator, username string) http.Cookie {
 	expiresAt := time.Now().Add(time.Hour * cookieExpirationHours)
-	cookie := http.Cookie{Name: authn.AuthCookieName, Value: cookievalueTest, Path: indexPath, Expires: expiresAt, HttpOnly: true, Secure: true}
+	cookieValue, err := authenticator.GenUserCookieValue(username, expiresAt)
+	if err != nil {
+		panic(err)
+	}
+	cookie := http.Cookie{Name: authn.AuthCookieName, Value: cookieValue, Path: indexPath, Expires: expiresAt, HttpOnly: true, Secure: true}
 	return cookie
 }
 
-func testCreateValidAdminCookie() http.Cookie {
-	expiresAt := time.Now().Add(time.Hour * cookieExpirationHours)
-	cookie := http.Cookie{Name: authn.AuthCookieName, Value: adminCookievalueTest, Path: indexPath, Expires: expiresAt, HttpOnly: true, Secure: true}
-	return cookie
+func testCreateValidCookie(authenticator *authn.Authenticator) http.Cookie {
+	return testGenValidCookie(authenticator, testUsername)
+}
+
+func testCreateValidAdminCookie(authenticator *authn.Authenticator) http.Cookie {
+	return testGenValidCookie(authenticator, adminTestusername)
 }
 
 func setupTestState() (RuntimeState, error) {
@@ -87,7 +93,7 @@ func TestMethodsForApiEndPoints(t *testing.T) {
 		log.Println(err)
 	}
 	apiTestPoints := getTestApiEndpoints(&state)
-	cookie := testCreateValidCookie()
+	cookie := testCreateValidCookie(state.authenticator)
 	for path, testFunc := range apiTestPoints {
 		req, err := http.NewRequest("GET", path, nil)
 		if err != nil {
@@ -115,7 +121,7 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 		log.Println(err)
 	}
 	adminTestPoints := getAdminOnlyEndpoints(&state)
-	cookie := testCreateValidCookie()
+	cookie := testCreateValidCookie(state.authenticator)
 	for path, testFunc := range adminTestPoints {
 		req, err := http.NewRequest("POST", path, nil)
 		if err != nil {
@@ -136,7 +142,7 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 	}
 
 	// This one should fail due to missing form
-	adminCookie := testCreateValidAdminCookie()
+	adminCookie := testCreateValidAdminCookie(state.authenticator)
 	for path, testFunc := range adminTestPoints {
 		req, err := http.NewRequest("POST", path, nil)
 		if err != nil {
@@ -187,7 +193,7 @@ func TestCreateGrouphandlerSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidAdminCookie()
+	cookie := testCreateValidAdminCookie(state.authenticator)
 	req.AddCookie(&cookie)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -214,7 +220,7 @@ func TestCreateDrouphandlerSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidAdminCookie()
+	cookie := testCreateValidAdminCookie(state.authenticator)
 	req.AddCookie(&cookie)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -240,7 +246,7 @@ func TestCreateServiceAccounthandlerSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidAdminCookie()
+	cookie := testCreateValidAdminCookie(state.authenticator)
 	req.AddCookie(&cookie)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -266,7 +272,7 @@ func TestChangeownershipSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidAdminCookie()
+	cookie := testCreateValidAdminCookie(state.authenticator)
 	req.AddCookie(&cookie)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -292,7 +298,7 @@ func TestGetGroupsJSHandler(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		cookie := testCreateValidCookie()
+		cookie := testCreateValidCookie(state.authenticator)
 		req.AddCookie(&cookie)
 
 		rr := httptest.NewRecorder()
@@ -318,7 +324,7 @@ func TestGetUsersJSHandler(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		cookie := testCreateValidCookie()
+		cookie := testCreateValidCookie(state.authenticator)
 		req.AddCookie(&cookie)
 
 		rr := httptest.NewRecorder()

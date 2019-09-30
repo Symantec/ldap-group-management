@@ -319,8 +319,8 @@ func (s *Authenticator) validateUserCookieValue(remoteCookieValue string) (strin
 		//errors.New("Cookie not found")
 	}
 	if authInfo.ExpiresAt.Before(time.Now()) {
+		s.logger.Printf("ExpiredCookie")
 		return "", nil
-		//errors.New("Expired Cookie")
 	}
 	return authInfo.Username, nil
 

@@ -88,3 +88,7 @@ func (a *Authenticator) SetExplicitAuthCookie(cookieValue, username string) erro
 	a.cookieMutex.Unlock()
 	return nil
 }
+
+func (a *Authenticator) GenUserCookieValue(username string, expires time.Time) (string, error) {
+	return a.genUserCookieValue(username, expires)
+}

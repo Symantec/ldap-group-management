@@ -33,7 +33,7 @@ func TestNonAdminWebPathsHandlerSuccess(t *testing.T) {
 	}
 
 	//nonAdminWebPaths := []string{indexPath}
-	cookie := testCreateValidCookie()
+	cookie := testCreateValidCookie(state.authenticator)
 
 	for path, testFunc := range testWebEndpoints {
 		req, err := http.NewRequest("GET", path, nil)
@@ -103,7 +103,7 @@ func TestAdminOnlyWebPaths(t *testing.T) {
 		createServiceAccWebPagePath: state.createserviceAccountPageHandler,
 	}
 
-	adminCookie := testCreateValidAdminCookie()
+	adminCookie := testCreateValidAdminCookie(state.authenticator)
 
 	for path, testFunc := range testWebEndpoints {
 		req, err := http.NewRequest("GET", path, nil)
@@ -124,7 +124,7 @@ func TestAdminOnlyWebPaths(t *testing.T) {
 		}
 	}
 
-	cookie := testCreateValidCookie()
+	cookie := testCreateValidCookie(state.authenticator)
 
 	for path, testFunc := range testWebEndpoints {
 		req, err := http.NewRequest("GET", path, nil)
@@ -181,7 +181,7 @@ func TestRequestAccessHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidCookie() //testCreateValidAdminCookie()
+	cookie := testCreateValidCookie(state.authenticator) //testCreateValidAdminCookie()
 	req.AddCookie(&cookie)
 	//This is actually not neded
 	req.Header.Set("Content-Type", "application/json")
@@ -232,7 +232,7 @@ func TestAddmemberstoExistingGroupSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidAdminCookie()
+	cookie := testCreateValidAdminCookie(state.authenticator)
 	req.AddCookie(&cookie)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -275,7 +275,7 @@ func TestApproveHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidCookie() //testCreateValidAdminCookie()
+	cookie := testCreateValidCookie(state.authenticator) //testCreateValidAdminCookie()
 	req.AddCookie(&cookie)
 	//This is actually not neded
 	req.Header.Set("Content-Type", "application/json")
@@ -317,7 +317,7 @@ func TestRejectHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidCookie() //testCreateValidAdminCookie()
+	cookie := testCreateValidCookie(state.authenticator) //testCreateValidAdminCookie()
 	req.AddCookie(&cookie)
 	//This is actually not neded
 	req.Header.Set("Content-Type", "application/json")
@@ -355,7 +355,7 @@ func TestExitfromGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidCookie() //testCreateValidAdminCookie()
+	cookie := testCreateValidCookie(state.authenticator) //testCreateValidAdminCookie()
 	req.AddCookie(&cookie)
 	//This is actually not neded
 	req.Header.Set("Content-Type", "application/json")
@@ -386,7 +386,7 @@ func TestDeletemembersfromExistingGroupMinimal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie := testCreateValidAdminCookie()
+	cookie := testCreateValidAdminCookie(state.authenticator)
 	req.AddCookie(&cookie)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
