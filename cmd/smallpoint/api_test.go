@@ -56,8 +56,8 @@ func setupTestState() (RuntimeState, error) {
 	state.authenticator = authn.NewAuthenticator(state.Config.OpenID, "smallpoint", nil,
 		[]string{}, nil,
 		nil)
-	state.authenticator.SetExplicitAuthCookie(cookievalueTest, testUsername)
-	state.authenticator.SetExplicitAuthCookie(adminCookievalueTest, adminTestusername)
+	//state.authenticator.SetExplicitAuthCookie(cookievalueTest, testUsername)
+	//state.authenticator.SetExplicitAuthCookie(adminCookievalueTest, adminTestusername)
 
 	state.Config.Base.TemplatesPath = "."
 	log.Printf("before loading templates")

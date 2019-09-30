@@ -80,15 +80,6 @@ func (a *Authenticator) Oauth2RedirectPathHandler(w http.ResponseWriter, r *http
 }
 
 // This function is only for testing purposes, should not be used in prod
-func (a *Authenticator) SetExplicitAuthCookie(cookieValue, username string) error {
-	expires := time.Now().Add(time.Second * time.Duration(60))
-	Cookieinfo := AuthCookie{Username: username, ExpiresAt: expires}
-	a.cookieMutex.Lock()
-	a.authCookie[cookieValue] = Cookieinfo
-	a.cookieMutex.Unlock()
-	return nil
-}
-
 func (a *Authenticator) GenUserCookieValue(username string, expires time.Time) (string, error) {
 	return a.genUserCookieValue(username, expires)
 }
