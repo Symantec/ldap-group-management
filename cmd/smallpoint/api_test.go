@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Symantec/ldap-group-management/lib/authn"
 	"github.com/Symantec/ldap-group-management/lib/userinfo/mock"
 )
 
@@ -24,13 +25,13 @@ const (
 
 func testCreateValidCookie() http.Cookie {
 	expiresAt := time.Now().Add(time.Hour * cookieExpirationHours)
-	cookie := http.Cookie{Name: cookieName, Value: cookievalueTest, Path: indexPath, Expires: expiresAt, HttpOnly: true, Secure: true}
+	cookie := http.Cookie{Name: authn.AuthCookieName, Value: cookievalueTest, Path: indexPath, Expires: expiresAt, HttpOnly: true, Secure: true}
 	return cookie
 }
 
 func testCreateValidAdminCookie() http.Cookie {
 	expiresAt := time.Now().Add(time.Hour * cookieExpirationHours)
-	cookie := http.Cookie{Name: cookieName, Value: adminCookievalueTest, Path: indexPath, Expires: expiresAt, HttpOnly: true, Secure: true}
+	cookie := http.Cookie{Name: authn.AuthCookieName, Value: adminCookievalueTest, Path: indexPath, Expires: expiresAt, HttpOnly: true, Secure: true}
 	return cookie
 }
 
@@ -44,13 +45,14 @@ func setupTestState() (RuntimeState, error) {
 	mockldap := mock.New()
 	state.Userinfo = mockldap
 	state.UserSourceinfo = mockldap
-	state.authcookies = make(map[string]cookieInfo)
 	state.allUsersCacheValue = make(map[string]time.Time)
-	expiresAt := time.Now().Add(time.Hour * cookieExpirationHours)
-	usersession := cookieInfo{Username: testUsername, ExpiresAt: expiresAt}
-	state.authcookies[cookievalueTest] = usersession
-	adminSession := cookieInfo{Username: adminTestusername, ExpiresAt: expiresAt}
-	state.authcookies[adminCookievalueTest] = adminSession
+
+	state.authenticator = authn.NewAuthenticator(state.Config.OpenID, "smallpoint", nil,
+		[]string{}, nil,
+		nil)
+	state.authenticator.SetExplicitAuthCookie(cookievalueTest, testUsername)
+	state.authenticator.SetExplicitAuthCookie(adminCookievalueTest, adminTestusername)
+
 	state.Config.Base.TemplatesPath = "."
 	log.Printf("before loading templates")
 	err = state.loadTemplates()

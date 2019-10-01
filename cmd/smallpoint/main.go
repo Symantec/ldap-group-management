@@ -10,7 +10,6 @@ import (
 	"github.com/Symantec/keymaster/lib/instrumentedwriter"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
-	"github.com/cviecco/go-simple-oidc-auth/authhandler"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v2"
@@ -23,6 +22,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/Symantec/ldap-group-management/lib/authn"
 )
 
 type baseConfig struct {
@@ -40,6 +41,7 @@ type baseConfig struct {
 
 type AppConfigFile struct {
 	Base       baseConfig                      `yaml:"base"`
+	OpenID     authn.OpenIDConfig              `yaml:"openid"`
 	SourceLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"source_config"`
 	TargetLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"target_config"`
 }
@@ -50,19 +52,14 @@ type RuntimeState struct {
 	db             *sql.DB
 	Userinfo       userinfo.UserInfo
 	UserSourceinfo userinfo.UserInfo
-	authcookies    map[string]cookieInfo
-	cookiemutex    sync.Mutex
 	htmlTemplate   *template.Template
 	sysLog         *syslog.Writer
+	authenticator  *authn.Authenticator
 
 	allUsersRWLock     sync.RWMutex
 	allUsersCacheValue map[string]time.Time
 }
 
-type cookieInfo struct {
-	Username  string
-	ExpiresAt time.Time
-}
 type GetGroups struct {
 	AllGroups []string `json:"allgroups"`
 }
@@ -98,7 +95,6 @@ type httpLogger struct {
 var (
 	Version        = "No version provided"
 	configFilename = flag.String("config", "/etc/smallpoint/config.yml", "The filename of the configuration")
-	authSource     *authhandler.SimpleOIDCAuth
 )
 
 const (
@@ -224,9 +220,14 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 		return state, err
 	}
 	state.Userinfo = &state.Config.TargetLDAP
-	state.authcookies = make(map[string]cookieInfo)
 	state.allUsersCacheValue = make(map[string]time.Time)
 	state.UserSourceinfo = &state.Config.SourceLDAP
+
+	//
+	state.authenticator = authn.NewAuthenticator(state.Config.OpenID, "smallpoint", nil,
+		[]string{}, nil,
+		nil)
+
 	return state, err
 }
 
@@ -253,15 +254,6 @@ func main() {
 		panic(err)
 	}
 
-	var openidConfigFilename = state.Config.Base.OpenIDCConfigFilename //"/etc/openidc_config_keymaster.yml"
-
-	// if you alresy use the context:
-	simpleOidcAuth, err := authhandler.NewSimpleOIDCAuthFromConfig(&openidConfigFilename, nil)
-	if err != nil {
-		panic(err)
-	}
-	authSource = simpleOidcAuth
-
 	//start to log
 	state.sysLog, err = syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
 	if err != nil {
@@ -270,6 +262,9 @@ func main() {
 	defer state.sysLog.Close()
 
 	http.Handle(metricsPath, promhttp.Handler())
+
+	http.HandleFunc(authn.Oauth2redirectPath, state.authenticator.Oauth2RedirectPathHandler)
+
 	http.Handle(creategroupWebPagePath, http.HandlerFunc(state.creategroupWebpageHandler))
 	http.Handle(deletegroupWebPagePath, http.HandlerFunc(state.deletegroupWebpageHandler))
 	http.Handle(creategroupPath, http.HandlerFunc(state.createGrouphandler))
@@ -277,14 +272,11 @@ func main() {
 
 	http.Handle(requestaccessPath, http.HandlerFunc(state.requestAccessHandler))
 	http.Handle(indexPath, http.HandlerFunc(state.mygroupsHandler))
-	http.Handle(authPath, simpleOidcAuth.Handler(http.HandlerFunc(state.mygroupsHandler)))
 	http.Handle(allLDAPgroupsPath, http.HandlerFunc(state.allGroupsHandler))
 	http.Handle(pendingactionsPath, http.HandlerFunc(state.pendingActions))
 	http.Handle(pendingrequestsPath, http.HandlerFunc(state.pendingRequests))
 	http.Handle(deleterequestsPath, http.HandlerFunc(state.deleteRequests))
 	http.Handle(exitgroupPath, http.HandlerFunc(state.exitfromGroup))
-
-	http.Handle(loginPath, simpleOidcAuth.Handler(http.HandlerFunc(state.loginHandler)))
 
 	http.Handle(approverequestPath, http.HandlerFunc(state.approveHandler))
 	http.Handle(rejectrequestPath, http.HandlerFunc(state.rejectHandler))
