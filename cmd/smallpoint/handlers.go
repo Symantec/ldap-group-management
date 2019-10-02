@@ -65,13 +65,13 @@ func (state *RuntimeState) writeFailureResponse(w http.ResponseWriter, r *http.R
 }
 
 func (state *RuntimeState) defaultPathHandler(w http.ResponseWriter, r *http.Request) {
-	/*
-		if r.URL.Path == "/favicon.ico" {
-			w.Header().Set("Cache-Control", "public, max-age=120")
-			http.Redirect(w, r, "/static/favicon.ico", http.StatusFound)
-			return
-		}
-	*/
+
+	if r.URL.Path == "/favicon.ico" {
+		w.Header().Set("Cache-Control", "public, max-age=120")
+		http.Redirect(w, r, "/images/favicon.ico", http.StatusFound)
+		return
+	}
+
 	//redirect to profile
 	if r.URL.Path[:] == "/" {
 		//landing page
