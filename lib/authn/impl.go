@@ -69,19 +69,28 @@ func randomStringGeneration() (string, error) {
 
 const cookieExpirationHours = 2
 
-func (s *Authenticator) setAndStoreAuthCookie(w http.ResponseWriter, username string) error {
-	randomString, err := randomStringGeneration()
+func (a *Authenticator) genUserCookieValue(username string, expires time.Time) (string, error) {
+	cookieValue, err := randomStringGeneration()
 	if err != nil {
-		s.logger.Println(err)
+		a.logger.Println(err)
+		return "", err
+	}
+	Cookieinfo := AuthCookie{username, expires}
+	a.cookieMutex.Lock()
+	a.authCookie[cookieValue] = Cookieinfo
+	a.cookieMutex.Unlock()
+	return cookieValue, nil
+
+}
+
+func (s *Authenticator) setAndStoreAuthCookie(w http.ResponseWriter, username string) error {
+	expires := time.Now().Add(time.Hour * cookieExpirationHours)
+	cookieValue, err := s.genUserCookieValue(username, expires)
+	if err != nil {
 		return err
 	}
-	expires := time.Now().Add(time.Hour * cookieExpirationHours)
-	userCookie := http.Cookie{Name: AuthCookieName, Value: randomString, Path: "/", Expires: expires, HttpOnly: true, Secure: true}
+	userCookie := http.Cookie{Name: AuthCookieName, Value: cookieValue, Path: "/", Expires: expires, HttpOnly: true, Secure: true}
 	http.SetCookie(w, &userCookie)
-	Cookieinfo := AuthCookie{username, userCookie.Expires}
-	s.cookieMutex.Lock()
-	s.authCookie[userCookie.Value] = Cookieinfo
-	s.cookieMutex.Unlock()
 	return nil
 }
 
@@ -301,13 +310,20 @@ func (s *Authenticator) oauth2RedirectPathHandler(w http.ResponseWriter, r *http
 	http.Redirect(w, r, destinationPath, http.StatusFound)
 }
 
-func setupSecurityHeaders(w http.ResponseWriter) error {
-	// All common security headers go here
-	w.Header().Set("Strict-Transport-Security", "max-age=31536")
-	w.Header().Set("X-Frame-Options", "DENY")
-	w.Header().Set("X-XSS-Protection", "1")
-	w.Header().Set("Content-Security-Policy", "default-src 'self' ;style-src 'self' maxcdn.bootstrapcdn.com fonts.googleapis.com 'unsafe-inline'; font-src maxcdn.bootstrapcdn.com fonts.gstatic.com fonts.googleapis.com")
-	return nil
+func (s *Authenticator) validateUserCookieValue(remoteCookieValue string) (string, error) {
+	s.cookieMutex.Lock()
+	defer s.cookieMutex.Unlock()
+	authInfo, ok := s.authCookie[remoteCookieValue]
+	if !ok {
+		return "", nil
+		//errors.New("Cookie not found")
+	}
+	if authInfo.ExpiresAt.Before(time.Now()) {
+		s.logger.Printf("ExpiredCookie")
+		return "", nil
+	}
+	return authInfo.Username, nil
+
 }
 
 func (s *Authenticator) getRemoteUserName(w http.ResponseWriter, r *http.Request) (string, error) {
@@ -325,7 +341,6 @@ func (s *Authenticator) getRemoteUserName(w http.ResponseWriter, r *http.Request
 			return "", err
 		}
 	}
-	//setupSecurityHeaders(w)
 
 	remoteCookie, err := r.Cookie(AuthCookieName)
 	if err != nil {
@@ -333,17 +348,16 @@ func (s *Authenticator) getRemoteUserName(w http.ResponseWriter, r *http.Request
 		s.oauth2DoRedirectoToProviderHandler(w, r)
 		return "", err
 	}
-	s.cookieMutex.Lock()
-	defer s.cookieMutex.Unlock()
-	authInfo, ok := s.authCookie[remoteCookie.Value]
+	username, err := s.validateUserCookieValue(remoteCookie.Value)
+	if err != nil {
+		http.Error(w, "bad transaction with openic context ", http.StatusInternalServerError)
+		return "", err
+	}
+	if username == "" {
+		log.Printf("invalid Cookie Value")
+		s.oauth2DoRedirectoToProviderHandler(w, r)
+		return "", errors.New("Invalid Cookie Value")
 
-	if !ok {
-		s.oauth2DoRedirectoToProviderHandler(w, r)
-		return "", errors.New("Cookie not found")
 	}
-	if authInfo.ExpiresAt.Before(time.Now()) {
-		s.oauth2DoRedirectoToProviderHandler(w, r)
-		return "", errors.New("Expired Cookie")
-	}
-	return authInfo.Username, nil
+	return username, nil
 }
