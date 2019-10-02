@@ -46,6 +46,7 @@ install -p -m 0644 cmd/smallpoint/templates/js/table.js %{buildroot}/%{_dataroot
 
 install -d %{buildroot}/%{_datarootdir}/smallpoint/templates/images/
 install -p -m 0644 cmd/smallpoint/templates/images/avatar2.png %{buildroot}/%{_datarootdir}/smallpoint/templates/images/avatar2.png
+install -p -m 0644 cmd/smallpoint/templates/images/darkBG.svg %{buildroot}/%{_datarootdir}/smallpoint/templates/images/darkBG.svg
 
 %post
 systemctl daemon-reload
