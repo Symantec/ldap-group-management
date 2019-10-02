@@ -271,7 +271,7 @@ func main() {
 	http.Handle(deletegroupPath, http.HandlerFunc(state.deleteGrouphandler))
 
 	http.Handle(requestaccessPath, http.HandlerFunc(state.requestAccessHandler))
-	http.Handle(indexPath, http.HandlerFunc(state.mygroupsHandler))
+	http.HandleFunc(indexPath, state.defaultPathHandler)
 	http.Handle(allLDAPgroupsPath, http.HandlerFunc(state.allGroupsHandler))
 	http.Handle(pendingactionsPath, http.HandlerFunc(state.pendingActions))
 	http.Handle(pendingrequestsPath, http.HandlerFunc(state.pendingRequests))
