@@ -59,6 +59,9 @@ func (state *RuntimeState) writeFailureResponse(w http.ResponseWriter, r *http.R
 		Title:        "Error",
 		ErrorMessage: fmt.Sprintf("%d %s. %s\n", code, http.StatusText(code), message),
 	}
+	if code == 404 {
+		pageData.ContinueURL = "/"
+	}
 	w.WriteHeader(code)
 	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
 
@@ -79,7 +82,7 @@ func (state *RuntimeState) defaultPathHandler(w http.ResponseWriter, r *http.Req
 		return
 
 	}
-	http.Error(w, "error not found", http.StatusNotFound)
+	state.writeFailureResponse(w, r, "The URL you are looking for does not exist. You might be lost", http.StatusNotFound)
 }
 
 const allUsersCacheDuration = time.Hour * 1
