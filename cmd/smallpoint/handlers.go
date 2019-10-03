@@ -18,8 +18,15 @@ import (
 const postMethod = "POST"
 const getMethod = "GET"
 
+var errCSRFToRootRedirected = errors.New("POST to /  detected... redirecting")
+
 func checkCSRF(w http.ResponseWriter, r *http.Request) (bool, error) {
 	if r.Method != getMethod {
+		//Plain post to / will receive a redirect for compatibility
+		if r.Method == "POST" && r.URL.Path[:] == "/" {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return false, errCSRFToRootRedirected
+		}
 		referer := r.Referer()
 		if len(referer) > 0 && len(r.Host) > 0 {
 			log.Printf("ref =%s, host=%s", referer, r.Host)
@@ -130,7 +137,9 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 	_, err := checkCSRF(w, r)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusUnauthorized)
+		if err != errCSRFToRootRedirected {
+			http.Error(w, fmt.Sprint(err), http.StatusUnauthorized)
+		}
 		return "", err
 	}
 	username, err := state.authenticator.GetRemoteUserName(w, r)
