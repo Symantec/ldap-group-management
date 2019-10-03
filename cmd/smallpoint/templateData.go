@@ -54,7 +54,9 @@ const headerHTMLText = `
     </div>
 </div>
 <div id="side">
+{{if .UserName}}
 {{template "sidebar" .}}
+{{end}}
 </div>
 
 <!-- Overlay effect when opening sidebar on small screens -->
