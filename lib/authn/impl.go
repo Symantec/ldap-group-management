@@ -43,18 +43,14 @@ type openidConnectUserInfo struct {
 	Email             string `json:"email,omitempty"`
 }
 
-func (s *Authenticator) performStateCleanup(secsBetweenCleanup int) {
-	for {
-		s.cookieMutex.Lock()
-		for key, authCookie := range s.authCookie {
-			//log.Printf("about to delete cookie (authenticator Cleanup) key=%s val=%+v", key, authCookie)
-			if authCookie.ExpiresAt.Before(time.Now()) {
-				delete(s.authCookie, key)
-			}
-		}
-		s.cookieMutex.Unlock()
-		time.Sleep(time.Duration(secsBetweenCleanup) * time.Second)
-	}
+type authNCookieJWT struct {
+	Issuer     string   `json:"iss,omitempty"`
+	Subject    string   `json:"sub,omitempty"`
+	Username   string   `json:"username,omitempty"`
+	Audience   []string `json:"aud,omitempty"`
+	Expiration int64    `json:"exp,omitempty"`
+	NotBefore  int64    `json:"nbf,omitempty"`
+	IssuedAt   int64    `json:"iat,omitempty"`
 }
 
 func randomStringGeneration() (string, error) {
@@ -70,17 +66,26 @@ func randomStringGeneration() (string, error) {
 const cookieExpirationHours = 2
 
 func (a *Authenticator) genUserCookieValue(username string, expires time.Time) (string, error) {
-	cookieValue, err := randomStringGeneration()
+	if len(a.sharedSecrets[0]) < 1 {
+		return "", errors.New("invalid authenticator state, no shared secrets")
+	}
+	key := []byte(a.sharedSecrets[0])
+	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: key}, (&jose.SignerOptions{}).WithType("JWT"))
 	if err != nil {
-		a.logger.Println(err)
+		a.logger.Printf("New jose signer error err: %s", err)
 		return "", err
 	}
-	Cookieinfo := AuthCookie{username, expires}
-	a.cookieMutex.Lock()
-	a.authCookie[cookieValue] = Cookieinfo
-	a.cookieMutex.Unlock()
-	return cookieValue, nil
-
+	issuer := a.appName
+	subject := "state:" + AuthCookieName
+	now := time.Now().Unix()
+	stateToken := authNCookieJWT{Issuer: issuer,
+		Subject:    subject,
+		Username:   username,
+		Audience:   []string{issuer},
+		NotBefore:  now,
+		IssuedAt:   now,
+		Expiration: expires.Unix()}
+	return jwt.Signed(sig).Claims(stateToken).CompactSerialize()
 }
 
 func (s *Authenticator) setAndStoreAuthCookie(w http.ResponseWriter, username string) error {
@@ -135,7 +140,7 @@ func (s *Authenticator) generateValidStateString(r *http.Request) (string, error
 		log.Printf("New jose signer error err: %s", err)
 		return "", err
 	}
-	issuer := "smallpoint"
+	issuer := s.appName
 	subject := "state:" + redirCookieName
 	now := time.Now().Unix()
 	stateToken := oauth2StateJWT{Issuer: issuer,
@@ -311,18 +316,32 @@ func (s *Authenticator) oauth2RedirectPathHandler(w http.ResponseWriter, r *http
 }
 
 func (s *Authenticator) validateUserCookieValue(remoteCookieValue string) (string, error) {
-	s.cookieMutex.Lock()
-	defer s.cookieMutex.Unlock()
-	authInfo, ok := s.authCookie[remoteCookieValue]
-	if !ok {
-		return "", nil
-		//errors.New("Cookie not found")
+	inboundJWT := authNCookieJWT{}
+	if len(remoteCookieValue) < 1 {
+		return "", errors.New("bad cookie Valuue state")
 	}
-	if authInfo.ExpiresAt.Before(time.Now()) {
-		s.logger.Printf("ExpiredCookie")
-		return "", nil
+	tok, err := jwt.ParseSigned(remoteCookieValue)
+	if err != nil {
+		return "", err
 	}
-	return authInfo.Username, nil
+	if err := s.JWTClaims(tok, &inboundJWT); err != nil {
+		//s.logger.Debugf(1, "error parsing claims err: %s\n", err)
+		return "", err
+	}
+	// At this point we know the signature is valid, but now we must
+	// validate the contents of the JWT token
+	issuer := s.appName
+	subject := "state:" + AuthCookieName
+	if inboundJWT.Issuer != issuer || inboundJWT.Subject != subject ||
+		inboundJWT.NotBefore > time.Now().Unix() || inboundJWT.Expiration < time.Now().Unix() {
+		err = errors.New("invalid JWT values")
+		return "", err
+	}
+	username := inboundJWT.Username
+	if len(username) < 1 {
+		return "", errors.New("bad cookie Vauue state")
+	}
+	return inboundJWT.Username, nil
 
 }
 

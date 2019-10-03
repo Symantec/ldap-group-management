@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -26,14 +25,11 @@ type AuthCookie struct {
 type SetHeadersFunc func(w http.ResponseWriter) error
 
 type Authenticator struct {
-	openID        OpenIDConfig
-	sharedSecrets []string
-	appName       string
-	netClient     *http.Client
-	logger        *log.Logger
-	//check this later
-	cookieMutex    sync.Mutex
-	authCookie     map[string]AuthCookie
+	openID         OpenIDConfig
+	sharedSecrets  []string
+	appName        string
+	netClient      *http.Client
+	logger         *log.Logger
 	setHeadersFunc SetHeadersFunc
 }
 
@@ -65,10 +61,6 @@ func NewAuthenticator(config OpenIDConfig, appName string, netClient *http.Clien
 		}
 		authenticator.sharedSecrets = append(authenticator.sharedSecrets, randString)
 	}
-
-	authenticator.authCookie = make(map[string]AuthCookie)
-
-	go authenticator.performStateCleanup(secsBetweenCleanup)
 	return &authenticator
 }
 
