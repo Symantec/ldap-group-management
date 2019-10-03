@@ -86,7 +86,7 @@ func (a *Authenticator) genUserCookieValue(username string, expires time.Time) (
 	key := []byte(a.sharedSecrets[0])
 	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: key}, (&jose.SignerOptions{}).WithType("JWT"))
 	if err != nil {
-		log.Printf("New jose signer error err: %s", err)
+		a.logger.Printf("New jose signer error err: %s", err)
 		return "", err
 	}
 	issuer := a.appName
