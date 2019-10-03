@@ -177,6 +177,7 @@ func (u *UserInfoLDAPSource) getTargetLDAPConnection() (*ldap.Conn, error) {
 
 //Get all ldaputil users and put that in map ---required
 func (u *UserInfoLDAPSource) getallUsersNonCached() ([]string, error) {
+	searchPaths := []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs}
 	conn, err := u.getTargetLDAPConnection()
 	if err != nil {
 		log.Println(err)
@@ -186,24 +187,26 @@ func (u *UserInfoLDAPSource) getallUsersNonCached() ([]string, error) {
 
 	var AllUsers []string
 	Attributes := []string{"uid"}
-	searchrequest := ldap.NewSearchRequest(u.UserSearchBaseDNs, ldap.ScopeWholeSubtree,
-		ldap.NeverDerefAliases, 0, 0, false, u.UserSearchFilter, Attributes, nil)
-	t0 := time.Now()
-	result, err := conn.SearchWithPaging(searchrequest, pageSearchSize)
-	t1 := time.Now()
-	log.Printf("GetallUsers search Took %v to run", t1.Sub(t0))
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
+	for _, searchPath := range searchPaths {
+		searchrequest := ldap.NewSearchRequest(searchPath, ldap.ScopeWholeSubtree,
+			ldap.NeverDerefAliases, 0, 0, false, u.UserSearchFilter, Attributes, nil)
+		t0 := time.Now()
+		result, err := conn.SearchWithPaging(searchrequest, pageSearchSize)
+		t1 := time.Now()
+		log.Printf("GetallUsers search Took %v to run", t1.Sub(t0))
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
 
-	if len(result.Entries) == 0 {
-		log.Println("No records found")
-		return nil, errors.New("No records found")
-	}
-	for _, entry := range result.Entries {
-		uid := entry.GetAttributeValue("uid")
-		AllUsers = append(AllUsers, uid)
+		if len(result.Entries) == 0 {
+			log.Println("No records found")
+			return nil, errors.New("No records found")
+		}
+		for _, entry := range result.Entries {
+			uid := entry.GetAttributeValue("uid")
+			AllUsers = append(AllUsers, uid)
+		}
 	}
 
 	return AllUsers, nil
