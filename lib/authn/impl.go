@@ -330,22 +330,7 @@ func (s *Authenticator) oauth2RedirectPathHandler(w http.ResponseWriter, r *http
 }
 
 func (s *Authenticator) validateUserCookieValue(remoteCookieValue string) (string, error) {
-	/*
-		s.cookieMutex.Lock()
-		defer s.cookieMutex.Unlock()
-		authInfo, ok := s.authCookie[remoteCookieValue]
-		if !ok {
-			return "", nil
-			//errors.New("Cookie not found")
-		}
-		if authInfo.ExpiresAt.Before(time.Now()) {
-			s.logger.Printf("ExpiredCookie")
-			return "", nil
-		}
-		return authInfo.Username, nil
-	*/
 	inboundJWT := authNCookieJWT{}
-	//serializedState := r.URL.Query().Get("state")
 	if len(remoteCookieValue) < 1 {
 		return "", errors.New("bad cookie Valuue state")
 	}
@@ -368,7 +353,7 @@ func (s *Authenticator) validateUserCookieValue(remoteCookieValue string) (strin
 	}
 	username := inboundJWT.Username
 	if len(username) < 1 {
-		return "", errors.New("bad cookie Valuue state")
+		return "", errors.New("bad cookie Vauue state")
 	}
 	return inboundJWT.Username, nil
 
