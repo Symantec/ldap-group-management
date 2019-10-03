@@ -53,20 +53,6 @@ type authNCookieJWT struct {
 	IssuedAt   int64    `json:"iat,omitempty"`
 }
 
-func (s *Authenticator) performStateCleanup(secsBetweenCleanup int) {
-	for {
-		s.cookieMutex.Lock()
-		for key, authCookie := range s.authCookie {
-			//log.Printf("about to delete cookie (authenticator Cleanup) key=%s val=%+v", key, authCookie)
-			if authCookie.ExpiresAt.Before(time.Now()) {
-				delete(s.authCookie, key)
-			}
-		}
-		s.cookieMutex.Unlock()
-		time.Sleep(time.Duration(secsBetweenCleanup) * time.Second)
-	}
-}
-
 func randomStringGeneration() (string, error) {
 	const size = 32
 	bytes := make([]byte, size)
