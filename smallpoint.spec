@@ -1,5 +1,5 @@
 Name:		smallpoint
-Version:	0.2.7
+Version:	0.2.9
 Release:	1%{?dist}
 Summary:	LDAP group management tool
 
@@ -46,6 +46,8 @@ install -p -m 0644 cmd/smallpoint/templates/js/table.js %{buildroot}/%{_dataroot
 
 install -d %{buildroot}/%{_datarootdir}/smallpoint/templates/images/
 install -p -m 0644 cmd/smallpoint/templates/images/avatar2.png %{buildroot}/%{_datarootdir}/smallpoint/templates/images/avatar2.png
+install -p -m 0644 cmd/smallpoint/templates/images/favicon.ico %{buildroot}/%{_datarootdir}/smallpoint/templates/images/favicon.ico
+install -p -m 0644 cmd/smallpoint/templates/images/darkBG.svg %{buildroot}/%{_datarootdir}/smallpoint/templates/images/darkBG.svg
 
 %post
 systemctl daemon-reload
@@ -61,4 +63,3 @@ systemctl daemon-reload
 /usr/lib/systemd/system/smallpoint.service
 %{_datarootdir}/smallpoint/templates/*
 %changelog
-
