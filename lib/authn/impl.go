@@ -315,18 +315,23 @@ func (s *Authenticator) oauth2RedirectPathHandler(w http.ResponseWriter, r *http
 	http.Redirect(w, r, destinationPath, http.StatusFound)
 }
 
+// validateUserCookieValue returns "" if no or bad username, returns non-nil error for fatal errors only
 func (s *Authenticator) validateUserCookieValue(remoteCookieValue string) (string, error) {
 	inboundJWT := authNCookieJWT{}
 	if len(remoteCookieValue) < 1 {
-		return "", errors.New("bad cookie Valuue state")
+		s.logger.Printf("Invalid cookie value (too small)")
+		return "", nil
 	}
 	tok, err := jwt.ParseSigned(remoteCookieValue)
 	if err != nil {
-		return "", err
+		s.logger.Printf("Invalid cookie value(jwt) (%s)", err)
+		return "", nil
 	}
 	if err := s.JWTClaims(tok, &inboundJWT); err != nil {
-		//s.logger.Debugf(1, "error parsing claims err: %s\n", err)
-		return "", err
+		s.logger.Printf("error validating JWT claims err: %s\n", err)
+		// TODO: this path could have fatal errors, need to take this into account
+		// to avoid a potential redirect loop.
+		return "", nil
 	}
 	// At this point we know the signature is valid, but now we must
 	// validate the contents of the JWT token
@@ -334,8 +339,8 @@ func (s *Authenticator) validateUserCookieValue(remoteCookieValue string) (strin
 	subject := "state:" + AuthCookieName
 	if inboundJWT.Issuer != issuer || inboundJWT.Subject != subject ||
 		inboundJWT.NotBefore > time.Now().Unix() || inboundJWT.Expiration < time.Now().Unix() {
-		err = errors.New("invalid JWT values")
-		return "", err
+		s.logger.Printf("invalid JWT values")
+		return "", nil
 	}
 	username := inboundJWT.Username
 	if len(username) < 1 {

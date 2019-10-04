@@ -70,6 +70,38 @@ func checkRequestHandlerCode(req *http.Request, handlerFunc http.HandlerFunc, ex
 	return rr, nil
 }
 
+func TestValidateUserCookieValue(t *testing.T) {
+	a := NewAuthenticator(OpenIDConfig{}, "smallpoint", nil, []string{}, nil, nil)
+	knownInvalidCookies := []string{
+		"",                  //too small
+		"supersecret",       //not JWT at all
+		"eee??.aaa$$.fff66", //not JWT bad encoding
+	}
+	for _, badCookie := range knownInvalidCookies {
+		username, err := a.validateUserCookieValue(badCookie)
+		if username != "" {
+			t.Fatal("got a username")
+		}
+		if err != nil {
+			t.Fatal("should have not failed")
+		}
+	}
+	a2 := NewAuthenticator(OpenIDConfig{}, "smallpoint", nil, []string{}, nil, nil)
+	expires := time.Now().Add(time.Hour * cookieExpirationHours)
+	a2ValidCookie, err := a2.GenUserCookieValue("username", expires)
+	if err != nil {
+		t.Fatal(err)
+	}
+	username, err := a.validateUserCookieValue(a2ValidCookie)
+	if username != "" {
+		t.Fatal("got a username")
+	}
+	if err != nil {
+		t.Fatal("should have not failed")
+	}
+
+}
+
 func TestGetRemoteUserNameHandler(t *testing.T) {
 
 	authenticator := NewAuthenticator(OpenIDConfig{}, "smallpoint", nil, []string{}, nil, nil)
