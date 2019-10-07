@@ -1,14 +1,8 @@
 package main
 
 import (
-	//"bytes"
-	//"encoding/json"
-	"log"
-	//"net/http"
-	//"net/http/httptest"
-	//"net/url"
-	//"strings"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
