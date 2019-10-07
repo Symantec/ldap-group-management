@@ -72,7 +72,7 @@ func (state *RuntimeState) SendRequestemail(username string, groupnames []string
 // TODO: @SLR9511: The Hostname should be a param, please servisit
 const requestAccessMailTemplateText = `Subject: Request access to group {{.Groupname}}
 User {{.RequestedUser}} requested access to group {{.Groupname}} (from {{.RemoteAddr}})
-Please take a review at {{.Hostname}}`
+Please take a review at {{.Hostname}}/pending-actions`
 
 //send email for requesting access to a group
 func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail []string,
