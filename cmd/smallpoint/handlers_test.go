@@ -479,5 +479,41 @@ func TestTenderTemplateOrReturnJson(t *testing.T) {
 	if err == nil {
 		t.Fatal(err)
 	}
+}
+
+func TestDefaultPathHandler(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	handler := http.HandlerFunc(state.defaultPathHandler)
+
+	// test raw Post
+	rr := httptest.NewRecorder()
+	req, err := http.NewRequest("POST", "/", nil)
+	req.Header.Set("Accept", "text/html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler.ServeHTTP(rr, req)
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusSeeOther {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusSeeOther)
+	}
+
+	rr2 := httptest.NewRecorder()
+	req2, err := http.NewRequest("GET", "/", nil)
+	req2.Header.Set("Accept", "text/html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler.ServeHTTP(rr2, req2)
+	// Check the status code is what we expect.
+	if status := rr2.Code; status != http.StatusFound {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusFound)
+	}
 
 }
