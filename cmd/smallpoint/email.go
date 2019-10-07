@@ -41,7 +41,7 @@ var (
 
 //for request access button
 func (state *RuntimeState) SendRequestemail(username string, groupnames []string,
-	remoteAddr string, userAgent string) error {
+	remoteAddr, userAgent string) error {
 	for _, entry := range groupnames {
 		managerEntry, err := state.Userinfo.GetDescriptionvalue(entry)
 		if err != nil {
@@ -72,11 +72,11 @@ func (state *RuntimeState) SendRequestemail(username string, groupnames []string
 // TODO: @SLR9511: The Hostname should be a param, please servisit
 const requestAccessMailTemplateText = `Subject: Request access to group {{.Groupname}}
 User {{.RequestedUser}} requested access to group {{.Groupname}} (from {{.RemoteAddr}})
-Please take a review at https://small-point.example.com/pending-actions`
+Please take a review at {{.Hostname}}/pending-actions`
 
 //send email for requesting access to a group
 func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail []string,
-	groupname string, remoteAddr string, userAgent string) error {
+	groupname, remoteAddr, userAgent string) error {
 	// Connect to the remote SMTP server.
 	c, err := smtpClient(state.Config.Base.SMTPserver)
 	if err != nil {
@@ -105,6 +105,7 @@ func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail 
 		RequestedUser: requesteduser,
 		Groupname:     groupname,
 		RemoteAddr:    remoteAddr,
+		Hostname:      state.Config.Base.Hostname,
 		Browser:       uaName,
 		OS:            ua.OS(),
 		OtherUser:     ""}
@@ -207,7 +208,8 @@ func (state *RuntimeState) approveRequestemail(requesteduser string, otheruser s
 		RemoteAddr:    remoteAddr,
 		Browser:       uaName,
 		OS:            ua.OS(),
-		OtherUser:     otheruser}
+		OtherUser:     otheruser,
+		Hostname:      state.Config.Base.Hostname}
 
 	templ, err := texttemplate.New("mailbody").Parse(requestApproveMailTemplateText)
 	if err != nil {
@@ -315,7 +317,8 @@ func (state *RuntimeState) RejectRequestemail(requesteduser string, otheruser st
 		RemoteAddr:    remoteAddr,
 		Browser:       uaName,
 		OS:            ua.OS(),
-		OtherUser:     otheruser}
+		OtherUser:     otheruser,
+		Hostname:      state.Config.Base.Hostname}
 
 	templ, err := texttemplate.New("mailbody").Parse(requestRejectMailTemplateText)
 	if err != nil {
