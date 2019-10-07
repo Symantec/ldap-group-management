@@ -36,6 +36,7 @@ type baseConfig struct {
 	SmtpSenderAddress string `yaml:"smtp_sender_address"`
 	ClientCAFilename  string `yaml:"client_ca_filename"`
 	LogDirectory      string `yaml:"log_directory"`
+	Hostname          string `yaml: "hostname"`
 }
 
 type AppConfigFile struct {
@@ -237,6 +238,7 @@ type mailAttributes struct {
 	RemoteAddr    string
 	Browser       string
 	OS            string
+	Hostname      string
 }
 
 func Usage() {
