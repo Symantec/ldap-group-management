@@ -39,6 +39,7 @@ type baseConfig struct {
 	LogDirectory                string `yaml:"log_directory"`
 	ClusterSharedSecretFilename string `yaml:"cluster_shared_secret_filename"`
 	SharedSecrets               []string
+	Hostname                    string `yaml:"hostname"`
 }
 
 type AppConfigFile struct {
