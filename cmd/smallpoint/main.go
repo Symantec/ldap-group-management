@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
@@ -27,15 +28,17 @@ import (
 )
 
 type baseConfig struct {
-	HttpAddress       string `yaml:"http_address"`
-	TLSCertFilename   string `yaml:"tls_cert_filename"`
-	TLSKeyFilename    string `yaml:"tls_key_filename"`
-	StorageURL        string `yaml:"storage_url"`
-	TemplatesPath     string `yaml:"templates_path"`
-	SMTPserver        string `yaml:"smtp_server"`
-	SmtpSenderAddress string `yaml:"smtp_sender_address"`
-	ClientCAFilename  string `yaml:"client_ca_filename"`
-	LogDirectory      string `yaml:"log_directory"`
+	HttpAddress                 string `yaml:"http_address"`
+	TLSCertFilename             string `yaml:"tls_cert_filename"`
+	TLSKeyFilename              string `yaml:"tls_key_filename"`
+	StorageURL                  string `yaml:"storage_url"`
+	TemplatesPath               string `yaml:"templates_path"`
+	SMTPserver                  string `yaml:"smtp_server"`
+	SmtpSenderAddress           string `yaml:"smtp_sender_address"`
+	ClientCAFilename            string `yaml:"client_ca_filename"`
+	LogDirectory                string `yaml:"log_directory"`
+	ClusterSharedSecretFilename string `yaml:"cluster_shared_secret_filename"`
+	SharedSecrets               []string
 }
 
 type AppConfigFile struct {
@@ -182,16 +185,40 @@ func (state *RuntimeState) loadTemplates() (err error) {
 	return nil
 }
 
-//parses the config file
+func getClusterSecretsFile(clusterSecretsFilename string) ([]string, error) {
+	file, err := os.Open(clusterSecretsFilename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	var rarray []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) < 2 {
+			continue
+		}
+		rarray = append(rarray, line)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	if len(rarray) < 1 {
+		return nil, errors.New("empty cluster secretFile")
+	}
+	return rarray, nil
+}
+
+//parses initializes from the config file
 func loadConfig(configFilename string) (RuntimeState, error) {
 
 	var state RuntimeState
 
 	if _, err := os.Stat(configFilename); os.IsNotExist(err) {
-		err = errors.New("mising config file failure")
+		err = fmt.Errorf("mising config file failure. Filename=%s", configFilename)
 		return state, err
 	}
-
 	//ioutil.ReadFile returns a byte slice (i.e)(source)
 	source, err := ioutil.ReadFile(configFilename)
 	if err != nil {
@@ -218,13 +245,20 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 	if err != nil {
 		return state, err
 	}
+
 	state.Userinfo = &state.Config.TargetLDAP
 	state.allUsersCacheValue = make(map[string]time.Time)
 	state.UserSourceinfo = &state.Config.SourceLDAP
 
+	if len(state.Config.Base.ClusterSharedSecretFilename) > 1 {
+		state.Config.Base.SharedSecrets, err = getClusterSecretsFile(state.Config.Base.ClusterSharedSecretFilename)
+		if err != nil {
+			return state, err
+		}
+	}
 	//
 	state.authenticator = authn.NewAuthenticator(state.Config.OpenID, "smallpoint", nil,
-		[]string{}, nil,
+		state.Config.Base.SharedSecrets, nil,
 		nil)
 
 	return state, err
