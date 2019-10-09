@@ -505,7 +505,7 @@ func (state *RuntimeState) cleanupPendingRequests() error {
 		return err
 	}
 	for _, entry := range DBentries {
-		log.Printf("top of loop entry=%+v", entry)
+		//log.Printf("cleanupPendingRequests: top of loop entry=%+v", entry)
 		groupName := entry[1]
 		requestingUser := entry[0]
 		invalidGroup := false
@@ -532,21 +532,41 @@ func (state *RuntimeState) cleanupPendingRequests() error {
 func (state *RuntimeState) getUserPendingActions(username string) ([][]string, error) {
 	go state.Userinfo.GetAllGroupsManagedBy() //warm up cache
 	go state.cleanupPendingRequests()
-	DBentries, err := getDBentries(state)
-	if err != nil {
-		log.Printf("getUserPendingActions: getDBEntries err: %s", err)
-		return nil, err
-	}
 
+	c := make(chan error)
+
+	var DBentries [][]string
+	go func(c chan error, DBentries *[][]string) {
+		var err error
+		*DBentries, err = getDBentries(state)
+		if err != nil {
+			log.Printf("getUserPendingActions: getDBEntries err: %s", err)
+			c <- err
+		}
+		c <- nil
+	}(c, &DBentries)
+
+	var userGroups []string
+	go func(c chan error, userGroups *[]string) {
+		var err error
+		*userGroups, err = state.Userinfo.GetgroupsofUser(username)
+		if err != nil {
+			c <- err
+		}
+		c <- nil
+	}(c, &userGroups)
+	//wait and check for err
+	for i := 0; i < 2; i++ {
+		err := <-c
+		if err != nil {
+			return nil, err
+		}
+	}
 	//TODO, fast returns on empty DB entries
-	var rvalue [][]string
 
-	userGroups, err := state.Userinfo.GetgroupsofUser(username)
-	if err != nil {
-		return nil, err
-	}
 	sort.Strings(userGroups)
 
+	//no need to paralelize this explicitly as it is paralelized by the cache warmup
 	allGroups, err := state.Userinfo.GetAllGroupsManagedBy()
 	if err != nil {
 		return nil, err
@@ -556,8 +576,9 @@ func (state *RuntimeState) getUserPendingActions(username string) ([][]string, e
 		group2manager[entry[0]] = entry[1]
 	}
 
+	var rvalue [][]string
 	for _, entry := range DBentries {
-		log.Printf("top of loop entry=%+v", entry)
+		log.Printf("getUserPendingActions: top of loop entry=%+v", entry)
 		groupName := entry[1]
 		//requestingUser := entry[0]
 		fmt.Println(groupName)
