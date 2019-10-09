@@ -383,9 +383,26 @@ document.addEventListener('DOMContentLoaded', function () {
 const getGroupsJSPendingActionsText = `
 document.addEventListener('DOMContentLoaded', function () {
 
+        var ajaxRequest = new XMLHttpRequest();
+                ajaxRequest.onreadystatechange = function(){
+                        if(ajaxRequest.readyState == 4){
+                                if(ajaxRequest.status == 200){
+                                        var jsonObj = JSON.parse(ajaxRequest.responseText);
+                                        var groups = jsonObj.Groups;
+                                        console.log("groups :" + groups);
+                                        //list_members(users);
+					var pending_actions=arrayPendingActions(groups);
+					pendingActionsTable(pending_actions);
+                                }
+                                else {
+                                        console.log("Status error: " + ajaxRequest.status);
+                                }
+                        }
+                }
+        ajaxRequest.open('GET', '/getGroups.js?type=pendingActions&encoding=json');
+        ajaxRequest.send();
+
 	pendingActions = %s; 
-	var pending_actions=arrayPendingActions(pendingActions);
-	pendingActionsTable(pending_actions);
 });
 `
 
@@ -429,13 +446,16 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		sort.Strings(allgroups)
 		groupsToSend = [][]string{allgroups}
 	case "pendingActions":
-		groupsToSend, err = state.getUserPendingActions(username)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
 		outputText = getGroupsJSPendingActionsText
+		if r.FormValue("encoding") == "json" {
+
+			groupsToSend, err = state.getUserPendingActions(username)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				return
+			}
+		}
 	case "managedByMe":
 		allGroups, err := state.Userinfo.GetAllGroupsManagedBy()
 		if err != nil {
