@@ -615,7 +615,7 @@ func (state *RuntimeState) getUserPendingActionsNonCached(username string) ([][]
 		//log.Printf("getUserPendingActions: top of loop entry=%+v", entry)
 		groupName := entry[1]
 		//requestingUser := entry[0]
-		fmt.Println(groupName)
+		//fmt.Println(groupName)
 		managerGroup := group2manager[groupName]
 
 		if managerGroup == descriptionAttribute {
