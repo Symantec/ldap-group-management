@@ -529,7 +529,41 @@ func (state *RuntimeState) cleanupPendingRequests() error {
 	return nil
 }
 
+const userPendingActionsCacheDuration = time.Second * 5
+
 func (state *RuntimeState) getUserPendingActions(username string) ([][]string, error) {
+	var err error
+	state.pendingUserActionsCacheMutex.Lock()
+	entry, ok := state.pendingUserActionsCache[username]
+	state.pendingUserActionsCacheMutex.Unlock()
+	if !ok { //new value
+		entry.Groups, err = state.getUserPendingActionsNonCached(username)
+		if err != nil {
+			return nil, err
+		}
+		entry.Expiration = time.Now().Add(userPendingActionsCacheDuration)
+		state.pendingUserActionsCacheMutex.Lock()
+		state.pendingUserActionsCache[username] = entry
+		state.pendingUserActionsCacheMutex.Unlock()
+		return entry.Groups, nil
+	}
+	if entry.Expiration.After(time.Now()) {
+		return entry.Groups, nil
+	}
+	groups, err := state.getUserPendingActionsNonCached(username)
+	if err != nil {
+		//send cached data
+		return entry.Groups, nil
+	}
+	entry.Groups = groups
+	entry.Expiration = time.Now().Add(userPendingActionsCacheDuration)
+	state.pendingUserActionsCacheMutex.Lock()
+	state.pendingUserActionsCache[username] = entry
+	state.pendingUserActionsCacheMutex.Unlock()
+	return entry.Groups, nil
+}
+
+func (state *RuntimeState) getUserPendingActionsNonCached(username string) ([][]string, error) {
 	go state.Userinfo.GetAllGroupsManagedBy() //warm up cache
 	go state.cleanupPendingRequests()
 
@@ -578,7 +612,7 @@ func (state *RuntimeState) getUserPendingActions(username string) ([][]string, e
 
 	var rvalue [][]string
 	for _, entry := range DBentries {
-		log.Printf("getUserPendingActions: top of loop entry=%+v", entry)
+		//log.Printf("getUserPendingActions: top of loop entry=%+v", entry)
 		groupName := entry[1]
 		//requestingUser := entry[0]
 		fmt.Println(groupName)
