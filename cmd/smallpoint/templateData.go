@@ -93,7 +93,7 @@ const sidebarHTMLText = `
         <a href="/" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; My Groups</a>
         <a href="/allGroups" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; All LDAP Groups</a>
         <a href="/my_managed_groups" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; My Managed Groups</a>
-	<a href="/pending-actions" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Actions <span style="background-color: red;color:white;" id="pending_action_count"></span> </a>
+	<a href="/pending-actions" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Actions <span style="background-color: red;color:white;border-radius:5px;" id="pending_action_count"></span> </a>
 	<a href="/pending-requests" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Requests</a>
         {{if .IsAdmin}}
         <a href="/create_group" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Create Group</a>
