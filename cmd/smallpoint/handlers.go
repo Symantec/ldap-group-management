@@ -173,6 +173,12 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	err = state.createUserorNot(username)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")

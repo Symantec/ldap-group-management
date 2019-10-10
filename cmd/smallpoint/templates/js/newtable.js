@@ -55,7 +55,7 @@ function arrayPendingActions(PendingActions) {
     var groupname=[];
     var group_description=[];
     for(i=0;i<PendingActions.length;i++){
-        groupname[1]='<a title="click for userinfo" href=/user_groups/?username='+PendingActions[i][0]+'>'+PendingActions[i][0]+'</a>';
+        groupname[1]='<a>'+PendingActions[i][0]+'</a>';
         //groupname[0]=groupnames[i][0];
         groupname[2] ='<a title="click for groupinfo" href=/group_info/?groupname='+PendingActions[i][1]+'>'+PendingActions[i][1]+'</a>';
         groupname[0]='';

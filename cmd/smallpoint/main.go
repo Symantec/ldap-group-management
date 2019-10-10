@@ -269,7 +269,6 @@ type mailAttributes struct {
 	RequestedUser string
 	OtherUser     string
 	Groupname     string
-	RemoteAddr    string
 	Browser       string
 	OS            string
 	Hostname      string
