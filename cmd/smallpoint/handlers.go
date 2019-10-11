@@ -153,7 +153,7 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-		return
+		return "", err
 	}
 	return username, err
 }
