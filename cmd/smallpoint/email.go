@@ -71,7 +71,7 @@ func (state *RuntimeState) SendRequestemail(username string, groupnames []string
 
 // TODO: @SLR9511: The Hostname should be a param, please servisit
 const requestAccessMailTemplateText = `Subject: Request access to group {{.Groupname}}
-User {{.RequestedUser}} requested access to group {{.Groupname}} (from {{.RemoteAddr}})
+User {{.RequestedUser}} requested access to group {{.Groupname}}.
 Please take a review at {{.Hostname}}/pending-actions`
 
 //send email for requesting access to a group
@@ -104,7 +104,6 @@ func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail 
 	mailData := mailAttributes{
 		RequestedUser: requesteduser,
 		Groupname:     groupname,
-		RemoteAddr:    remoteAddr,
 		Hostname:      state.Config.Base.Hostname,
 		Browser:       uaName,
 		OS:            ua.OS(),
@@ -127,7 +126,7 @@ func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail 
 ////Approve email  start.....//////
 
 const requestApproveMailTemplateText = `Subject: Approve access to group {{.Groupname}}
-User {{.OtherUser}} approved user {{.RequestedUser}}'s access request to group {{.Groupname}} (from {{.RemoteAddr}})`
+User {{.OtherUser}} approved user {{.RequestedUser}}'s access request to group {{.Groupname}}`
 
 //send approve email
 func (state *RuntimeState) sendApproveemail(username string,
@@ -205,7 +204,6 @@ func (state *RuntimeState) approveRequestemail(requesteduser string, otheruser s
 	mailData := mailAttributes{
 		RequestedUser: requesteduser,
 		Groupname:     groupname,
-		RemoteAddr:    remoteAddr,
 		Browser:       uaName,
 		OS:            ua.OS(),
 		OtherUser:     otheruser,
@@ -227,7 +225,7 @@ func (state *RuntimeState) approveRequestemail(requesteduser string, otheruser s
 
 ////Reject email  start.....//////
 const requestRejectMailTemplateText = `Subject: Rejected access to group {{.Groupname}}
-User {{.OtherUser}} rejected user {{.RequestedUser}}'s access request to group {{.Groupname}} (from {{.RemoteAddr}})`
+User {{.OtherUser}} rejected user {{.RequestedUser}}'s access request to group {{.Groupname}}`
 
 //send reject email
 func (state *RuntimeState) sendRejectemail(username string, userPair [][]string,
@@ -314,7 +312,6 @@ func (state *RuntimeState) RejectRequestemail(requesteduser string, otheruser st
 	mailData := mailAttributes{
 		RequestedUser: requesteduser,
 		Groupname:     groupname,
-		RemoteAddr:    remoteAddr,
 		Browser:       uaName,
 		OS:            ua.OS(),
 		OtherUser:     otheruser,

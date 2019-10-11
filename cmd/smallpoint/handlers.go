@@ -147,6 +147,14 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 		return "", err
 	}
 	setLoggerUsername(w, username)
+
+	//TODO: add test case for it
+	err = state.createUserorNot(username)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		return "", err
+	}
 	return username, err
 }
 
