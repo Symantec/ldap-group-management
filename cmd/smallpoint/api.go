@@ -382,11 +382,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
 const getGroupsJSPendingActionsText = `
 document.addEventListener('DOMContentLoaded', function () {
+
+        var ajaxRequest = new XMLHttpRequest();
+                ajaxRequest.onreadystatechange = function(){
+                        if(ajaxRequest.readyState == 4){
+                                if(ajaxRequest.status == 200){
+                                        var jsonObj = JSON.parse(ajaxRequest.responseText);
+                                        var groups = jsonObj.Groups;
+                                        console.log("groups :" + groups);
+                                        //list_members(users);
+					var pending_actions=arrayPendingActions(groups);
+					pendingActionsTable(pending_actions);
+                                }
+                                else {
+                                        console.log("Status error: " + ajaxRequest.status);
+                                }
+                        }
+                }
+        ajaxRequest.open('GET', '/getGroups.js?type=pendingActions&encoding=json');
+        ajaxRequest.send();
+
 	pendingActions = %s; 
-	var pending_actions=arrayPendingActions(pendingActions);
-	pendingActionsTable(pending_actions);
 });
 `
+
+type groupsJSONData struct {
+	Groups [][]string
+}
 
 func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
@@ -424,13 +446,16 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		sort.Strings(allgroups)
 		groupsToSend = [][]string{allgroups}
 	case "pendingActions":
-		groupsToSend, err = state.getUserPendingActions(username)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-			return
-		}
 		outputText = getGroupsJSPendingActionsText
+		if r.FormValue("encoding") == "json" {
+
+			groupsToSend, err = state.getUserPendingActions(username)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				return
+			}
+		}
 	case "managedByMe":
 		allGroups, err := state.Userinfo.GetAllGroupsManagedBy()
 		if err != nil {
@@ -464,17 +489,32 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 			return
 		}
 	}
-	encodedGroups, err := json.Marshal(groupsToSend)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+	switch r.FormValue("encoding") {
+	case "json":
+		w.Header().Set("Cache-Control", "private, max-age=15")
+		w.Header().Set("Content-Type", "application/json")
+		groupsJSON := groupsJSONData{Groups: groupsToSend}
+		err = json.NewEncoder(w).Encode(groupsJSON)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+
+	default:
+		encodedGroups, err := json.Marshal(groupsToSend)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Cache-Control", "private, max-age=15")
+		w.Header().Set("Content-Type", "application/javascript")
+		fmt.Fprintf(w, outputText, encodedGroups)
 		return
 	}
-	//log.Printf("%s", encodedGroups)
-	w.Header().Set("Cache-Control", "private, max-age=15")
-	w.Header().Set("Content-Type", "application/javascript")
-	fmt.Fprintf(w, outputText, encodedGroups)
 	return
+
 }
 
 const getUsersJSText = `
