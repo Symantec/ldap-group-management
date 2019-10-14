@@ -92,6 +92,22 @@ func (state *RuntimeState) defaultPathHandler(w http.ResponseWriter, r *http.Req
 	state.writeFailureResponse(w, r, "The URL you are looking for does not exist. You might be lost", http.StatusNotFound)
 }
 
+func (state *RuntimeState) autoAddtoGroups(username string) error {
+	addtoGroups := state.Config.Base.AutoGroups
+	for _, group := range addtoGroups {
+		var groupinfo userinfo.GroupInfo
+		groupinfo.Groupname = group
+		groupinfo.MemberUid = append(groupinfo.MemberUid, username)
+		log.Println(groupinfo.Groupname, groupinfo.MemberUid)
+		err := state.Userinfo.AddmemberstoExisting(groupinfo)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+	return nil
+}
+
 const allUsersCacheDuration = time.Hour * 1
 
 func (state *RuntimeState) createUserorNot(username string) error {
@@ -115,6 +131,11 @@ func (state *RuntimeState) createUserorNot(username string) error {
 			return err
 		}
 		err = state.Userinfo.CreateUser(username, givenName, email)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		err = state.autoAddtoGroups(username)
 		if err != nil {
 			log.Println(err)
 			return err

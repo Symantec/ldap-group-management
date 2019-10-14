@@ -40,7 +40,7 @@ type UserInfoLDAPSource struct {
 	UserSearchFilter      string `yaml:"user_search_filter"`
 	GroupSearchBaseDNs    string `yaml:"group_search_base_dns"`
 	GroupSearchFilter     string `yaml:"group_search_filter"`
-	Admins                string `yaml:"super_admins"`
+	AdminGroup            string `yaml:"admin_group"`
 	ServiceAccountBaseDNs string `yaml:"service_search_base_dns"`
 	MainBaseDN            string `yaml:"Main_base_dns"`
 	GroupManageAttribute  string `yaml:"group_Manage_Attribute"`
@@ -559,9 +559,12 @@ func (u *UserInfoLDAPSource) getGroupUsersInternal(conn *ldap.Conn, groupname st
 //parse super admins of Target Ldap
 func (u *UserInfoLDAPSource) ParseSuperadmins() []string {
 	var superAdminsInfo []string
-	for _, admin := range strings.Split(u.Admins, ",") {
-		superAdminsInfo = append(superAdminsInfo, admin)
+	superAdminsInfo, _, err := u.GetusersofaGroup(u.AdminGroup)
+	if err != nil {
+		log.Println(err)
+		return nil
 	}
+
 	return superAdminsInfo
 }
 

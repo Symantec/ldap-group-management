@@ -39,7 +39,8 @@ type baseConfig struct {
 	LogDirectory                string `yaml:"log_directory"`
 	ClusterSharedSecretFilename string `yaml:"cluster_shared_secret_filename"`
 	SharedSecrets               []string
-	Hostname                    string `yaml:"hostname"`
+	Hostname                    string   `yaml:"hostname"`
+	AutoGroups                  []string `yaml:"auto_add_to_groups"`
 }
 
 type AppConfigFile struct {
