@@ -197,7 +197,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		}
 		for _, groupname := range state.Config.Base.AutoGroups {
 			if eachGroup == groupname {
-				http.Error(w, groupname+" is part of auto-added group, you cannot delete it!", http.StatusBadRequest)
+				state.writeFailureResponse(w, r, groupname+" is part of auto-added group, you cannot delete it!", http.StatusBadRequest)
 				return
 			}
 		}
