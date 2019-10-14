@@ -98,7 +98,7 @@ func (state *RuntimeState) autoAddtoGroups(username string) error {
 		var groupinfo userinfo.GroupInfo
 		groupinfo.Groupname = group
 		groupinfo.MemberUid = append(groupinfo.MemberUid, username)
-		log.Println(groupinfo.Groupname, groupinfo.MemberUid)
+
 		err := state.Userinfo.AddmemberstoExisting(groupinfo)
 		if err != nil {
 			log.Println(err)
