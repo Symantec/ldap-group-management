@@ -558,14 +558,14 @@ func (u *UserInfoLDAPSource) getGroupUsersInternal(conn *ldap.Conn, groupname st
 
 //parse super admins of Target Ldap
 func (u *UserInfoLDAPSource) ParseSuperadmins() []string {
-	var superAdminsInfo []string
-	superAdminsInfo, _, err := u.GetusersofaGroup(u.AdminGroup)
+	var superAdminsList []string
+	superAdminsList, _, err := u.GetusersofaGroup(u.AdminGroup)
 	if err != nil {
 		log.Println(err)
 		return nil
 	}
 
-	return superAdminsInfo
+	return superAdminsList
 }
 
 //if user is super admin or not
