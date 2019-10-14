@@ -52,7 +52,7 @@ func setupTestState() (RuntimeState, error) {
 	state.Userinfo = mockldap
 	state.UserSourceinfo = mockldap
 	state.allUsersCacheValue = make(map[string]time.Time)
-
+	state.pendingUserActionsCache = make(map[string]pendingUserActionsCacheEntry)
 	state.authenticator = authn.NewAuthenticator(state.Config.OpenID, "smallpoint", nil,
 		[]string{}, nil,
 		nil)

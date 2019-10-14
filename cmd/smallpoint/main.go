@@ -49,6 +49,11 @@ type AppConfigFile struct {
 	TargetLDAP ldapuserinfo.UserInfoLDAPSource `yaml:"target_config"`
 }
 
+type pendingUserActionsCacheEntry struct {
+	Expiration time.Time
+	Groups     [][]string
+}
+
 type RuntimeState struct {
 	Config         AppConfigFile
 	dbType         string
@@ -59,8 +64,10 @@ type RuntimeState struct {
 	sysLog         *syslog.Writer
 	authenticator  *authn.Authenticator
 
-	allUsersRWLock     sync.RWMutex
-	allUsersCacheValue map[string]time.Time
+	allUsersRWLock               sync.RWMutex
+	allUsersCacheValue           map[string]time.Time
+	pendingUserActionsCacheMutex sync.Mutex
+	pendingUserActionsCache      map[string]pendingUserActionsCacheEntry
 }
 
 type GetGroups struct {
@@ -249,6 +256,7 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 
 	state.Userinfo = &state.Config.TargetLDAP
 	state.allUsersCacheValue = make(map[string]time.Time)
+	state.pendingUserActionsCache = make(map[string]pendingUserActionsCacheEntry)
 	state.UserSourceinfo = &state.Config.SourceLDAP
 
 	if len(state.Config.Base.ClusterSharedSecretFilename) > 1 {
