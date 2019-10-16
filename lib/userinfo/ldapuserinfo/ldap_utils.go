@@ -567,8 +567,6 @@ func (u *UserInfoLDAPSource) ParseSuperadmins() []string {
 	defer u.superAdminsRWLock.Unlock()
 	if u.superAdminsCacheExpiration.After(time.Now()) {
 		superAdminsList := u.superAdminsCacheValue
-		log.Println("aaa")
-		log.Println(superAdminsList)
 		return superAdminsList
 	}
 
