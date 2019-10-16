@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -559,10 +560,10 @@ func (u *UserInfoLDAPSource) getGroupUsersInternal(conn *ldap.Conn, groupname st
 	return users, GroupmanagedbyValue, nil
 }
 
-const superAdminsCacheDuration = time.Hour * 8
+const superAdminsCacheDuration = time.Minute * 5
 
 //parse super admins of Target Ldap
-func (u *UserInfoLDAPSource) ParseSuperadmins() []string {
+func (u *UserInfoLDAPSource) parseSuperadmins() []string {
 	u.superAdminsRWLock.Lock()
 	defer u.superAdminsRWLock.Unlock()
 	if u.superAdminsCacheExpiration.After(time.Now()) {
@@ -575,6 +576,7 @@ func (u *UserInfoLDAPSource) ParseSuperadmins() []string {
 		log.Println(err)
 		return nil
 	}
+	sort.Strings(superAdminsList)
 	u.superAdminsCacheValue = superAdminsList
 	u.superAdminsCacheExpiration = time.Now().Add(superAdminsCacheDuration)
 	return superAdminsList
@@ -582,11 +584,10 @@ func (u *UserInfoLDAPSource) ParseSuperadmins() []string {
 
 //if user is super admin or not
 func (u *UserInfoLDAPSource) UserisadminOrNot(username string) bool {
-	superAdmins := u.ParseSuperadmins()
-	for _, user := range superAdmins {
-		if user == username {
-			return true
-		}
+	superAdmins := u.parseSuperadmins()
+	index := sort.SearchStrings(superAdmins, username)
+	if index < len(superAdmins) {
+		return true
 	}
 	return false
 }
