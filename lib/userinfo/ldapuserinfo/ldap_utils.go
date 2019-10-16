@@ -57,6 +57,9 @@ type UserInfoLDAPSource struct {
 	allGroupsAndManagerCacheMutex      sync.Mutex
 	allGroupsAndManagerCacheValue      [][]string
 	allGroupsAndManagerCacheExpiration time.Time
+	superAdminsRWLock                  sync.RWMutex
+	superAdminsCacheValue              []string
+	superAdminsCacheExpiration         time.Time
 }
 
 func (u *UserInfoLDAPSource) GetUserAttributes(username string) ([]string, []string, error) {
@@ -556,15 +559,26 @@ func (u *UserInfoLDAPSource) getGroupUsersInternal(conn *ldap.Conn, groupname st
 	return users, GroupmanagedbyValue, nil
 }
 
+const superAdminsCacheDuration = time.Hour * 8
+
 //parse super admins of Target Ldap
 func (u *UserInfoLDAPSource) ParseSuperadmins() []string {
-	var superAdminsList []string
+	u.superAdminsRWLock.Lock()
+	defer u.superAdminsRWLock.Unlock()
+	if u.superAdminsCacheExpiration.After(time.Now()) {
+		superAdminsList := u.superAdminsCacheValue
+		log.Println("aaa")
+		log.Println(superAdminsList)
+		return superAdminsList
+	}
+
 	superAdminsList, _, err := u.GetusersofaGroup(u.AdminGroup)
 	if err != nil {
 		log.Println(err)
 		return nil
 	}
-
+	u.superAdminsCacheValue = superAdminsList
+	u.superAdminsCacheExpiration = time.Now().Add(superAdminsCacheDuration)
 	return superAdminsList
 }
 
