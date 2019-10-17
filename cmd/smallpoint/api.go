@@ -196,6 +196,12 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 			state.writeFailureResponse(w, r, fmt.Sprintf("Group %s doesn't exist!", eachGroup), http.StatusBadRequest)
 			return
 		}
+		for _, groupname := range state.Config.Base.AutoGroups {
+			if eachGroup == groupname {
+				state.writeFailureResponse(w, r, groupname+" is part of auto-added group, you cannot delete it!", http.StatusBadRequest)
+				return
+			}
+		}
 		groupnames = append(groupnames, eachGroup)
 	}
 	for _, group := range groupnames {

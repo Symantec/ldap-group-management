@@ -38,8 +38,6 @@ type UserInfo interface {
 
 	GetGroupUsersAndManagers(groupname string) ([]string, []string, string, error)
 
-	ParseSuperadmins() []string
-
 	UserisadminOrNot(username string) bool
 
 	AddmemberstoExisting(groupinfo GroupInfo) error
