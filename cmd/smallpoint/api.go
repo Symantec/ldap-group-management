@@ -165,6 +165,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return
 	}
+
 	if !state.Userinfo.UserisadminOrNot(username) {
 		http.Error(w, "you are not authorized", http.StatusForbidden)
 		return
@@ -197,7 +198,15 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		}
 		groupnames = append(groupnames, eachGroup)
 	}
-
+	for _, group := range groupnames {
+		permission := 2
+		allow, err := state.canPerformAction(username, group, permission)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		log.Println(allow)
+	}
 	err = state.Userinfo.DeleteGroup(groupnames)
 	if err != nil {
 		log.Println(err)
