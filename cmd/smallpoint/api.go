@@ -157,6 +157,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 
 //Delete groups handler --required
 func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Request) {
+	permission := 2
 	if r.Method != postMethod {
 		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
@@ -196,6 +197,15 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 			state.writeFailureResponse(w, r, fmt.Sprintf("Group %s doesn't exist!", eachGroup), http.StatusBadRequest)
 			return
 		}
+		allow, err := state.canPerformAction(username, eachGroup, permission)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		if !allow {
+			state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to delete group %s", eachGroup), http.StatusBadRequest)
+			return
+		}
 		for _, groupname := range state.Config.Base.AutoGroups {
 			if eachGroup == groupname {
 				state.writeFailureResponse(w, r, groupname+" is part of auto-added group, you cannot delete it!", http.StatusBadRequest)
@@ -204,15 +214,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		}
 		groupnames = append(groupnames, eachGroup)
 	}
-	for _, group := range groupnames {
-		permission := 2
-		allow, err := state.canPerformAction(username, group, permission)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		log.Println(allow)
-	}
+
 	err = state.Userinfo.DeleteGroup(groupnames)
 	if err != nil {
 		log.Println(err)

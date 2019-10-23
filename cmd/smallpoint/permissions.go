@@ -5,7 +5,7 @@ import (
 	"sort"
 )
 
-var checkPermissionStmt = "select groupname from permissions where resources=$1 and permission=$2;"
+var checkPermissionStmt = "select groupname from permissions where resource=$1 and permission=$2;"
 
 func checkPermission(resources string, permission int, state *RuntimeState) []string {
 	stmt, err := state.db.Prepare(checkPermissionStmt)
