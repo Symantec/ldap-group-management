@@ -226,7 +226,6 @@ func TestCreateGrouphandlerSuccess(t *testing.T) {
 
 }
 
-/*
 func TestCreateDrouphandlerSuccess(t *testing.T) {
 	state, err := setupTestState()
 	if err != nil {
@@ -251,7 +250,7 @@ func TestCreateDrouphandlerSuccess(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
-}*/
+}
 
 func TestCreateServiceAccounthandlerSuccess(t *testing.T) {
 	state, err := setupTestState()
