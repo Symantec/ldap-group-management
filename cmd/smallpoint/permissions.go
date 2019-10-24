@@ -5,7 +5,7 @@ import (
 	"sort"
 )
 
-var checkPermissionStmt = "select groupname from permissions where resource=$1 and permission=$2;"
+var checkPermissionStmt = "select groupname from permissions where (resource=$1 or resource='*') and permission=$2;"
 
 func checkPermission(resources string, permission int, state *RuntimeState) []string {
 	stmt, err := state.db.Prepare(checkPermissionStmt)
@@ -44,6 +44,12 @@ func (state *RuntimeState) canPerformAction(username, resources string, permissi
 		return false, err
 	}
 	sort.Strings(groupsOfUser)
+
+	adminGroup := state.Config.TargetLDAP.AdminGroup
+	adminIndex := sort.SearchStrings(groupsOfUser, adminGroup)
+	if adminIndex < len(groupsOfUser) {
+		return true, nil
+	}
 
 	for _, group := range groups {
 		var index int
