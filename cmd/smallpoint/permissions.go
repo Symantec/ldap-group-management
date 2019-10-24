@@ -5,9 +5,9 @@ import (
 	"sort"
 )
 
-var checkPermissionStmt = "select groupname from permissions where (resource=$1 or resource='*') and permission=$2;"
+var checkPermissionStmt = "select groupname from permissions where (resource=$1 or resource='*') and resource_type=$2 and permission=$3;"
 
-func checkPermission(resources string, permission int, state *RuntimeState) []string {
+func checkPermission(resources, resource_type string, permission int, state *RuntimeState) []string {
 	stmt, err := state.db.Prepare(checkPermissionStmt)
 	if err != nil {
 		log.Println("Error prepare statement " + checkPermissionStmt)
@@ -15,7 +15,7 @@ func checkPermission(resources string, permission int, state *RuntimeState) []st
 	defer stmt.Close()
 
 	var groupnames []string
-	rows, err := stmt.Query(resources, permission)
+	rows, err := stmt.Query(resources, resource_type, permission)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			log.Println("No rows found")
@@ -36,8 +36,8 @@ func checkPermission(resources string, permission int, state *RuntimeState) []st
 	return groupnames
 }
 
-func (state *RuntimeState) canPerformAction(username, resources string, permission int) (bool, error) {
-	groups := checkPermission(resources, permission, state)
+func (state *RuntimeState) canPerformAction(username, resources, resource_type string, permission int) (bool, error) {
+	groups := checkPermission(resources, resource_type, permission, state)
 	log.Println(groups)
 	groupsOfUser, err := state.Userinfo.GetgroupsofUser(username)
 	if err != nil {
@@ -54,7 +54,7 @@ func (state *RuntimeState) canPerformAction(username, resources string, permissi
 	for _, group := range groups {
 		var index int
 		index = sort.SearchStrings(groupsOfUser, group)
-		if index < len(groupsOfUser) {
+		if index < len(groupsOfUser) && groupsOfUser[index] == group {
 			return true, nil
 		}
 		continue

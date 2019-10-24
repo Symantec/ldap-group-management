@@ -60,6 +60,8 @@ func (state *RuntimeState) renderTemplateOrReturnJson(w http.ResponseWriter, r *
 
 // Create a group handler --required
 func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Request) {
+	permission := 0
+	resource_type := "group"
 	if r.Method != postMethod {
 		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
@@ -99,6 +101,18 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, fmt.Sprint("Groupname already exists! Choose a different one!"), http.StatusInternalServerError)
 		return
 	}
+
+	//check whether the user has the ability to create group
+	allow, err := state.canPerformAction(username, groupinfo.Groupname, resource_type, permission)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if !allow {
+		state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to create group %s", groupinfo.Groupname), http.StatusBadRequest)
+		return
+	}
+
 	//if the group managed attribute (description) isn't self-managed and thus another groupname. check if that group exists or not
 	if groupinfo.Description != descriptionAttribute {
 		descriptiongroupExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Description)
@@ -158,17 +172,13 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 //Delete groups handler --required
 func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Request) {
 	permission := 2
+	resource_type := "group"
 	if r.Method != postMethod {
 		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
-		return
-	}
-
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -197,7 +207,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 			state.writeFailureResponse(w, r, fmt.Sprintf("Group %s doesn't exist!", eachGroup), http.StatusBadRequest)
 			return
 		}
-		allow, err := state.canPerformAction(username, eachGroup, permission)
+		allow, err := state.canPerformAction(username, eachGroup, resource_type, permission)
 		if err != nil {
 			log.Println(err)
 			return
@@ -243,6 +253,8 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 }
 
 func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r *http.Request) {
+	permission := 0
+	resource_type := "service_account"
 	if r.Method != postMethod {
 		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
@@ -269,6 +281,16 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	groupinfo.Groupname = r.PostFormValue("AccountName")
 	groupinfo.Mail = r.PostFormValue("mail")
 	groupinfo.LoginShell = r.PostFormValue("loginShell")
+
+	allow, err := state.canPerformAction(username, groupinfo.Groupname, resource_type, permission)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if !allow {
+		state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to create service account %s", groupinfo.Groupname), http.StatusBadRequest)
+		return
+	}
 
 	if !(groupinfo.LoginShell == "/bin/false") && !(groupinfo.LoginShell == "/bin/bash") {
 		log.Println("Bad request! Not an valid LoginShell value")
