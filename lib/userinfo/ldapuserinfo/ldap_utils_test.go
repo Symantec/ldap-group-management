@@ -578,8 +578,12 @@ func Test_UserisadminOrNot(t *testing.T) {
 	u := setupTestLDAPUserInfo(t)
 
 	adminOrNot := u.UserisadminOrNot("yunchao_liu")
-	t.Logf("yunchao_liu is admin: %+v", adminOrNot)
+	if adminOrNot != true {
+		t.Fatalf("yunchao is not admin of group1")
+	}
 
 	adminOrNotV := u.UserisadminOrNot("valere.jeantet")
-	t.Logf("valere.jeantet is admin: %+v", adminOrNotV)
+	if adminOrNotV != false {
+		t.Fatalf("valere is admin of group1")
+	}
 }
