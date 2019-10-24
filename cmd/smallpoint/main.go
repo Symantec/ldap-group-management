@@ -39,7 +39,8 @@ type baseConfig struct {
 	LogDirectory                string `yaml:"log_directory"`
 	ClusterSharedSecretFilename string `yaml:"cluster_shared_secret_filename"`
 	SharedSecrets               []string
-	Hostname                    string `yaml:"hostname"`
+	Hostname                    string   `yaml:"hostname"`
+	AutoGroups                  []string `yaml:"auto_add_to_groups"`
 }
 
 type AppConfigFile struct {
@@ -270,6 +271,16 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 		state.Config.Base.SharedSecrets, nil,
 		nil)
 
+	for _, group := range state.Config.Base.AutoGroups {
+		GroupExistsornot, _, err := state.Userinfo.GroupnameExistsornot(group)
+		if err != nil {
+			return state, err
+		}
+		if !GroupExistsornot {
+			err = errors.New("Group " + group + " doesn't exist in CPE LDAP")
+			return state, err
+		}
+	}
 	return state, err
 }
 

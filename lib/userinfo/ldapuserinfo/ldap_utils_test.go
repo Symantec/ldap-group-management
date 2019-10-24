@@ -330,6 +330,7 @@ func setupTestLDAPUserInfo(t *testing.T) *UserInfoLDAPSource {
 	u.GroupManageAttribute = "owner"
 	u.MainBaseDN = "o=My Company,c=US"
 	u.SearchAttribute = "uid"
+	u.AdminGroup = "group1"
 	for k := range testGroupData {
 		delete(testGroupData, k)
 	}
@@ -571,4 +572,18 @@ func Test_GetInfoFromAD(t *testing.T) {
 	}
 
 	t.Logf("email=%+v givenName=%+v", mail, givenName)
+}
+
+func Test_UserisadminOrNot(t *testing.T) {
+	u := setupTestLDAPUserInfo(t)
+
+	adminOrNot := u.UserisadminOrNot("yunchao_liu")
+	if adminOrNot != true {
+		t.Fatalf("yunchao is not admin of group1")
+	}
+
+	adminOrNotV := u.UserisadminOrNot("valere.jeantet")
+	if adminOrNotV != false {
+		t.Fatalf("valere is admin of group1")
+	}
 }

@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,7 +41,7 @@ type UserInfoLDAPSource struct {
 	UserSearchFilter      string `yaml:"user_search_filter"`
 	GroupSearchBaseDNs    string `yaml:"group_search_base_dns"`
 	GroupSearchFilter     string `yaml:"group_search_filter"`
-	Admins                string `yaml:"super_admins"`
+	AdminGroup            string `yaml:"admin_group"`
 	ServiceAccountBaseDNs string `yaml:"service_search_base_dns"`
 	MainBaseDN            string `yaml:"Main_base_dns"`
 	GroupManageAttribute  string `yaml:"group_Manage_Attribute"`
@@ -57,6 +58,9 @@ type UserInfoLDAPSource struct {
 	allGroupsAndManagerCacheMutex      sync.Mutex
 	allGroupsAndManagerCacheValue      [][]string
 	allGroupsAndManagerCacheExpiration time.Time
+	superAdminsRWLock                  sync.RWMutex
+	superAdminsCacheValue              []string
+	superAdminsCacheExpiration         time.Time
 }
 
 func (u *UserInfoLDAPSource) GetUserAttributes(username string) ([]string, []string, error) {
@@ -556,22 +560,34 @@ func (u *UserInfoLDAPSource) getGroupUsersInternal(conn *ldap.Conn, groupname st
 	return users, GroupmanagedbyValue, nil
 }
 
+const superAdminsCacheDuration = time.Minute * 5
+
 //parse super admins of Target Ldap
-func (u *UserInfoLDAPSource) ParseSuperadmins() []string {
-	var superAdminsInfo []string
-	for _, admin := range strings.Split(u.Admins, ",") {
-		superAdminsInfo = append(superAdminsInfo, admin)
+func (u *UserInfoLDAPSource) parseSuperadmins() []string {
+	u.superAdminsRWLock.Lock()
+	defer u.superAdminsRWLock.Unlock()
+	if u.superAdminsCacheExpiration.After(time.Now()) {
+		superAdminsList := u.superAdminsCacheValue
+		return superAdminsList
 	}
-	return superAdminsInfo
+
+	superAdminsList, _, err := u.GetusersofaGroup(u.AdminGroup)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	sort.Strings(superAdminsList)
+	u.superAdminsCacheValue = superAdminsList
+	u.superAdminsCacheExpiration = time.Now().Add(superAdminsCacheDuration)
+	return superAdminsList
 }
 
 //if user is super admin or not
 func (u *UserInfoLDAPSource) UserisadminOrNot(username string) bool {
-	superAdmins := u.ParseSuperadmins()
-	for _, user := range superAdmins {
-		if user == username {
-			return true
-		}
+	superAdmins := u.parseSuperadmins()
+	index := sort.SearchStrings(superAdmins, username)
+	if index < len(superAdmins) && superAdmins[index] == username {
+		return true
 	}
 	return false
 }
