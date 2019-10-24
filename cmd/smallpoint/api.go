@@ -70,11 +70,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return
 	}
-	//check if user is admin or not
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized ", http.StatusForbidden)
-		return
-	}
+
 	err = r.ParseForm()
 	if err != nil {
 		log.Println(err)
@@ -90,6 +86,17 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	groupinfo.Description = r.PostFormValue("description")
 	members := r.PostFormValue("members")
 
+	//check whether the user has the ability to create group
+	allow, err := state.canPerformAction(username, groupinfo.Groupname, resource_type, permission)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if !allow {
+		state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to create group %s", groupinfo.Groupname), http.StatusForbidden)
+		return
+	}
+
 	//check if the group name already exists or not.
 	groupExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Groupname)
 	if err != nil {
@@ -99,17 +106,6 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	}
 	if groupExistsorNot {
 		http.Error(w, fmt.Sprint("Groupname already exists! Choose a different one!"), http.StatusInternalServerError)
-		return
-	}
-
-	//check whether the user has the ability to create group
-	allow, err := state.canPerformAction(username, groupinfo.Groupname, resource_type, permission)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if !allow {
-		state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to create group %s", groupinfo.Groupname), http.StatusBadRequest)
 		return
 	}
 
@@ -213,7 +209,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 			return
 		}
 		if !allow {
-			state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to delete group %s", eachGroup), http.StatusBadRequest)
+			state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to delete group %s", eachGroup), http.StatusForbidden)
 			return
 		}
 		for _, groupname := range state.Config.Base.AutoGroups {
@@ -263,10 +259,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	if err != nil {
 		return
 	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized ", http.StatusForbidden)
-		return
-	}
+
 	err = r.ParseForm()
 	if err != nil {
 		log.Println(err)
@@ -288,7 +281,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		return
 	}
 	if !allow {
-		state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to create service account %s", groupinfo.Groupname), http.StatusBadRequest)
+		state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to create service account %s", groupinfo.Groupname), http.StatusForbidden)
 		return
 	}
 
