@@ -587,7 +587,10 @@ func (u *UserInfoLDAPSource) UserisadminOrNot(username string) bool {
 	superAdmins := u.parseSuperadmins()
 	index := sort.SearchStrings(superAdmins, username)
 	if index < len(superAdmins) {
-		return true
+		if superAdmins[index] == username {
+			log.Println("true")
+			return true
+		}
 	}
 	return false
 }
