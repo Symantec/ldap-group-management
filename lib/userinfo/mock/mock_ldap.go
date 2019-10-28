@@ -76,19 +76,14 @@ func New() *MockLdap {
 		memberUid: []string{"user1", "user2"},
 		member:    []string{"uid=user1,ou=people,dc=mgmt,dc=example,dc=com", "uid=user2,ou=people,dc=mgmt,dc=example,dc=com"}}
 
-	testldap.Groups["cn=group3,ou=groups,dc=mgmt,dc=example,dc=com"] = LdapGroupInfo{
-		cn: "group3",
-		dn: "cn=group3,ou=groups,dc=mgmt,dc=example,dc=com",
-		//description: "cn=group1,ou=groups,dc=mgmt,dc=example,dc=com",
-		description: "group1",
-		gidNumber:   "20000",
-		objectClass: []string{"posixGroup", "top", "groupOfNames"},
-		//memberUid:   []string{"user1", "user2"},
-		//member:      []string{"uid=user1,ou=people,dc=mgmt,dc=example,dc=com", "uid=user2,ou=people,dc=mgmt,dc=example,dc=com"},
+	testldap.Groups["cn=group3,ou=groups,dc=mgmt,dc=example,dc=com"] = LdapGroupInfo{cn: "group3",
+		dn: "cn=group3,ou=groups,dc=mgmt,dc=example,dc=com", description: "self-managed", gidNumber: "20000", objectClass: []string{"posixGroup", "top", "groupOfNames"},
+		memberUid: []string{"user1"},
+		member:    []string{"uid=user1,ou=people,dc=mgmt,dc=example,dc=com"},
 	}
 
 	testldap.Users["uid=user1,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{dn: "uid=user1,ou=people,dc=mgmt,dc=example,dc=com",
-		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com"},
+		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group3,ou=groups,dc=mgmt,dc=example,dc=com"},
 		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user1", cn: "user1", mail: "user1@example.com", givenName: "user1",
 	}
 	testldap.Users["uid=user2,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{dn: "uid=user2,ou=people,dc=mgmt,dc=example,dc=com",

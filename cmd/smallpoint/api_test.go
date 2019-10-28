@@ -50,15 +50,19 @@ func mockPermissionDB(state RuntimeState) error {
 		return err
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec("group2", "group", "group1", 2)
+	_, err = stmt.Exec("group3", "group", "group1", 2)
 	if err != nil {
 		return err
 	}
-	_, err = stmt.Exec("group2", "service_account", "test_service_account", 0)
+	_, err = stmt.Exec("group3", "service_account", "new_svc_account", 0)
 	if err != nil {
 		return err
 	}
-	_, err = stmt.Exec("group2", "group", "group4", 0)
+	_, err = stmt.Exec("group3", "group", "group1", 0)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec("group3", "group", "foo", 0)
 	if err != nil {
 		return err
 	}
@@ -140,7 +144,6 @@ func TestMethodsForApiEndPoints(t *testing.T) {
 
 }
 
-/*
 func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 	state, err := setupTestState()
 	if err != nil {
@@ -149,13 +152,23 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 	adminTestPoints := getAdminOnlyEndpoints(&state)
 	cookie := testCreateValidCookie(state.authenticator)
 	for path, testFunc := range adminTestPoints {
-		req, err := http.NewRequest("POST", path, nil)
+		var formValues url.Values
+		if strings.Contains(path, "service") {
+			formValues = url.Values{"AccountName": {"new_svc_account"}, "mail": {"alice@example.com"}, "loginShell": {"/bin/false"}}
+		} else if strings.Contains(path, "delete") {
+			formValues = url.Values{"groupnames": {"group1"}}
+		} else {
+			formValues = url.Values{"groupname": {"group1"}}
+		}
+
+		req, err := http.NewRequest("POST", path, strings.NewReader(formValues.Encode()))
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		//cookie := testCreateValidCookie()
 		req.AddCookie(&cookie)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		rr := httptest.NewRecorder()
 		handler := http.HandlerFunc(testFunc)
@@ -163,8 +176,8 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 		// Check the status code is what we expect.
 		if status := rr.Code; status != http.StatusForbidden {
-			t.Errorf("handler returned wrong status code: got %v want %v",
-				status, http.StatusForbidden)
+			t.Errorf("%v handler returned wrong status code: got %v want %v",
+				path, status, http.StatusForbidden)
 		}
 	}
 
@@ -208,7 +221,7 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 		}
 	}
 }
-*/
+
 func TestCreateGrouphandlerSuccess(t *testing.T) {
 	state, err := setupTestState()
 	if err != nil {
@@ -269,6 +282,7 @@ func TestCreateServiceAccounthandlerSuccess(t *testing.T) {
 	}
 	formValues := url.Values{"AccountName": {"new_svc_account"}, "mail": {"alice@example.com"}, "loginShell": {"/bin/false"}}
 	//formString := strings.NewReader(formValues.Encode())
+	log.Println(formValues)
 	req, err := http.NewRequest("POST", createServiceAccountPath, strings.NewReader(formValues.Encode()))
 	if err != nil {
 		t.Fatal(err)

@@ -92,6 +92,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		log.Println(err)
 		return
 	}
+	log.Printf("%v is allowed to create group %v", username, allow)
 	if !allow {
 		state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to create group %s", groupinfo.Groupname), http.StatusForbidden)
 		return
@@ -190,8 +191,18 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	}
 	var groupnames []string
 	groups := r.PostFormValue("groupnames")
+	log.Println(groups)
 	//check if groupnames are valid or not.
 	for _, eachGroup := range strings.Split(groups, ",") {
+		allow, err := state.canPerformAction(username, eachGroup, resource_type, permission)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		if !allow {
+			state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to delete group %s", eachGroup), http.StatusForbidden)
+			return
+		}
 		groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(eachGroup)
 		if err != nil {
 			log.Println(err)
@@ -203,15 +214,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 			state.writeFailureResponse(w, r, fmt.Sprintf("Group %s doesn't exist!", eachGroup), http.StatusBadRequest)
 			return
 		}
-		allow, err := state.canPerformAction(username, eachGroup, resource_type, permission)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		if !allow {
-			state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to delete group %s", eachGroup), http.StatusForbidden)
-			return
-		}
+
 		for _, groupname := range state.Config.Base.AutoGroups {
 			if eachGroup == groupname {
 				state.writeFailureResponse(w, r, groupname+" is part of auto-added group, you cannot delete it!", http.StatusBadRequest)

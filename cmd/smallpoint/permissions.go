@@ -38,7 +38,10 @@ func checkPermission(resources, resource_type string, permission int, state *Run
 
 func (state *RuntimeState) canPerformAction(username, resources, resource_type string, permission int) (bool, error) {
 	groups := checkPermission(resources, resource_type, permission, state)
-	log.Println(groups)
+	if len(groups) < 1 {
+		return false, nil
+	}
+
 	groupsOfUser, err := state.Userinfo.GetgroupsofUser(username)
 	if err != nil {
 		return false, err
@@ -47,7 +50,7 @@ func (state *RuntimeState) canPerformAction(username, resources, resource_type s
 
 	adminGroup := state.Config.TargetLDAP.AdminGroup
 	adminIndex := sort.SearchStrings(groupsOfUser, adminGroup)
-	if adminIndex < len(groupsOfUser) {
+	if adminIndex < len(groupsOfUser) && groupsOfUser[adminIndex] == adminGroup {
 		return true, nil
 	}
 
