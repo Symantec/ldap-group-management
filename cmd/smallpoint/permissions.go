@@ -8,13 +8,13 @@ import (
 var checkPermissionStmt = "select groupname from permissions where (resource=$1 or resource='*') and resource_type=$2 and permission=$3;"
 
 const (
-	create = iota + 1
+	create = 1 << iota
 	update
 	del
 )
 
 const (
-	resource_group = iota + 1
+	resource_group = 1 << iota
 	resource_service_account
 )
 
