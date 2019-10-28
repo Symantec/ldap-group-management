@@ -282,7 +282,6 @@ func TestCreateServiceAccounthandlerSuccess(t *testing.T) {
 	}
 	formValues := url.Values{"AccountName": {"new_svc_account"}, "mail": {"alice@example.com"}, "loginShell": {"/bin/false"}}
 	//formString := strings.NewReader(formValues.Encode())
-	log.Println(formValues)
 	req, err := http.NewRequest("POST", createServiceAccountPath, strings.NewReader(formValues.Encode()))
 	if err != nil {
 		t.Fatal(err)

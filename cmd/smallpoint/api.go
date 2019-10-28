@@ -92,7 +92,6 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		log.Println(err)
 		return
 	}
-	log.Printf("%v is allowed to create group %v", username, allow)
 	if !allow {
 		state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to create group %s", groupinfo.Groupname), http.StatusForbidden)
 		return
@@ -191,7 +190,6 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	}
 	var groupnames []string
 	groups := r.PostFormValue("groupnames")
-	log.Println(groups)
 	//check if groupnames are valid or not.
 	for _, eachGroup := range strings.Split(groups, ",") {
 		allow, err := state.canPerformAction(username, eachGroup, resource_type, permission)
