@@ -3,12 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
 	"net/http"
 	"sort"
 	"strings"
-
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
 //All handlers and API endpoints starts from here.
@@ -60,8 +59,7 @@ func (state *RuntimeState) renderTemplateOrReturnJson(w http.ResponseWriter, r *
 
 // Create a group handler --required
 func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Request) {
-	permission := 0
-	resource_type := "group"
+
 	if r.Method != postMethod {
 		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
@@ -87,7 +85,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	members := r.PostFormValue("members")
 
 	//check whether the user has the ability to create group
-	allow, err := state.canPerformAction(username, groupinfo.Groupname, resource_type, permission)
+	allow, err := state.canPerformAction(username, groupinfo.Groupname, resource_group, create)
 	if err != nil {
 		log.Println(err)
 		return
@@ -167,8 +165,6 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 
 //Delete groups handler --required
 func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Request) {
-	permission := 2
-	resource_type := "group"
 	if r.Method != postMethod {
 		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
@@ -192,7 +188,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	groups := r.PostFormValue("groupnames")
 	//check if groupnames are valid or not.
 	for _, eachGroup := range strings.Split(groups, ",") {
-		allow, err := state.canPerformAction(username, eachGroup, resource_type, permission)
+		allow, err := state.canPerformAction(username, eachGroup, resource_group, del)
 		if err != nil {
 			log.Println(err)
 			return
@@ -250,8 +246,6 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 }
 
 func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r *http.Request) {
-	permission := 0
-	resource_type := "service_account"
 	if r.Method != postMethod {
 		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
@@ -276,7 +270,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	groupinfo.Mail = r.PostFormValue("mail")
 	groupinfo.LoginShell = r.PostFormValue("loginShell")
 
-	allow, err := state.canPerformAction(username, groupinfo.Groupname, resource_type, permission)
+	allow, err := state.canPerformAction(username, groupinfo.Groupname, resource_service_account, create)
 	if err != nil {
 		log.Println(err)
 		return

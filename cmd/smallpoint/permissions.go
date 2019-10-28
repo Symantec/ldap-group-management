@@ -7,7 +7,18 @@ import (
 
 var checkPermissionStmt = "select groupname from permissions where (resource=$1 or resource='*') and resource_type=$2 and permission=$3;"
 
-func checkPermission(resources, resource_type string, permission int, state *RuntimeState) []string {
+const (
+	create = iota + 1
+	update
+	del
+)
+
+const (
+	resource_group = iota + 1
+	resource_service_account
+)
+
+func checkPermission(resources string, resource_type, permission int, state *RuntimeState) []string {
 	stmt, err := state.db.Prepare(checkPermissionStmt)
 	if err != nil {
 		log.Println("Error prepare statement " + checkPermissionStmt)
@@ -36,7 +47,8 @@ func checkPermission(resources, resource_type string, permission int, state *Run
 	return groupnames
 }
 
-func (state *RuntimeState) canPerformAction(username, resources, resource_type string, permission int) (bool, error) {
+func (state *RuntimeState) canPerformAction(username, resources string, resource_type, permission int) (bool, error) {
+	log.Println(resource_type)
 	groups := checkPermission(resources, resource_type, permission, state)
 	if len(groups) < 1 {
 		return false, nil

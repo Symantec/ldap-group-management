@@ -50,19 +50,19 @@ func mockPermissionDB(state RuntimeState) error {
 		return err
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec("group3", "group", "group1", 2)
+	_, err = stmt.Exec("group3", resource_group, "group1", del)
 	if err != nil {
 		return err
 	}
-	_, err = stmt.Exec("group3", "service_account", "new_svc_account", 0)
+	_, err = stmt.Exec("group3", resource_service_account, "new_svc_account", create)
 	if err != nil {
 		return err
 	}
-	_, err = stmt.Exec("group3", "group", "group1", 0)
+	_, err = stmt.Exec("group3", resource_group, "group1", create)
 	if err != nil {
 		return err
 	}
-	_, err = stmt.Exec("group3", "group", "foo", 0)
+	_, err = stmt.Exec("group3", resource_group, "foo", create)
 	if err != nil {
 		return err
 	}
