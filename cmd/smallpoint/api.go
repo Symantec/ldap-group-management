@@ -85,7 +85,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	members := r.PostFormValue("members")
 
 	//check whether the user has the ability to create group
-	allow, err := state.canPerformAction(username, groupinfo.Groupname, resource_group, create)
+	allow, err := state.canPerformAction(username, groupinfo.Groupname, resourceGroup, permCreate)
 	if err != nil {
 		log.Println(err)
 		return
@@ -188,7 +188,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	groups := r.PostFormValue("groupnames")
 	//check if groupnames are valid or not.
 	for _, eachGroup := range strings.Split(groups, ",") {
-		allow, err := state.canPerformAction(username, eachGroup, resource_group, del)
+		allow, err := state.canPerformAction(username, eachGroup, resourceGroup, permDelete)
 		if err != nil {
 			log.Println(err)
 			return
@@ -270,7 +270,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	groupinfo.Mail = r.PostFormValue("mail")
 	groupinfo.LoginShell = r.PostFormValue("loginShell")
 
-	allow, err := state.canPerformAction(username, groupinfo.Groupname, resource_service_account, create)
+	allow, err := state.canPerformAction(username, groupinfo.Groupname, resourceSVC, permCreate)
 	if err != nil {
 		log.Println(err)
 		return

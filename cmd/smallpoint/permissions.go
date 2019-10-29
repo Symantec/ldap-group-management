@@ -6,19 +6,19 @@ import (
 )
 
 var checkPermissionStmt = map[string]string{
-	"sqlite":   "select groupname from permissions where (resource=? or resource='*') and resource_type=? and permission=?;",
-	"postgres": "select groupname from permissions where (resource=$1 or resource='*') and resource_type=$2 and permission=$3;",
+	"sqlite":   "select groupname from permissions where (resource=? or resource='*') and resource_type=? and (permission&?=?);",
+	"postgres": "select groupname from permissions where (resource=$1 or resource='*') and resource_type=$2 and (permission&$3=$4);",
 }
 
 const (
-	create = 1 << iota
-	update
-	del
+	permCreate = 1 << iota
+	permUpdate
+	permDelete
 )
 
 const (
-	resource_group = 1 << iota
-	resource_service_account
+	resourceGroup = 1 << iota
+	resourceSVC
 )
 
 func checkPermission(resources string, resource_type, permission int, state *RuntimeState) []string {
@@ -30,7 +30,7 @@ func checkPermission(resources string, resource_type, permission int, state *Run
 	defer stmt.Close()
 
 	var groupnames []string
-	rows, err := stmt.Query(resources, resource_type, permission)
+	rows, err := stmt.Query(resources, resource_type, permission, permission)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			log.Println("No rows found")
@@ -56,7 +56,6 @@ func (state *RuntimeState) canPerformAction(username, resources string, resource
 	if len(groups) < 1 {
 		return false, nil
 	}
-
 	groupsOfUser, err := state.Userinfo.GetgroupsofUser(username)
 	if err != nil {
 		return false, err
