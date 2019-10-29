@@ -5,7 +5,10 @@ import (
 	"sort"
 )
 
-var checkPermissionStmt = "select groupname from permissions where (resource=$1 or resource='*') and resource_type=$2 and permission=$3;"
+var checkPermissionStmt = map[string]string{
+	"sqlite":   "select groupname from permissions where (resource=? or resource='*') and resource_type=? and permission=?;",
+	"postgres": "select groupname from permissions where (resource=$1 or resource='*') and resource_type=$2 and permission=$3;",
+}
 
 const (
 	create = 1 << iota
@@ -19,9 +22,10 @@ const (
 )
 
 func checkPermission(resources string, resource_type, permission int, state *RuntimeState) []string {
-	stmt, err := state.db.Prepare(checkPermissionStmt)
+	stmtText := checkPermissionStmt[state.dbType]
+	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
-		log.Println("Error prepare statement " + checkPermissionStmt)
+		log.Println("Error prepare statement " + stmtText)
 	}
 	defer stmt.Close()
 
@@ -48,7 +52,6 @@ func checkPermission(resources string, resource_type, permission int, state *Run
 }
 
 func (state *RuntimeState) canPerformAction(username, resources string, resource_type, permission int) (bool, error) {
-	log.Println(resource_type)
 	groups := checkPermission(resources, resource_type, permission, state)
 	if len(groups) < 1 {
 		return false, nil
