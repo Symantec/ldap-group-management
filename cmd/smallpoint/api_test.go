@@ -42,7 +42,11 @@ func testCreateValidAdminCookie(authenticator *authn.Authenticator) http.Cookie 
 }
 
 func mockPermissionDB(state RuntimeState) error {
-	var insertStmt = `insert into permissions(groupname, resource_type, resource, permission) values (?,?,?,?);`
+	_, err := state.db.Exec(`delete from permissions`)
+	if err != nil {
+		return err
+	}
+	var insertStmt = `insert  into permissions(groupname, resource_type, resource, permission) values (?,?,?,?);`
 	stmt, err := state.db.Prepare(insertStmt)
 	if err != nil {
 		log.Print("Error preparing statement" + insertStmt)
@@ -50,15 +54,11 @@ func mockPermissionDB(state RuntimeState) error {
 		return err
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec("group3", resourceGroup, "group1", permDelete)
+	_, err = stmt.Exec("group3", resourceGroup, "group1", permDelete|permCreate)
 	if err != nil {
 		return err
 	}
 	_, err = stmt.Exec("group3", resourceSVC, "new_svc_account", permCreate)
-	if err != nil {
-		return err
-	}
-	_, err = stmt.Exec("group3", resourceGroup, "group1", permCreate)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,10 @@ func setupTestState() (RuntimeState, error) {
 	if err != nil {
 		return state, err
 	}
-	mockPermissionDB(state)
+	err = mockPermissionDB(state)
+	if err != nil {
+		return state, err
+	}
 	mockldap := mock.New()
 	state.Userinfo = mockldap
 	state.UserSourceinfo = mockldap
