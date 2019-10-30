@@ -41,42 +41,10 @@ func testCreateValidAdminCookie(authenticator *authn.Authenticator) http.Cookie 
 	return testGenValidCookie(authenticator, adminTestusername)
 }
 
-func mockPermissionDB(state RuntimeState) error {
-	_, err := state.db.Exec(`delete from permissions`)
-	if err != nil {
-		return err
-	}
-	var insertStmt = `insert  into permissions(groupname, resource_type, resource, permission) values (?,?,?,?);`
-	stmt, err := state.db.Prepare(insertStmt)
-	if err != nil {
-		log.Print("Error preparing statement" + insertStmt)
-		log.Fatal(err)
-		return err
-	}
-	defer stmt.Close()
-	_, err = stmt.Exec("group3", resourceGroup, "group1", permDelete|permCreate)
-	if err != nil {
-		return err
-	}
-	_, err = stmt.Exec("group3", resourceSVC, "new_svc_account", permCreate)
-	if err != nil {
-		return err
-	}
-	_, err = stmt.Exec("group3", resourceGroup, "foo", permCreate)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func setupTestState() (RuntimeState, error) {
 	var state RuntimeState
 	state.Config.Base.StorageURL = testdbpath
 	err := initDB(&state)
-	if err != nil {
-		return state, err
-	}
-	err = mockPermissionDB(state)
 	if err != nil {
 		return state, err
 	}
@@ -92,6 +60,7 @@ func setupTestState() (RuntimeState, error) {
 	//state.authenticator.SetExplicitAuthCookie(adminCookievalueTest, adminTestusername)
 
 	state.Config.Base.TemplatesPath = "."
+	//state.Config.TargetLDAP.AdminGroup = "group3"
 	log.Printf("before loading templates")
 	err = state.loadTemplates()
 	if err != nil {

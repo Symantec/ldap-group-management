@@ -17,15 +17,16 @@ const (
 )
 
 const (
-	resourceGroup = 1 << iota
+	resourceGroup = iota + 1
 	resourceSVC
 )
 
-func checkPermission(resources string, resource_type, permission int, state *RuntimeState) []string {
+func getPermittedGroups(resources string, resource_type, permission int, state *RuntimeState) ([]string, error) {
 	stmtText := checkPermissionStmt[state.dbType]
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
 		log.Println("Error prepare statement " + stmtText)
+		return nil, err
 	}
 	defer stmt.Close()
 
@@ -34,10 +35,10 @@ func checkPermission(resources string, resource_type, permission int, state *Run
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			log.Println("No rows found")
-			return nil
+			return nil, err
 		} else {
 			log.Println(err)
-			return nil
+			return nil, err
 
 		}
 	}
@@ -48,11 +49,14 @@ func checkPermission(resources string, resource_type, permission int, state *Run
 		err = rows.Scan(&groupName)
 		groupnames = append(groupnames, groupName)
 	}
-	return groupnames
+	return groupnames, nil
 }
 
 func (state *RuntimeState) canPerformAction(username, resources string, resource_type, permission int) (bool, error) {
-	groups := checkPermission(resources, resource_type, permission, state)
+	groups, err := getPermittedGroups(resources, resource_type, permission, state)
+	if err != nil {
+		return false, err
+	}
 	if len(groups) < 1 {
 		return false, nil
 	}
@@ -62,9 +66,7 @@ func (state *RuntimeState) canPerformAction(username, resources string, resource
 	}
 	sort.Strings(groupsOfUser)
 
-	adminGroup := state.Config.TargetLDAP.AdminGroup
-	adminIndex := sort.SearchStrings(groupsOfUser, adminGroup)
-	if adminIndex < len(groupsOfUser) && groupsOfUser[adminIndex] == adminGroup {
+	if state.Userinfo.UserisadminOrNot(username) {
 		return true, nil
 	}
 

@@ -88,6 +88,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	allow, err := state.canPerformAction(username, groupinfo.Groupname, resourceGroup, permCreate)
 	if err != nil {
 		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
 	if !allow {
@@ -191,6 +192,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		allow, err := state.canPerformAction(username, eachGroup, resourceGroup, permDelete)
 		if err != nil {
 			log.Println(err)
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 			return
 		}
 		if !allow {
@@ -273,6 +275,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	allow, err := state.canPerformAction(username, groupinfo.Groupname, resourceSVC, permCreate)
 	if err != nil {
 		log.Println(err)
+		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
 		return
 	}
 	if !allow {

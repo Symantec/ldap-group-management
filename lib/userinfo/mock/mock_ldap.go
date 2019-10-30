@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
+	"sort"
 	"strconv"
-	"strings"
 )
 
 const descriptionAttribute = "self-managed"
@@ -15,10 +15,10 @@ const UserServiceAccount userinfo.AccountType = 1
 const GroupServiceAccount userinfo.AccountType = 2
 
 type MockLdap struct {
-	Groups      map[string]LdapGroupInfo
-	Users       map[string]LdapUserInfo
-	SuperAdmins string
-	Services    map[string]LdapServiceInfo
+	Groups          map[string]LdapGroupInfo
+	Users           map[string]LdapUserInfo
+	SuperAdminGroup string
+	Services        map[string]LdapServiceInfo
 }
 
 type LdapGroupInfo struct {
@@ -62,7 +62,7 @@ func New() *MockLdap {
 	var testldap MockLdap
 	testldap.Groups = make(map[string]LdapGroupInfo)
 	testldap.Users = make(map[string]LdapUserInfo)
-	testldap.SuperAdmins = "user1" // was: user1,user2
+	testldap.SuperAdminGroup = "group3" // was: user1,user2
 	testldap.Services = make(map[string]LdapServiceInfo)
 
 	testldap.Groups["cn=group1,ou=groups,dc=mgmt,dc=example,dc=com"] = LdapGroupInfo{cn: "group1",
@@ -73,12 +73,12 @@ func New() *MockLdap {
 
 	testldap.Groups["cn=group2,ou=groups,dc=mgmt,dc=example,dc=com"] = LdapGroupInfo{cn: "group2",
 		dn: "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com", description: "self-managed", gidNumber: "20001", objectClass: []string{"posixGroup", "top", "groupOfNames"},
-		memberUid: []string{"user1", "user2"},
-		member:    []string{"uid=user1,ou=people,dc=mgmt,dc=example,dc=com", "uid=user2,ou=people,dc=mgmt,dc=example,dc=com"}}
+		memberUid: []string{"user1", "user3"},
+		member:    []string{"uid=user1,ou=people,dc=mgmt,dc=example,dc=com", "uid=user3,ou=people,dc=mgmt,dc=example,dc=com"}}
 
 	testldap.Groups["cn=group3,ou=groups,dc=mgmt,dc=example,dc=com"] = LdapGroupInfo{cn: "group3",
 		dn:          "cn=group3,ou=groups,dc=mgmt,dc=example,dc=com",
-		description: "self-managed", gidNumber: "20000",
+		description: "group1", gidNumber: "20000",
 		objectClass: []string{"posixGroup", "top", "groupOfNames"},
 		memberUid:   []string{"user1"},
 		member:      []string{"uid=user1,ou=people,dc=mgmt,dc=example,dc=com"},
@@ -89,11 +89,12 @@ func New() *MockLdap {
 		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user1", cn: "user1", mail: "user1@example.com", givenName: "user1",
 	}
 	testldap.Users["uid=user2,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{dn: "uid=user2,ou=people,dc=mgmt,dc=example,dc=com",
-		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com"},
+		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com"},
 		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user2", cn: "user2", mail: "user2@example.com", givenName: "user2",
 	}
 	testldap.Users["uid=user3,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{
 		dn:          "uid=user3,ou=people,dc=mgmt,dc=example,dc=com",
+		memberOf:    []string{"cn=group2,ou=groups,dc=mgmt,dc=example,dc=com"},
 		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"},
 		uid:         "user3", cn: "user3", mail: "user3@example.com", givenName: "user3",
 	}
@@ -221,19 +222,20 @@ func (m *MockLdap) GetGroupUsersAndManagers(groupname string) ([]string, []strin
 }
 
 func (m *MockLdap) ParseSuperadmins() []string {
-	var superAdminsInfo []string
-	for _, admin := range strings.Split(m.SuperAdmins, ",") {
-		superAdminsInfo = append(superAdminsInfo, admin)
+	var superAdminsList []string
+	superAdminsList, _, err := m.GetusersofaGroup(m.SuperAdminGroup)
+	if err != nil {
+		return nil
 	}
-	return superAdminsInfo
+	sort.Strings(superAdminsList)
+	return superAdminsList
 }
 
 func (m *MockLdap) UserisadminOrNot(username string) bool {
 	superAdmins := m.ParseSuperadmins()
-	for _, user := range superAdmins {
-		if user == username {
-			return true
-		}
+	index := sort.SearchStrings(superAdmins, username)
+	if index < len(superAdmins) && superAdmins[index] == username {
+		return true
 	}
 	return false
 }

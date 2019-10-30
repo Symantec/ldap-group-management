@@ -344,7 +344,7 @@ func TestExitfromGroup(t *testing.T) {
 	}
 	// TODO: Consistency is not our forte here
 	requestData := map[string][]string{
-		"groups": []string{"group2"},
+		"groups": []string{"group1"},
 	}
 	jsonBytes, err := json.Marshal(requestData)
 	if err != nil {
