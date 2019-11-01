@@ -75,7 +75,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		if err.Error() == "missing form body" {
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 		} else {
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -88,7 +88,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	allow, err := state.canPerformAction(username, groupinfo.Groupname, resourceGroup, permCreate)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		return
 	}
 	if !allow {
@@ -100,7 +100,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	groupExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		return
 	}
 	if groupExistsorNot {
@@ -113,7 +113,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		descriptiongroupExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Description)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		if !descriptiongroupExistsorNot {
@@ -130,7 +130,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		userExistsorNot, err := state.Userinfo.UsernameExistsornot(member)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		if !userExistsorNot {
@@ -144,7 +144,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("error occurred! May be group name exists or may be members are not available!"), http.StatusInternalServerError)
 		return
 	}
 	if state.sysLog != nil {
@@ -181,7 +181,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		if err.Error() == "missing form body" {
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 		} else {
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -192,7 +192,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		allow, err := state.canPerformAction(username, eachGroup, resourceGroup, permDelete)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		if !allow {
@@ -202,7 +202,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(eachGroup)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 
 		}
@@ -223,7 +223,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	err = state.Userinfo.DeleteGroup(groupnames)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "error occurred! May be there is no such group!", http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("error occurred! May be there is no such group!"), http.StatusInternalServerError)
 		return
 	}
 	if state.sysLog != nil {
@@ -234,7 +234,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	err = deleteEntryofGroupsInDB(groupnames, state)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		return
 	}
 	pageData := simpleMessagePageData{
@@ -263,7 +263,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 		if err.Error() == "missing form body" {
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 		} else {
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -275,7 +275,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	allow, err := state.canPerformAction(username, groupinfo.Groupname, resourceSVC, permCreate)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		return
 	}
 	if !allow {
@@ -292,7 +292,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	GroupExistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		return
 	}
 	if GroupExistsornot {
@@ -304,7 +304,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	serviceAccountExists, _, err := state.Userinfo.ServiceAccountExistsornot(groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		return
 	}
 	if serviceAccountExists {
@@ -317,7 +317,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("error occurred! May be group name exists or may be members are not available!"), http.StatusInternalServerError)
 		return
 	}
 	if state.sysLog != nil {
@@ -352,7 +352,7 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		if err.Error() == "missing form body" {
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 		} else {
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -379,7 +379,7 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		err = state.Userinfo.ChangeDescription(group, managegroup)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		if state.sysLog != nil {
@@ -456,21 +456,21 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		groupsToSend, err = state.Userinfo.GetAllGroupsManagedBy()
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 	case "pendingRequests":
 		groupsToSend, err = state.getPendingRequestGroupsofUser(username)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 	case "allNoManager":
 		allgroups, err := state.Userinfo.GetallGroups()
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		sort.Strings(allgroups)
@@ -482,7 +482,7 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 			groupsToSend, err = state.getUserPendingActions(username)
 			if err != nil {
 				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 				return
 			}
 		}
@@ -490,13 +490,13 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		allGroups, err := state.Userinfo.GetAllGroupsManagedBy()
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		userGroups, err := state.Userinfo.GetgroupsofUser(username)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		userGroupMap := make(map[string]interface{})
@@ -515,7 +515,7 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		groupsToSend, err = state.Userinfo.GetGroupsInfoOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -527,7 +527,7 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		err = json.NewEncoder(w).Encode(groupsJSON)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 
@@ -535,7 +535,7 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		encodedGroups, err := json.Marshal(groupsToSend)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Cache-Control", "private, max-age=15")
@@ -609,7 +609,7 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 				http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
 				return
 			}
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		outputText = getUsersGroupJSText
@@ -619,7 +619,7 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 			usersToSend, err = state.Userinfo.GetallUsers()
 			if err != nil {
 				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 				return
 			}
 		} else {
@@ -635,7 +635,7 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 		err = json.NewEncoder(w).Encode(usersJSON)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 
@@ -643,7 +643,7 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 		encodedUsers, err := json.Marshal(usersToSend)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Cache-Control", "private, max-age=15")

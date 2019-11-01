@@ -84,6 +84,7 @@ func New() *MockLdap {
 		member:      []string{"uid=user1,ou=people,dc=mgmt,dc=example,dc=com"},
 	}
 
+	//TODO: better labels for future.
 	testldap.Users["uid=user1,ou=people,dc=mgmt,dc=example,dc=com"] = LdapUserInfo{dn: "uid=user1,ou=people,dc=mgmt,dc=example,dc=com",
 		memberOf:    []string{"cn=group1,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group2,ou=groups,dc=mgmt,dc=example,dc=com", "cn=group3,ou=groups,dc=mgmt,dc=example,dc=com"},
 		objectClass: []string{"top", "person", "inetOrgPerson", "posixAccount", "organizationalPerson"}, uid: "user1", cn: "user1", mail: "user1@example.com", givenName: "user1",
