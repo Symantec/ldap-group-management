@@ -41,10 +41,42 @@ func testCreateValidAdminCookie(authenticator *authn.Authenticator) http.Cookie 
 	return testGenValidCookie(authenticator, adminTestusername)
 }
 
+func mockPermissionDB(state RuntimeState) error {
+	_, err := state.db.Exec(`delete from permissions`)
+	if err != nil {
+		return err
+	}
+	var insertStmt = `insert  into permissions(groupname, resource_type, resource, permission) values (?,?,?,?);`
+	stmt, err := state.db.Prepare(insertStmt)
+	if err != nil {
+		log.Print("Error preparing statement" + insertStmt)
+		log.Fatal(err)
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec("group2", resourceGroup, "group1", permDelete|permCreate)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec("group2", resourceSVC, "new_svc_account", permCreate)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec("group2", resourceGroup, "foo", permCreate)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func setupTestState() (RuntimeState, error) {
 	var state RuntimeState
 	state.Config.Base.StorageURL = testdbpath
 	err := initDB(&state)
+	if err != nil {
+		return state, err
+	}
+	err = mockPermissionDB(state)
 	if err != nil {
 		return state, err
 	}
@@ -123,12 +155,23 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 	adminTestPoints := getAdminOnlyEndpoints(&state)
 	cookie := testCreateValidCookie(state.authenticator)
 	for path, testFunc := range adminTestPoints {
-		req, err := http.NewRequest("POST", path, nil)
+		var formValues url.Values
+		if strings.Contains(path, "service") {
+			formValues = url.Values{"AccountName": {"new_svc_account"}, "mail": {"alice@example.com"}, "loginShell": {"/bin/false"}}
+		} else if strings.Contains(path, "delete") {
+			formValues = url.Values{"groupnames": {"group1"}}
+		} else {
+			formValues = url.Values{"groupname": {"group1"}}
+		}
+
+		req, err := http.NewRequest("POST", path, strings.NewReader(formValues.Encode()))
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		//cookie := testCreateValidCookie()
 		req.AddCookie(&cookie)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		rr := httptest.NewRecorder()
 		handler := http.HandlerFunc(testFunc)
@@ -136,8 +179,8 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 		// Check the status code is what we expect.
 		if status := rr.Code; status != http.StatusForbidden {
-			t.Errorf("handler returned wrong status code: got %v want %v",
-				status, http.StatusForbidden)
+			t.Errorf("%v handler returned wrong status code: got %v want %v",
+				path, status, http.StatusForbidden)
 		}
 	}
 

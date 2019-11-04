@@ -58,6 +58,15 @@ func initDBSQlite(state *RuntimeState, db string) (err error) {
 			log.Printf("init sqlite3 err: %s: %q\n", err, sqlStmt)
 			return err
 		}
+
+		permissionStmt := `create table if not exists permissions (id INTEGER PRIMARY KEY AUTOINCREMENT, groupname text not null, 
+				resource_type int not null, resource text not null, permission int not null,
+				unique (groupname, resource_type, resource));`
+		_, err = state.db.Exec(permissionStmt)
+		if err != nil {
+			log.Printf("init table permissions err: %s: %q\n", err, permissionStmt)
+			return err
+		}
 	}
 
 	return nil
@@ -76,6 +85,13 @@ func initDBPostgres(state *RuntimeState, db string) (err error) {
 		_, err = state.db.Exec(sqlStmt)
 		if err != nil {
 			log.Printf("init postgres err: %s: %q\n", err, sqlStmt)
+			return err
+		}
+		permissionStmt := `create table if not exists permissions (id SERIAL PRIMARY KEY, groupname text not null, resource_type int not null, resource text not null, permission int not null, 
+				unique (groupname, resource_type, resource));`
+		_, err = state.db.Exec(permissionStmt)
+		if err != nil {
+			log.Printf("init table permissions failed, err: %s", err)
 			return err
 		}
 	}

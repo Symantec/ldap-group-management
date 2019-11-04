@@ -3,12 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
 	"net/http"
 	"sort"
 	"strings"
-
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
 )
 
 //All handlers and API endpoints starts from here.
@@ -60,6 +59,7 @@ func (state *RuntimeState) renderTemplateOrReturnJson(w http.ResponseWriter, r *
 
 // Create a group handler --required
 func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method != postMethod {
 		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
@@ -68,18 +68,14 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return
 	}
-	//check if user is admin or not
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized ", http.StatusForbidden)
-		return
-	}
+
 	err = r.ParseForm()
 	if err != nil {
 		log.Println(err)
 		if err.Error() == "missing form body" {
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 		} else {
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -88,23 +84,36 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 	groupinfo.Description = r.PostFormValue("description")
 	members := r.PostFormValue("members")
 
+	//check whether the user has the ability to create group
+	allow, err := state.canPerformAction(username, groupinfo.Groupname, resourceGroup, permCreate)
+	if err != nil {
+		log.Println(err)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
+		return
+	}
+	if !allow {
+		state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to create group %s", groupinfo.Groupname), http.StatusForbidden)
+		return
+	}
+
 	//check if the group name already exists or not.
 	groupExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		return
 	}
 	if groupExistsorNot {
 		http.Error(w, fmt.Sprint("Groupname already exists! Choose a different one!"), http.StatusInternalServerError)
 		return
 	}
+
 	//if the group managed attribute (description) isn't self-managed and thus another groupname. check if that group exists or not
 	if groupinfo.Description != descriptionAttribute {
 		descriptiongroupExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Description)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		if !descriptiongroupExistsorNot {
@@ -121,7 +130,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 		userExistsorNot, err := state.Userinfo.UsernameExistsornot(member)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		if !userExistsorNot {
@@ -135,7 +144,7 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("error occurred! May be group name exists or may be members are not available!"), http.StatusInternalServerError)
 		return
 	}
 	if state.sysLog != nil {
@@ -165,10 +174,6 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return
 	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusForbidden)
-		return
-	}
 
 	err = r.ParseForm()
 	if err != nil {
@@ -176,7 +181,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		if err.Error() == "missing form body" {
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 		} else {
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -184,10 +189,20 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	groups := r.PostFormValue("groupnames")
 	//check if groupnames are valid or not.
 	for _, eachGroup := range strings.Split(groups, ",") {
+		allow, err := state.canPerformAction(username, eachGroup, resourceGroup, permDelete)
+		if err != nil {
+			log.Println(err)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
+			return
+		}
+		if !allow {
+			state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to delete group %s", eachGroup), http.StatusForbidden)
+			return
+		}
 		groupnameExistsorNot, _, err := state.Userinfo.GroupnameExistsornot(eachGroup)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 
 		}
@@ -195,6 +210,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 			state.writeFailureResponse(w, r, fmt.Sprintf("Group %s doesn't exist!", eachGroup), http.StatusBadRequest)
 			return
 		}
+
 		for _, groupname := range state.Config.Base.AutoGroups {
 			if eachGroup == groupname {
 				state.writeFailureResponse(w, r, groupname+" is part of auto-added group, you cannot delete it!", http.StatusBadRequest)
@@ -207,7 +223,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	err = state.Userinfo.DeleteGroup(groupnames)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "error occurred! May be there is no such group!", http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("error occurred! May be there is no such group!"), http.StatusInternalServerError)
 		return
 	}
 	if state.sysLog != nil {
@@ -218,7 +234,7 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 	err = deleteEntryofGroupsInDB(groupnames, state)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		return
 	}
 	pageData := simpleMessagePageData{
@@ -240,17 +256,14 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	if err != nil {
 		return
 	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized ", http.StatusForbidden)
-		return
-	}
+
 	err = r.ParseForm()
 	if err != nil {
 		log.Println(err)
 		if err.Error() == "missing form body" {
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 		} else {
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -258,6 +271,17 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	groupinfo.Groupname = r.PostFormValue("AccountName")
 	groupinfo.Mail = r.PostFormValue("mail")
 	groupinfo.LoginShell = r.PostFormValue("loginShell")
+
+	allow, err := state.canPerformAction(username, groupinfo.Groupname, resourceSVC, permCreate)
+	if err != nil {
+		log.Println(err)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
+		return
+	}
+	if !allow {
+		state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to create service account %s", groupinfo.Groupname), http.StatusForbidden)
+		return
+	}
 
 	if !(groupinfo.LoginShell == "/bin/false") && !(groupinfo.LoginShell == "/bin/bash") {
 		log.Println("Bad request! Not an valid LoginShell value")
@@ -268,7 +292,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	GroupExistsornot, _, err := state.Userinfo.GroupnameExistsornot(groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		return
 	}
 	if GroupExistsornot {
@@ -280,7 +304,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	serviceAccountExists, _, err := state.Userinfo.ServiceAccountExistsornot(groupinfo.Groupname)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		return
 	}
 	if serviceAccountExists {
@@ -293,7 +317,7 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "error occurred! May be group name exists or may be members are not available!", http.StatusInternalServerError)
+		state.writeFailureResponse(w, r, fmt.Sprintf("error occurred! May be group name exists or may be members are not available!"), http.StatusInternalServerError)
 		return
 	}
 	if state.sysLog != nil {
@@ -328,7 +352,7 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		if err.Error() == "missing form body" {
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
 		} else {
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -355,7 +379,7 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		err = state.Userinfo.ChangeDescription(group, managegroup)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		if state.sysLog != nil {
@@ -432,21 +456,21 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		groupsToSend, err = state.Userinfo.GetAllGroupsManagedBy()
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 	case "pendingRequests":
 		groupsToSend, err = state.getPendingRequestGroupsofUser(username)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 	case "allNoManager":
 		allgroups, err := state.Userinfo.GetallGroups()
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		sort.Strings(allgroups)
@@ -458,7 +482,7 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 			groupsToSend, err = state.getUserPendingActions(username)
 			if err != nil {
 				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 				return
 			}
 		}
@@ -466,13 +490,13 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		allGroups, err := state.Userinfo.GetAllGroupsManagedBy()
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		userGroups, err := state.Userinfo.GetgroupsofUser(username)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		userGroupMap := make(map[string]interface{})
@@ -491,7 +515,7 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		groupsToSend, err = state.Userinfo.GetGroupsInfoOfUser(state.Config.TargetLDAP.GroupSearchBaseDNs, username)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -503,7 +527,7 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		err = json.NewEncoder(w).Encode(groupsJSON)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 
@@ -511,7 +535,7 @@ func (state *RuntimeState) getGroupsJSHandler(w http.ResponseWriter, r *http.Req
 		encodedGroups, err := json.Marshal(groupsToSend)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Cache-Control", "private, max-age=15")
@@ -585,7 +609,7 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 				http.Error(w, fmt.Sprint("Group doesn't exist!"), http.StatusBadRequest)
 				return
 			}
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		outputText = getUsersGroupJSText
@@ -595,7 +619,7 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 			usersToSend, err = state.Userinfo.GetallUsers()
 			if err != nil {
 				log.Println(err)
-				http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 				return
 			}
 		} else {
@@ -611,7 +635,7 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 		err = json.NewEncoder(w).Encode(usersJSON)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 
@@ -619,7 +643,7 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 		encodedUsers, err := json.Marshal(usersToSend)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Cache-Control", "private, max-age=15")
