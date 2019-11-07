@@ -11,11 +11,6 @@ var checkPermissionStmt = map[string]string{
 	"postgres": "select groupname, resource from permissions where (resource=$1 or resource='*' or resource LIKE $2) and resource_type=$3 and (permission&$4=$5);",
 }
 
-var checkResourceStmt = map[string]string{
-	"sqlite":   "select resource from permissions where groupname=? and resource_type=? and (permission&?=?);",
-	"postgres": "select resource from permissions where groupname=$1 and resource_type=$2 and (permission&$3=$4);",
-}
-
 const (
 	permCreate = 1 << iota
 	permUpdate
