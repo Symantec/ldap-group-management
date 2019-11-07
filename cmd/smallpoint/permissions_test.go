@@ -11,7 +11,7 @@ const (
 )
 
 var resourcesAllow = []string{"*", "group3*"}
-var resourcesDeny = []string{"group2", "group33"}
+var resourcesDeny = []string{"group2", "group33", "group33*"}
 
 type resourcePerm struct {
 	resourceType int
