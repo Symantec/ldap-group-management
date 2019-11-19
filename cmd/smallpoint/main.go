@@ -138,6 +138,7 @@ const (
 	changeownershipPath         = "/change_owner"
 	myManagedGroupsWebPagePath  = "/my_managed_groups"
 	permissionmanageWebPagePath = "/permissionmanage"
+	permissionmanagePath        = "/permissionmanage/"
 
 	getGroupsJSPath = "/getGroups.js"
 	getUsersJSPath  = "/getUsers.js"
@@ -353,7 +354,8 @@ func main() {
 	http.Handle(getUsersJSPath, http.HandlerFunc(state.getUsersJSHandler))
 
 	http.Handle(myManagedGroupsWebPagePath, http.HandlerFunc(state.myManagedGroupsHandler))
-	http.Handle(permissionmanageWebPagePath, http.HandlerFunc(state.permermissionmanageWebpageHandler))
+	http.Handle(permissionmanageWebPagePath, http.HandlerFunc(state.permissionmanageWebpageHandler))
+	http.Handle(permissionmanagePath, http.HandlerFunc(state.permissionManagehandler))
 
 	fs := http.FileServer(http.Dir(state.Config.Base.TemplatesPath))
 	http.Handle(cssPath, fs)

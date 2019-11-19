@@ -1228,7 +1228,7 @@ const permManagePageText = `
 	      </form>
 	    </div>
 	    <div class="modal-footer">
-	      <button type="button" class="btn btn-default"  id="btn_addpeopletogroup" data-dismiss="modal">Confirm</button>
+	      <button type="button" class="btn btn-default"  id="btn_addpermission" data-dismiss="modal">Confirm</button>
 	      <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
 	    </div>
 	  </div>

@@ -710,9 +710,21 @@ function resource_type() {
 }
 
 function permissionmanage_form_submit() {
+	var val = refractor_permissions();
 	if (val === 1) {
 		document.getElementById("form_add_permissions").submit();
 	} else {
 		alert("error occured!");
 	}
+}
+
+function refractor_permissions() {
+	var val=document.getElementById("permissions_content").value;
+	var length=val.length;
+	if (val[length-1]===","){
+		var res = val.substring(0, length-1);
+		$('#permissions_content').val(res);
+		return 1;
+	}
+	return 0;
 }

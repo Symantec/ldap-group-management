@@ -11,6 +11,16 @@ import (
 )
 
 //All handlers and API endpoints starts from here.
+var permissionMapping = map[string]int{
+	"create": permCreate,
+	"update": permUpdate,
+	"delete": permDelete,
+}
+
+var resourceMapping = map[string]int{
+	"group":           resourceGroup,
+	"service_account": resourceSVC,
+}
 
 func (state *RuntimeState) getPreferredAcceptType(r *http.Request) string {
 	preferredAcceptType := "application/json"
@@ -652,4 +662,83 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	return
+}
+
+func (state *RuntimeState) permissionManagehandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != postMethod {
+		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
+		return
+	}
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+	log.Println(username)
+	if !state.Userinfo.UserisadminOrNot(username) {
+		http.Error(w, "you are not authorized", http.StatusForbidden)
+		return
+	}
+
+	err = r.ParseForm()
+	if err != nil {
+		log.Println(err)
+		if err.Error() == "missing form body" {
+			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
+		} else {
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	groupname := r.PostFormValue("groupname")
+	resourceType := r.PostFormValue("resourceType")
+	resourceName := r.PostFormValue("resourceName")
+	log.Println(r.PostFormValue("permissions"))
+	permissionList := strings.Split(r.PostFormValue("permissions"), ",")
+
+	if len(permissionList) < 1 {
+		state.writeFailureResponse(w, r, "permissionsParameter is missing", http.StatusBadRequest)
+		return
+	}
+
+	groupinfo := userinfo.GroupInfo{}
+	groupinfo.Groupname = groupname
+	err = state.groupExistsorNot(w, groupinfo.Groupname)
+	if err != nil {
+		return
+	}
+
+	var resourceVal int
+	var ok bool
+	if resourceVal, ok = resourceMapping[resourceType]; !ok {
+		state.writeFailureResponse(w, r, fmt.Sprintf("%s resource type not exist", resourceType), http.StatusBadRequest)
+		return
+	}
+
+	var permissions, permVal int
+	for _, permission := range permissionList {
+		log.Println(permission)
+		if permVal, ok = permissionMapping[permission]; !ok {
+			state.writeFailureResponse(w, r, fmt.Sprintf("%s permission not exist", permission), http.StatusBadRequest)
+			return
+		}
+		permissions += permVal
+	}
+	log.Println(permissions, groupname, resourceName, resourceVal)
+	err = insertPermissionEntry(groupname, resourceName, resourceVal, permissions, state)
+	if err != nil {
+		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
+		log.Println(err)
+		return
+	}
+	if state.sysLog != nil {
+		state.sysLog.Write([]byte(fmt.Sprintf("Permission %s to group %s was created by "+"%s", permissions, groupinfo.Groupname, username)))
+	}
+	pageData := simpleMessagePageData{
+		UserName:       username,
+		IsAdmin:        true,
+		Title:          "Permission Creation Success",
+		SuccessMessage: "permissions successfully created",
+	}
+	state.renderTemplateOrReturnJson(w, r, "simpleMessagePage", pageData)
 }

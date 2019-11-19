@@ -1242,7 +1242,7 @@ func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, 
 	}
 }
 
-func (state *RuntimeState) permermissionmanageWebpageHandler(w http.ResponseWriter, r *http.Request) {
+func (state *RuntimeState) permissionmanageWebpageHandler(w http.ResponseWriter, r *http.Request) {
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
 		return
