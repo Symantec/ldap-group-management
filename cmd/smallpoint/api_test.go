@@ -147,6 +147,7 @@ func TestMethodsForApiEndPoints(t *testing.T) {
 
 }
 
+//TODO: only leave permissionManagement as admin only
 func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 	state, err := setupTestState()
 	if err != nil {

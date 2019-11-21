@@ -101,6 +101,7 @@ func TestAdminOnlyWebPaths(t *testing.T) {
 	testWebEndpoints := map[string]http.HandlerFunc{
 		changeownershipPath:         state.changeownershipWebpageHandler,
 		createServiceAccWebPagePath: state.createserviceAccountPageHandler,
+		permissionmanageWebPagePath: state.permissionmanageWebpageHandler,
 	}
 
 	adminCookie := testCreateValidAdminCookie(state.authenticator)
