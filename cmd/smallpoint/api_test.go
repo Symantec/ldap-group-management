@@ -381,3 +381,36 @@ func TestGetUsersJSHandler(t *testing.T) {
 		}
 	}
 }
+
+var permissionBodyList = []url.Values{
+	url.Values{"groupname": {"group1"}, "resourceType": {"group"}, "resourceName": {"foo"}, "permissions": {"create"}},
+	url.Values{"groupname": {"group1"}, "resourceType": {"group"}, "resourceName": {"foo"}, "permissions": {"update"}},
+	url.Values{"groupname": {"group1"}, "resourceType": {"group"}, "resourceName": {"foo"}, "permissions": {"create"}},
+}
+
+func TestPermissionManagehandlerSuccess(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range permissionBodyList {
+		//formValues := url.Values{"groupname": {"group1"}, "resourceType": {"group"}, "resourceName": {"foo"}, "permissions": {"create"}}
+		req, err := http.NewRequest("POST", permissionmanagePath, strings.NewReader(item.Encode()))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		cookie := testCreateValidAdminCookie(state.authenticator)
+		req.AddCookie(&cookie)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(state.permissionManagehandler)
+
+		handler.ServeHTTP(rr, req)
+
+		if status := rr.Code; status != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+		}
+	}
+}

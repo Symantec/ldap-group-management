@@ -468,6 +468,9 @@ function reorgdatalist(name, id) {
     if (id === "select_members_remove") {
 	list_removemembers(optionVals);	
     }
+    if (id === "select_permissions") {
+	list_permissions(optionVals);
+    }
 }
 
 function refractor_members() {
@@ -727,4 +730,11 @@ function refractor_permissions() {
 		return 1;
 	}
 	return 0;
+}
+
+function list_permissions(permissions) {
+	permissions.sort();
+	for (i=0;i<permissions.length;i++) {
+		$('#select_permissions').append("<option id='option-"+permissions[i]+"' value='" + permissions[i] + "'>"+permissions[i]+"</option>");
+	}
 }

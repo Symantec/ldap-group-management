@@ -98,7 +98,7 @@ func insertPermissionEntry(groupname, resource string, resource_type, permission
 	defer stmt.Close()
 	exists, oldPerm := permExistsorNot(groupname, resource, resource_type, state)
 	if exists {
-		if oldPerm == permission {
+		if oldPerm&permission == permission {
 			return nil
 		}
 		return updatePermissionEntry(groupname, resource, oldPerm+permission, resource_type, state)
@@ -111,8 +111,8 @@ func insertPermissionEntry(groupname, resource string, resource_type, permission
 }
 
 var permExistsorNotStmt = map[string]string{
-	"sqlite":   "select * from permissions where groupname=? and resource_type=? and resource=?;",
-	"postgres": "select * from permissions where groupname=$1 and resource_type=$2 and resource=$3;",
+	"sqlite":   "select permission from permissions where groupname=? and resource_type=? and resource=?;",
+	"postgres": "select permission from permissions where groupname=$1 and resource_type=$2 and resource=$3;",
 }
 
 func permExistsorNot(groupname, resource string, resource_type int, state *RuntimeState) (bool, int) {

@@ -673,7 +673,6 @@ func (state *RuntimeState) permissionManagehandler(w http.ResponseWriter, r *htt
 	if err != nil {
 		return
 	}
-	log.Println(username)
 	if !state.Userinfo.UserisadminOrNot(username) {
 		http.Error(w, "you are not authorized", http.StatusForbidden)
 		return
@@ -681,6 +680,7 @@ func (state *RuntimeState) permissionManagehandler(w http.ResponseWriter, r *htt
 
 	err = r.ParseForm()
 	if err != nil {
+		log.Println("error here")
 		log.Println(err)
 		if err.Error() == "missing form body" {
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
@@ -701,10 +701,9 @@ func (state *RuntimeState) permissionManagehandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-	groupinfo := userinfo.GroupInfo{}
-	groupinfo.Groupname = groupname
-	err = state.groupExistsorNot(w, groupinfo.Groupname)
+	err = state.groupExistsorNot(w, groupname)
 	if err != nil {
+		log.Println(err)
 		return
 	}
 
@@ -717,14 +716,12 @@ func (state *RuntimeState) permissionManagehandler(w http.ResponseWriter, r *htt
 
 	var permissions, permVal int
 	for _, permission := range permissionList {
-		log.Println(permission)
 		if permVal, ok = permissionMapping[permission]; !ok {
 			state.writeFailureResponse(w, r, fmt.Sprintf("%s permission not exist", permission), http.StatusBadRequest)
 			return
 		}
 		permissions += permVal
 	}
-	log.Println(permissions, groupname, resourceName, resourceVal)
 	err = insertPermissionEntry(groupname, resourceName, resourceVal, permissions, state)
 	if err != nil {
 		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
@@ -732,7 +729,7 @@ func (state *RuntimeState) permissionManagehandler(w http.ResponseWriter, r *htt
 		return
 	}
 	if state.sysLog != nil {
-		state.sysLog.Write([]byte(fmt.Sprintf("Permission %s to group %s was created by "+"%s", permissions, groupinfo.Groupname, username)))
+		state.sysLog.Write([]byte(fmt.Sprintf("Permission %d to group %s was created by "+"%s", permissions, groupname, username)))
 	}
 	pageData := simpleMessagePageData{
 		UserName:       username,
