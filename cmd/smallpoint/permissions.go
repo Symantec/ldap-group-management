@@ -53,6 +53,10 @@ func getPermittedGroups(resources string, resource_type, permission int, state *
 }
 
 func (state *RuntimeState) canPerformAction(username, resources string, resource_type, permission int) (bool, error) {
+	if state.Userinfo.UserisadminOrNot(username) {
+		return true, nil
+	}
+
 	groups, err := getPermittedGroups(resources, resource_type, permission, state)
 	if err != nil {
 		return false, err
@@ -65,10 +69,6 @@ func (state *RuntimeState) canPerformAction(username, resources string, resource
 		return false, err
 	}
 	sort.Strings(groupsOfUser)
-
-	if state.Userinfo.UserisadminOrNot(username) {
-		return true, nil
-	}
 
 	for _, group := range groups {
 		var index int
@@ -96,7 +96,7 @@ func insertPermissionEntry(groupname, resource string, resource_type, permission
 		return err
 	}
 	defer stmt.Close()
-	exists, oldPerm := permExistsorNot(groupname, resource, resource_type, state)
+	exists, oldPerm := permExistsOrNot(groupname, resource, resource_type, state)
 	if exists {
 		if oldPerm&permission == permission {
 			return nil
@@ -115,7 +115,7 @@ var permExistsorNotStmt = map[string]string{
 	"postgres": "select permission from permissions where groupname=$1 and resource_type=$2 and resource=$3;",
 }
 
-func permExistsorNot(groupname, resource string, resource_type int, state *RuntimeState) (bool, int) {
+func permExistsOrNot(groupname, resource string, resource_type int, state *RuntimeState) (bool, int) {
 	stmtText := permExistsorNotStmt[state.dbType]
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {

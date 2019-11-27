@@ -406,7 +406,7 @@ func TestPermissionManagehandlerSuccess(t *testing.T) {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		rr := httptest.NewRecorder()
-		handler := http.HandlerFunc(state.permissionManagehandler)
+		handler := http.HandlerFunc(state.permissionManageHandler)
 
 		handler.ServeHTTP(rr, req)
 

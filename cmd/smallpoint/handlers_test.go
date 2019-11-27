@@ -99,8 +99,6 @@ func TestAdminOnlyWebPaths(t *testing.T) {
 		log.Println(err)
 	}
 	testWebEndpoints := map[string]http.HandlerFunc{
-		changeownershipPath:         state.changeownershipWebpageHandler,
-		createServiceAccWebPagePath: state.createserviceAccountPageHandler,
 		permissionmanageWebPagePath: state.permissionmanageWebpageHandler,
 	}
 

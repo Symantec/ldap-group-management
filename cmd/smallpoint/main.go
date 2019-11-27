@@ -355,7 +355,7 @@ func main() {
 
 	http.Handle(myManagedGroupsWebPagePath, http.HandlerFunc(state.myManagedGroupsHandler))
 	http.Handle(permissionmanageWebPagePath, http.HandlerFunc(state.permissionmanageWebpageHandler))
-	http.Handle(permissionmanagePath, http.HandlerFunc(state.permissionManagehandler))
+	http.Handle(permissionmanagePath, http.HandlerFunc(state.permissionManageHandler))
 
 	fs := http.FileServer(http.Dir(state.Config.Base.TemplatesPath))
 	http.Handle(cssPath, fs)

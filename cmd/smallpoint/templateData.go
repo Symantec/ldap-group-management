@@ -95,12 +95,13 @@ const sidebarHTMLText = `
         <a href="/my_managed_groups" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; My Managed Groups</a>
 	<a href="/pending-actions" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Actions <span style="background-color: red;color:white;border-radius:5px;" id="pending_action_count"></span> </a>
 	<a href="/pending-requests" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Requests</a>
-        {{if .IsAdmin}}
+       
         <a href="/create_group" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Create Group</a>
         <a href="/delete_group" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Delete Group</a>
         <a href="/create_serviceaccount" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Create Service Account</a>
         <a href="/change_owner" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Change Group Ownership(RegExp)</a>
-        <a href="/permissionmanage" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Permission Management</a>
+	{{if .IsAdmin}}
+	<a href="/permissionmanage" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Permission Management</a>
 	{{end}}
         <a href="/addmembers" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Add Members to Group</a>
         <a href="/deletemembers" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Remove Members from Group</a>

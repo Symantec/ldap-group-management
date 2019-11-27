@@ -1101,10 +1101,7 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 		return
 	}
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
-	if !isAdmin {
-		http.Error(w, "you are not authorized", http.StatusForbidden)
-		return
-	}
+
 	pageData := createServiceAccountPageData{
 		UserName: username,
 		IsAdmin:  isAdmin,
@@ -1223,10 +1220,7 @@ func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, 
 		return
 	}
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
-	if !isAdmin {
-		http.Error(w, "you are not authorized", http.StatusForbidden)
-		return
-	}
+
 	pageData := changeGroupOwnershipPageData{
 		UserName: username,
 		IsAdmin:  isAdmin,

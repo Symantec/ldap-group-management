@@ -664,13 +664,14 @@ func (state *RuntimeState) getUsersJSHandler(w http.ResponseWriter, r *http.Requ
 	return
 }
 
-func (state *RuntimeState) permissionManagehandler(w http.ResponseWriter, r *http.Request) {
+func (state *RuntimeState) permissionManageHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != postMethod {
 		state.writeFailureResponse(w, r, "POST Method is required", http.StatusMethodNotAllowed)
 		return
 	}
 	username, err := state.GetRemoteUserName(w, r)
 	if err != nil {
+		log.Println(err)
 		return
 	}
 	if !state.Userinfo.UserisadminOrNot(username) {
@@ -680,7 +681,6 @@ func (state *RuntimeState) permissionManagehandler(w http.ResponseWriter, r *htt
 
 	err = r.ParseForm()
 	if err != nil {
-		log.Println("error here")
 		log.Println(err)
 		if err.Error() == "missing form body" {
 			http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
@@ -710,14 +710,14 @@ func (state *RuntimeState) permissionManagehandler(w http.ResponseWriter, r *htt
 	var resourceVal int
 	var ok bool
 	if resourceVal, ok = resourceMapping[resourceType]; !ok {
-		state.writeFailureResponse(w, r, fmt.Sprintf("%s resource type not exist", resourceType), http.StatusBadRequest)
+		state.writeFailureResponse(w, r, fmt.Sprintf("%s resource type does not exist", resourceType), http.StatusBadRequest)
 		return
 	}
 
 	var permissions, permVal int
 	for _, permission := range permissionList {
 		if permVal, ok = permissionMapping[permission]; !ok {
-			state.writeFailureResponse(w, r, fmt.Sprintf("%s permission not exist", permission), http.StatusBadRequest)
+			state.writeFailureResponse(w, r, fmt.Sprintf("%s permission does not exist", permission), http.StatusBadRequest)
 			return
 		}
 		permissions += permVal
