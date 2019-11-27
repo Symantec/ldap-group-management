@@ -382,6 +382,17 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		}
 		groupinfo := userinfo.GroupInfo{}
 		groupinfo.Groupname = group
+
+		allow, err := state.canPerformAction(username, group, resourceGroup, permUpdate)
+		if err != nil {
+			log.Println(err)
+			state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
+			return
+		}
+		if !allow {
+			state.writeFailureResponse(w, r, fmt.Sprintf("You don't have permission to update manager group for group %s", group), http.StatusForbidden)
+			return
+		}
 		err = state.groupExistsorNot(w, groupinfo.Groupname)
 		if err != nil {
 			return
