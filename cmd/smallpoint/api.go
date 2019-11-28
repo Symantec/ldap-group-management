@@ -351,10 +351,6 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
-	if !state.Userinfo.UserisadminOrNot(username) {
-		http.Error(w, "you are not authorized", http.StatusForbidden)
-		return
-	}
 
 	err = r.ParseForm()
 	if err != nil {
