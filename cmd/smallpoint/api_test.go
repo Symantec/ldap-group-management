@@ -161,6 +161,8 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 			formValues = url.Values{"AccountName": {"new_svc_account"}, "mail": {"alice@example.com"}, "loginShell": {"/bin/false"}}
 		} else if strings.Contains(path, "delete") {
 			formValues = url.Values{"groupnames": {"group1"}}
+		} else if strings.Contains(path, "change") {
+			formValues = url.Values{"groupnames": {"group1"}, "managegroup": {"group1"}}
 		} else {
 			formValues = url.Values{"groupname": {"group1"}}
 		}
