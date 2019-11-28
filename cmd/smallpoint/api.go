@@ -164,9 +164,11 @@ func (state *RuntimeState) createGrouphandler(w http.ResponseWriter, r *http.Req
 			state.sysLog.Write([]byte(fmt.Sprintf("%s"+" was added to Group "+"%s"+" by "+"%s", member, groupinfo.Groupname, username)))
 		}
 	}
+
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	pageData := simpleMessagePageData{
 		UserName:       username,
-		IsAdmin:        true,
+		IsAdmin:        isAdmin,
 		Title:          "Group Creation Success",
 		SuccessMessage: "Group has been successfully Created",
 	}
@@ -247,9 +249,11 @@ func (state *RuntimeState) deleteGrouphandler(w http.ResponseWriter, r *http.Req
 		state.writeFailureResponse(w, r, fmt.Sprintf("Something wrong with internal server."), http.StatusInternalServerError)
 		return
 	}
+
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	pageData := simpleMessagePageData{
 		UserName:       username,
-		IsAdmin:        true,
+		IsAdmin:        isAdmin,
 		Title:          "Group Deletion Suucess",
 		SuccessMessage: "Group has been successfully Deleted",
 	}
@@ -333,9 +337,11 @@ func (state *RuntimeState) createServiceAccounthandler(w http.ResponseWriter, r 
 	if state.sysLog != nil {
 		state.sysLog.Write([]byte(fmt.Sprintf("Service account "+"%s"+" was created by "+"%s", groupinfo.Groupname, username)))
 	}
+
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	pageData := simpleMessagePageData{
 		UserName:       username,
-		IsAdmin:        true,
+		IsAdmin:        isAdmin,
 		Title:          "Service Account Creation Success",
 		SuccessMessage: "Service Account successfully created",
 	}
@@ -408,9 +414,11 @@ func (state *RuntimeState) changeownership(w http.ResponseWriter, r *http.Reques
 		state.writeFailureResponse(w, r, "Invalid groupnames parameter", http.StatusBadRequest)
 		return
 	}
+
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	pageData := simpleMessagePageData{
 		UserName:       username,
-		IsAdmin:        true,
+		IsAdmin:        isAdmin,
 		Title:          "Change Ownership success",
 		SuccessMessage: "Group(s) have successfuly changed ownership",
 	}
