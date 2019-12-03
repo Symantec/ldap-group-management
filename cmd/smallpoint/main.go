@@ -137,6 +137,8 @@ const (
 	changeownershipbuttonPath   = "/change_owner/"
 	changeownershipPath         = "/change_owner"
 	myManagedGroupsWebPagePath  = "/my_managed_groups"
+	permissionmanageWebPagePath = "/permissionmanage"
+	permissionmanagePath        = "/permissionmanage/"
 
 	getGroupsJSPath = "/getGroups.js"
 	getUsersJSPath  = "/getUsers.js"
@@ -183,7 +185,7 @@ func (state *RuntimeState) loadTemplates() (err error) {
 		createGroupPageText, deleteGroupPageText,
 		simpleMessagePageText, addMembersToGroupPageText, groupInfoPageText,
 		createServiceAccountPageText, changeGroupOwnershipPageText,
-		deleteMembersFromGroupPageText, commonHeadText}
+		deleteMembersFromGroupPageText, commonHeadText, permManagePageText}
 	for _, templateString := range extraTemplates {
 		_, err = state.htmlTemplate.Parse(templateString)
 		if err != nil {
@@ -352,6 +354,8 @@ func main() {
 	http.Handle(getUsersJSPath, http.HandlerFunc(state.getUsersJSHandler))
 
 	http.Handle(myManagedGroupsWebPagePath, http.HandlerFunc(state.myManagedGroupsHandler))
+	http.Handle(permissionmanageWebPagePath, http.HandlerFunc(state.permissionmanageWebpageHandler))
+	http.Handle(permissionmanagePath, http.HandlerFunc(state.permissionManageHandler))
 
 	fs := http.FileServer(http.Dir(state.Config.Base.TemplatesPath))
 	http.Handle(cssPath, fs)

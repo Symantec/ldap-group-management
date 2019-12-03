@@ -147,6 +147,7 @@ func TestMethodsForApiEndPoints(t *testing.T) {
 
 }
 
+//TODO: only leave permissionManagement as admin only
 func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 	state, err := setupTestState()
 	if err != nil {
@@ -160,6 +161,8 @@ func TestAdminOnlyAuthnEndpoints(t *testing.T) {
 			formValues = url.Values{"AccountName": {"new_svc_account"}, "mail": {"alice@example.com"}, "loginShell": {"/bin/false"}}
 		} else if strings.Contains(path, "delete") {
 			formValues = url.Values{"groupnames": {"group1"}}
+		} else if strings.Contains(path, "change") {
+			formValues = url.Values{"groupnames": {"group1"}, "managegroup": {"group1"}}
 		} else {
 			formValues = url.Values{"groupname": {"group1"}}
 		}
@@ -378,6 +381,39 @@ func TestGetUsersJSHandler(t *testing.T) {
 		if status := rr.Code; status != http.StatusOK {
 			t.Errorf("handler returned wrong status code: got %v want %v",
 				status, http.StatusOK)
+		}
+	}
+}
+
+var permissionBodyList = []url.Values{
+	url.Values{"groupname": {"group1"}, "resourceType": {"group"}, "resourceName": {"foo"}, "permissions": {"create"}},
+	url.Values{"groupname": {"group1"}, "resourceType": {"group"}, "resourceName": {"foo"}, "permissions": {"update"}},
+	url.Values{"groupname": {"group1"}, "resourceType": {"group"}, "resourceName": {"foo"}, "permissions": {"create"}},
+}
+
+func TestPermissionManagehandlerSuccess(t *testing.T) {
+	state, err := setupTestState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range permissionBodyList {
+		//formValues := url.Values{"groupname": {"group1"}, "resourceType": {"group"}, "resourceName": {"foo"}, "permissions": {"create"}}
+		req, err := http.NewRequest("POST", permissionmanagePath, strings.NewReader(item.Encode()))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		cookie := testCreateValidAdminCookie(state.authenticator)
+		req.AddCookie(&cookie)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(state.permissionManageHandler)
+
+		handler.ServeHTTP(rr, req)
+
+		if status := rr.Code; status != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
 		}
 	}
 }

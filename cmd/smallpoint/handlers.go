@@ -1101,10 +1101,7 @@ func (state *RuntimeState) createserviceAccountPageHandler(w http.ResponseWriter
 		return
 	}
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
-	if !isAdmin {
-		http.Error(w, "you are not authorized", http.StatusForbidden)
-		return
-	}
+
 	pageData := createServiceAccountPageData{
 		UserName: username,
 		IsAdmin:  isAdmin,
@@ -1223,10 +1220,7 @@ func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, 
 		return
 	}
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
-	if !isAdmin {
-		http.Error(w, "you are not authorized", http.StatusForbidden)
-		return
-	}
+
 	pageData := changeGroupOwnershipPageData{
 		UserName: username,
 		IsAdmin:  isAdmin,
@@ -1235,6 +1229,31 @@ func (state *RuntimeState) changeownershipWebpageHandler(w http.ResponseWriter, 
 	setSecurityHeaders(w)
 	w.Header().Set("Cache-Control", "private, max-age=30")
 	err = state.htmlTemplate.ExecuteTemplate(w, "changeGroupOwnershipPage", pageData)
+	if err != nil {
+		log.Printf("Failed to execute %v", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (state *RuntimeState) permissionmanageWebpageHandler(w http.ResponseWriter, r *http.Request) {
+	username, err := state.GetRemoteUserName(w, r)
+	if err != nil {
+		return
+	}
+	isAdmin := state.Userinfo.UserisadminOrNot(username)
+	if !isAdmin {
+		http.Error(w, "you are not authorized", http.StatusForbidden)
+		return
+	}
+	pageData := permManagePageData{
+		Title:    "Permission Management",
+		IsAdmin:  isAdmin,
+		UserName: username,
+	}
+	setSecurityHeaders(w)
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	err = state.htmlTemplate.ExecuteTemplate(w, "permManagePage", pageData)
 	if err != nil {
 		log.Printf("Failed to execute %v", err)
 		http.Error(w, "error", http.StatusInternalServerError)

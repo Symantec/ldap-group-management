@@ -95,12 +95,14 @@ const sidebarHTMLText = `
         <a href="/my_managed_groups" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; My Managed Groups</a>
 	<a href="/pending-actions" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Actions <span style="background-color: red;color:white;border-radius:5px;" id="pending_action_count"></span> </a>
 	<a href="/pending-requests" class="w3-bar-item w3-button w3-padding"><i class="fa fa-cog fa-fw"></i>&nbsp; My Pending Requests</a>
-        {{if .IsAdmin}}
+       
         <a href="/create_group" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Create Group</a>
         <a href="/delete_group" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Delete Group</a>
         <a href="/create_serviceaccount" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Create Service Account</a>
         <a href="/change_owner" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Change Group Ownership(RegExp)</a>
-        {{end}}
+	{{if .IsAdmin}}
+	<a href="/permissionmanage" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Permission Management</a>
+	{{end}}
         <a href="/addmembers" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Add Members to Group</a>
         <a href="/deletemembers" class="w3-bar-item w3-button w3-padding"><i class="fa fa-users fa-fw"></i>&nbsp; Remove Members from Group</a>
 
@@ -1138,6 +1140,104 @@ const deleteMembersFromGroupPageText = `
 
   </div><!-- end of content div -->
 {{template "footer"}}
+</div>
+
+</body>
+</html>
+{{end}}
+`
+
+type permManagePageData struct {
+	Title     string
+	IsAdmin   bool
+	UserName  string
+	JSSources []string
+}
+
+const permManagePageText = `
+{{define "permManagePage"}}
+<html>
+
+<head>
+    {{template "commonHead" . }}
+    <script type="text/javascript" src="/js/permissionManage.js"></script>
+    <script type="text/javascript" src="/getGroups.js?type=allNoManager"></script>
+</head>
+<body class="w3-light-grey">
+{{template "header" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+  <div id="content" style="min-height: 500px;margin-bottom:100px;">
+    <header class="w3-container" style="padding-top:12px">
+      <h5><b><i class="fa fa-group"></i>{{.Title}}</b></h5>
+    </header>
+
+    <div class="w3-panel">
+      <table class="w3-table w3-striped w3-white">
+        <tr>
+	  <td>Group Name</td>
+	  <td>
+	    <input autocomplete="off" list="select_groups" id="cg_groupname" required name="groupname" type="text">
+	    <datalist id="select_groups">
+	    </datalist><br/>
+	  </td>
+	</tr>
+	<tr>
+	  <td>Resource Type</td>
+	  <td><select id="resource_type" required name="resourceType" type="text">
+	    <option value="group">group</option>
+	    <option value="service account">service account</option>
+	  </select><td>
+	</tr>
+	<tr>
+	  <td>Resource Name</td>
+	  <td>
+	    <input autocomplete="off" type="text" id="resource_name">
+	  </td>
+	</tr>
+	<tr>
+	  <td>Permissions</td>
+	  <td>
+	    <div class="permissions">
+	    </div>
+	    <input class="permissions" autocomplete="off" list="select_permissions" id="input_permissions" name="permissions" type="text">
+	    <datalist id="select_permissions">
+	      <option id="option-create" value="create">create</option>
+	      <option id="option-update" value="update">update</option>
+	      <option id="option-delete" value="delete">delete</option>
+	    </datalist>
+	  </td>
+	</tr>
+	<button class="w3-button w3-right w3-text-new-white w3-new-blue" id="create_permissions" data-toggle="modal" data-target="#myModalCreatePermissions" style="margin-left:10px">Create Permissions</button>
+      </table>
+
+      <div class="modal fade" id="myModalCreatePermissions" role="dialog">
+        <div class="modal-dialog">
+	  <div class="modal-content">
+	    <div class="modal-header">
+	      <button type="button" class="close" data-dismiss="modal">&times;</button>
+	      <h4 class="modal-title">Action Required</h4>
+	    </div>
+	    <div class="modal-body">
+	      <p>Are you soure you want to make the group to have these permissions?</p>
+	      <form id="form_add_permissions" method="POST" action="/permissionmanage/?username={{.UserName}}" autocomplete="off">
+	        Groups: <input autocomplete="off" id="group_groupname" name="groupname" required type="text" readonly/><br/>
+		ResourceType: <input autocomplete="off" id="permission_resource_type" name="resourceType" required type="text" readonly/><br/>
+		ResourceName: <input autocomplete="off" id="permission_resource_name" name="resourceName" required type="text" readonly/><br/>
+		Permissions: <input autocomplete="off" id="permissions_content" name="permissions" required="required" type="text" readonly/><br/>
+	      </form>
+	    </div>
+	    <div class="modal-footer">
+	      <button type="button" class="btn btn-default"  id="btn_addpermission" data-dismiss="modal">Confirm</button>
+	      <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+	    </div>
+	  </div>
+	</div>
+      </div>
+    </div>
+  </div>
+  {{template "footer"}}
 </div>
 
 </body>

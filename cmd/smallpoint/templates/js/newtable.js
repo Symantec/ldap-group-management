@@ -446,6 +446,9 @@ function closebox(name, id) {
     if (id === "select_groups") {
 	$('#group_names').val(str);
     }
+    if (id === "select_permissions") {
+	$('#permissions').val(str);
+    }
 }
 
 function reorgdatalist(name, id) {
@@ -464,6 +467,9 @@ function reorgdatalist(name, id) {
     }
     if (id === "select_members_remove") {
 	list_removemembers(optionVals);	
+    }
+    if (id === "select_permissions") {
+	list_permissions(optionVals);
     }
 }
 
@@ -646,4 +652,89 @@ function dm_members() {
 	    break;
 	}
     }
+}
+
+function permission_manage() {
+	var val = document.getElementById("input_permissions").value;
+	var opts = document.getElementById("select_permissions").childNodes;
+	for (var i = 0; i < opts.length; i ++) {
+		if (opts[i].value == val) {
+			permission_func(opts[i].value);
+			break;
+		}
+	}
+}
+
+function permission_func(value) {
+	$(document).ready(function() {
+		$('input.permissions').val('');
+
+		var optionid = "option-" + value;
+		var name = value;
+		var buttonid = "button-" + value;
+
+		document.getElementById(optionid).remove();
+		$("div.permissions").append($('<div class="borderbox" id='+value+' style="padding: 5px"><b>' + value +
+            	'</b><button id='+buttonid+' type="button" class="close" aria-label="Close">\n' +
+            	'<span  aria-hidden="true">&times;</span>\n' +
+            	'</button></div>'));
+		var id = "select_permissions";
+		document.getElementById(buttonid).addEventListener('click', function (){
+			closebox_perm(name, id);
+		});
+		var str='';
+        	$("div.permissions div b").each(function () {
+            		str += $(this).text() + ",";
+        	});
+
+        	$('#permissions_content').val(str);
+	});
+}
+
+function closebox_perm(name, id) {
+	reorgdatalist(name, id);
+
+	document.getElementById(name).remove();
+
+	var str="";
+	$("div.permissions div b").each(function () {
+		str += $(this).text() + ",";
+	});
+
+	$('#permissions_content').val(str);
+}
+
+function resource_type() {
+	var resource_type = document.getElementById("resource_type").value;
+	$('#permission_resource_type').val(resource_type);
+	
+	var resource_name = document.getElementById("resource_name").value;
+	$('#permission_resource_name').val(resource_name);
+}
+
+function permissionmanage_form_submit() {
+	var val = refractor_permissions();
+	if (val === 1) {
+		document.getElementById("form_add_permissions").submit();
+	} else {
+		alert("error occured!");
+	}
+}
+
+function refractor_permissions() {
+	var val=document.getElementById("permissions_content").value;
+	var length=val.length;
+	if (val[length-1]===","){
+		var res = val.substring(0, length-1);
+		$('#permissions_content').val(res);
+		return 1;
+	}
+	return 0;
+}
+
+function list_permissions(permissions) {
+	permissions.sort();
+	for (i=0;i<permissions.length;i++) {
+		$('#select_permissions').append("<option id='option-"+permissions[i]+"' value='" + permissions[i] + "'>"+permissions[i]+"</option>");
+	}
 }
