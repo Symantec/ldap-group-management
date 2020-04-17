@@ -5,10 +5,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/Symantec/keymaster/lib/authutil"
-	"github.com/Symantec/ldap-group-management/lib/metrics"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
-	"gopkg.in/ldap.v2"
 	"log"
 	"net"
 	"net/url"
@@ -18,6 +14,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Symantec/keymaster/lib/authutil"
+	"github.com/Symantec/ldap-group-management/lib/metrics"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
+	"gopkg.in/ldap.v2"
 )
 
 const ldapTimeoutSecs = 10
@@ -69,7 +70,7 @@ func (u *UserInfoLDAPSource) GetUserAttributes(username string) ([]string, []str
 		log.Println(err)
 		return nil, nil, err
 	}
-	result, err := u.getInfoofUserInternal(conn, username, []string{"mail", "givenName"})
+	result, err := u.getUserAttributesFromOkta(conn, username, []string{"mail", "givenName"})
 	if err != nil {
 		log.Println(err)
 		return nil, nil, err
@@ -286,6 +287,42 @@ func (u *UserInfoLDAPSource) getUserDN(conn *ldap.Conn, username string) (string
 		return sr.Entries[0].DN, nil
 	}
 	return "", userinfo.UserDoesNotExist
+
+}
+
+////
+// GetGroupsOfUser returns the all groups of a user. --required
+func (u *UserInfoLDAPSource) getUserAttributesFromOkta(conn *ldap.Conn, username string, attributes []string) (map[string][]string, error) {
+	searchPaths := []string{u.UserSearchBaseDNs, u.ServiceAccountBaseDNs}
+
+	for _, searchPath := range searchPaths {
+		searchRequest := ldap.NewSearchRequest(
+			searchPath,
+			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+			"(&("+u.SearchAttribute+"="+username+"@*))",
+			attributes, //memberOf (if searching other way around using usersdn instead of groupdn)
+			nil,
+		)
+		sr, err := conn.Search(searchRequest)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		if len(sr.Entries) < 1 {
+			continue
+		}
+
+		if len(sr.Entries) != 1 {
+			log.Printf("User does not exist or too many entries returned")
+			return nil, errors.New("user does not exist or too many users")
+		}
+		attrs := make(map[string][]string)
+		for _, attr := range sr.Entries[0].Attributes {
+			attrs[attr.Name] = attr.Values
+		}
+		return attrs, nil
+	}
+	return nil, userinfo.UserDoesNotExist
 
 }
 
@@ -1250,6 +1287,54 @@ func (u *UserInfoLDAPSource) CreateUser(username string, givenName, email []stri
 	user.Attribute("givenName", givenName)
 	user.Attribute("displayName", []string{username})
 	user.Attribute("sn", []string{username})
+	user.Attribute("title", []string{username})
+
+	user.Attribute("homeDirectory", []string{HomeDirectory + username})
+	user.Attribute("loginShell", []string{LoginShell})
+	user.Attribute("sshPublicKey", []string{""})
+	user.Attribute("shadowExpire", []string{"-1"})
+	user.Attribute("shadowFlag", []string{"0"})
+	user.Attribute("shadowLastChange", []string{"1"})
+	user.Attribute("shadowMax", []string{"99999"})
+	user.Attribute("shadowMin", []string{"0"})
+	user.Attribute("shadowWarning", []string{"7"})
+	user.Attribute("mail", email)
+	user.Attribute("uidNumber", []string{uidnum})
+	user.Attribute("gidNumber", []string{"100"})
+
+	err = conn.Add(user)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
+func (u *UserInfoLDAPSource) CreateOktaUser(username string, oktaUid string, givenName, email []string) error {
+	conn, err := u.getTargetLDAPConnection()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer conn.Close()
+
+	uidnum, err := u.getMaximumUIDNumber(conn, u.UserSearchBaseDNs)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	userDN := u.createUserDN(username)
+
+	user := ldap.NewAddRequest(userDN)
+	user.Attribute("objectClass", []string{"posixAccount", "person", "ldapPublicKey", "organizationalPerson", "inetOrgPerson", "shadowAccount", "top", "inetUser", "pwmuser"})
+	user.Attribute("cn", []string{username})
+	user.Attribute("uid", []string{username})
+	user.Attribute("gecos", []string{username})
+	user.Attribute("givenName", givenName)
+	user.Attribute("displayName", []string{username})
+	user.Attribute("sn", []string{username})
+	user.Attribute("title", []string{oktaUid})
 
 	user.Attribute("homeDirectory", []string{HomeDirectory + username})
 	user.Attribute("loginShell", []string{LoginShell})

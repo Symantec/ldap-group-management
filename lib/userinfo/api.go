@@ -69,6 +69,7 @@ type UserInfo interface {
 	GetGroupandManagedbyAttributeValue(groupnames []string) ([][]string, error)
 
 	CreateUser(username string, givenName, email []string) error
+	CreateOktaUser(username string, oktaUid string, givenName, email []string) error
 
 	GetUserAttributes(username string) ([]string, []string, error)
 }

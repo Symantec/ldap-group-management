@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
 	"log"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
 
 	"github.com/Symantec/keymaster/lib/instrumentedwriter"
 )
@@ -130,7 +131,14 @@ func (state *RuntimeState) createUserorNot(username string) error {
 			log.Println(err)
 			return err
 		}
-		err = state.Userinfo.CreateUser(username, givenName, email)
+		if len(email) == 0 {
+			log.Println(fmt.Errorf("No email found for %s from Okta", username))
+			return err
+		}
+		oktaid := username
+		username = strings.Join(strings.Split(strings.Split(email[0], "@")[0], "."), "_")
+
+		err = state.Userinfo.CreateOktaUser(username, oktaid, givenName, email)
 		if err != nil {
 			log.Println(err)
 			return err
