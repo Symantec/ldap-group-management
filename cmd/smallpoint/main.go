@@ -8,12 +8,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/Symantec/keymaster/lib/instrumentedwriter"
-	"github.com/Symantec/ldap-group-management/lib/userinfo"
-	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"gopkg.in/natefinch/lumberjack.v2"
-	"gopkg.in/yaml.v2"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -24,23 +18,34 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Symantec/keymaster/lib/instrumentedwriter"
+	"github.com/Symantec/ldap-group-management/lib/userinfo"
+	"github.com/Symantec/ldap-group-management/lib/userinfo/ldapuserinfo"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"gopkg.in/natefinch/lumberjack.v2"
+	"gopkg.in/yaml.v2"
+
 	"github.com/Symantec/ldap-group-management/lib/authn"
 )
 
 type baseConfig struct {
-	HttpAddress                 string `yaml:"http_address"`
-	TLSCertFilename             string `yaml:"tls_cert_filename"`
-	TLSKeyFilename              string `yaml:"tls_key_filename"`
-	StorageURL                  string `yaml:"storage_url"`
-	TemplatesPath               string `yaml:"templates_path"`
-	SMTPserver                  string `yaml:"smtp_server"`
-	SmtpSenderAddress           string `yaml:"smtp_sender_address"`
-	ClientCAFilename            string `yaml:"client_ca_filename"`
-	LogDirectory                string `yaml:"log_directory"`
-	ClusterSharedSecretFilename string `yaml:"cluster_shared_secret_filename"`
+	HttpAddress                 string                     `yaml:"http_address"`
+	TLSCertFilename             string                     `yaml:"tls_cert_filename"`
+	TLSKeyFilename              string                     `yaml:"tls_key_filename"`
+	StorageURL                  string                     `yaml:"storage_url"`
+	TemplatesPath               string                     `yaml:"templates_path"`
+	SMTPserver                  string                     `yaml:"smtp_server"`
+	SmtpSenderAddress           string                     `yaml:"smtp_sender_address"`
+	ClientCAFilename            string                     `yaml:"client_ca_filename"`
+	LogDirectory                string                     `yaml:"log_directory"`
+	ClusterSharedSecretFilename string                     `yaml:"cluster_shared_secret_filename"`
+	Hostname                    string                     `yaml:"hostname"`
+	AutoGroups                  []string                   `yaml:"auto_add_to_groups"`
+	AutoPatchGroupFile          string                     `yaml:"auto_patch_group_file"`
+	AutoPatchServiceAccountFile string                     `yaml:"auto_patch_service_account_file"`
+	AutoPatchGroup              map[string]map[string]bool `yaml:"-"`
+	DebugLog                    bool                       `yaml:"debug_log"`
 	SharedSecrets               []string
-	Hostname                    string   `yaml:"hostname"`
-	AutoGroups                  []string `yaml:"auto_add_to_groups"`
 }
 
 type AppConfigFile struct {
@@ -309,12 +314,28 @@ func main() {
 		panic(err)
 	}
 
+	// state.initPatchGroups(state.Config.Base.AutoPatchGroupFile, state.Config.Base.AutoPatchServiceAccountFile)
+
 	//start to log
-	state.sysLog, err = syslog.New(syslog.LOG_NOTICE|syslog.LOG_AUTHPRIV, "smallpoint")
+	state.sysLog, err = syslog.New(syslog.LOG_DEBUG|syslog.LOG_AUTHPRIV, "smallpoint")
 	if err != nil {
 		log.Fatalf("System log failed")
 	}
 	defer state.sysLog.Close()
+
+	var logfile *os.File
+	if state.Config.Base.DebugLog {
+		logfile, err = os.OpenFile(fmt.Sprintf("%s/debug.log", state.Config.Base.LogDirectory), os.O_CREATE|os.O_APPEND, 0644)
+		if err != nil {
+			log.Fatalf("Debug log failed")
+		}
+		log.SetOutput(logfile)
+	}
+	// if logfile != nil {
+	// 	defer logfile.Close()
+	// }
+
+	log.Printf("Debug logging enabled\n")
 
 	http.Handle(metricsPath, promhttp.Handler())
 
@@ -397,9 +418,9 @@ func main() {
 		Addr:         state.Config.Base.HttpAddress,
 		Handler:      instrumentedwriter.NewLoggingHandler(http.DefaultServeMux, accessLogger),
 		TLSConfig:    tlsConfig,
-		ReadTimeout:  5 * time.Second,
+		ReadTimeout:  300 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		IdleTimeout:  300 * time.Second,
 	}
 
 	err = serviceServer.ListenAndServeTLS(state.Config.Base.TLSCertFilename, state.Config.Base.TLSKeyFilename)

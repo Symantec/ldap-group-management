@@ -111,29 +111,29 @@ func (state *RuntimeState) autoAddtoGroups(username string) error {
 
 const allUsersCacheDuration = time.Hour * 1
 
-func (state *RuntimeState) createUserorNot(username string) error {
+func (state *RuntimeState) createUserorNot(username string) (string, error) {
 	state.allUsersRWLock.Lock()
 	expiration, ok := state.allUsersCacheValue[username]
 	state.allUsersRWLock.Unlock()
 
 	if ok && expiration.After(time.Now()) {
-		return nil
+		return username, nil
 	}
 	found, err := state.Userinfo.UsernameExistsornot(username)
 	if err != nil {
 		log.Println(err)
-		return err
+		return username, err
 	}
 
 	if !found {
 		email, givenName, err := state.UserSourceinfo.GetUserAttributes(username)
 		if err != nil {
 			log.Println(err)
-			return err
+			return username, err
 		}
 		if len(email) == 0 {
 			log.Println(fmt.Errorf("No email found for %s from Okta", username))
-			return err
+			return username, err
 		}
 		oktaid := username
 		username = strings.Join(strings.Split(strings.Split(email[0], "@")[0], "."), "_")
@@ -141,18 +141,18 @@ func (state *RuntimeState) createUserorNot(username string) error {
 		err = state.Userinfo.CreateOktaUser(username, oktaid, givenName, email)
 		if err != nil {
 			log.Println(err)
-			return err
+			return username, err
 		}
 		err = state.autoAddtoGroups(username)
 		if err != nil {
 			log.Println(err)
-			return err
+			return username, err
 		}
 	}
 	state.allUsersRWLock.Lock()
 	state.allUsersCacheValue[username] = time.Now().Add(allUsersCacheDuration)
 	state.allUsersRWLock.Unlock()
-	return nil
+	return username, nil
 }
 
 func setLoggerUsername(w http.ResponseWriter, authUser string) {
@@ -178,7 +178,7 @@ func (state *RuntimeState) GetRemoteUserName(w http.ResponseWriter, r *http.Requ
 	setLoggerUsername(w, username)
 
 	//TODO: add test case for it
-	err = state.createUserorNot(username)
+	username, err = state.createUserorNot(username)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
@@ -209,6 +209,7 @@ func (state *RuntimeState) mygroupsHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
+	// state.autoPatchGroups(username)
 
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	setSecurityHeaders(w)
