@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/mssola/user_agent"
 	"io"
 	"log"
 	"net"
 	"net/smtp"
 	texttemplate "text/template"
+
+	"github.com/mssola/user_agent"
 )
 
 // From: https://blog.andreiavram.ro/golang-unit-testing-interfaces/
@@ -119,6 +120,15 @@ func (state *RuntimeState) SuccessRequestemail(requesteduser string, usersEmail 
 	}
 
 	return nil
+}
+
+func (state *RuntimeState) sendEmail(usersEmail string) (bool, error) {
+
+	auth := smtp.PlainAuth("", state.Config.Base.SMTPUsername, state.Config.Base.SMTPPassword, state.Config.Base.SMTPserver)
+	if err := smtp.SendMail(state.Config.Base.SMTPserver, auth, usersEmail, r.to, msg); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 ////Request Access email  end.....//////

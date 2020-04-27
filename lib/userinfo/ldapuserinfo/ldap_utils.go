@@ -838,7 +838,16 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 		log.Println("Failed to get email")
 		return nil, errors.New("Failed to get email")
 	}
-	return email, nil
+	var emails []string
+	for _, el := range email {
+		if strings.HasSuffix(strings.ToLower(el), "@symantec.com") {
+			emails = append(emails, strings.Join(strings.Split(strings.Split(strings.ToLower(el), "@")[0], "_"), ".")+"@broadcom.com")
+		} else {
+			emails = append(emails, el)
+		}
+	}
+
+	return emails, nil
 }
 
 func (u *UserInfoLDAPSource) getInfoofUserInternal(conn *ldap.Conn, username string, searchParams []string) (map[string][]string, error) {
@@ -905,7 +914,11 @@ func (u *UserInfoLDAPSource) GetEmailofusersingroup(groupname string) ([]string,
 			log.Println("error get user email")
 			return nil, errors.New("error get user email")
 		}
-		userEmail = append(userEmail, mail[0])
+		email := mail[0]
+		if strings.HasSuffix(strings.ToLower(email), "@symantec.com") {
+			email = strings.Join(strings.Split(strings.Split(email, "@")[0], "_"), ".") + "@broadcom.com"
+		}
+		userEmail = append(userEmail, email)
 
 	}
 	return userEmail, nil

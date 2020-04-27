@@ -35,6 +35,8 @@ type baseConfig struct {
 	StorageURL                  string                     `yaml:"storage_url"`
 	TemplatesPath               string                     `yaml:"templates_path"`
 	SMTPserver                  string                     `yaml:"smtp_server"`
+	SMTPUsername                string                     `yaml:"smtp_username"`
+	SMTPPassword                string                     `yaml:"smtp_password"`
 	SmtpSenderAddress           string                     `yaml:"smtp_sender_address"`
 	ClientCAFilename            string                     `yaml:"client_ca_filename"`
 	LogDirectory                string                     `yaml:"log_directory"`
