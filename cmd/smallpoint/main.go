@@ -295,6 +295,7 @@ func loadConfig(configFilename string) (RuntimeState, error) {
 
 type mailAttributes struct {
 	RequestedUser string
+	RemoteAddr    string
 	OtherUser     string
 	Groupname     string
 	Browser       string

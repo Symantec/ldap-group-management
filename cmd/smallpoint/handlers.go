@@ -413,7 +413,7 @@ func (state *RuntimeState) requestAccessHandler(w http.ResponseWriter, r *http.R
 		http.Error(w, "oops! an error occured.", http.StatusInternalServerError)
 		return
 	}
-	go state.SendRequestemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
+	go state.SendRequestemail(username, out["groups"], state.Config.Base.SmtpSenderAddress, r.UserAgent())
 
 	isAdmin := state.Userinfo.UserisadminOrNot(username)
 	pageData := simpleMessagePageData{
@@ -801,7 +801,7 @@ func (state *RuntimeState) approveHandler(w http.ResponseWriter, r *http.Request
 			log.Println(err)
 		}
 	}
-	go state.sendApproveemail(authUser, out["groups"], r.RemoteAddr, r.UserAgent())
+	go state.sendApproveemail(authUser, out["groups"], state.Config.Base.SmtpSenderAddress, r.UserAgent())
 	w.WriteHeader(http.StatusOK)
 
 }
@@ -862,7 +862,7 @@ func (state *RuntimeState) rejectHandler(w http.ResponseWriter, r *http.Request)
 
 		}
 	}
-	go state.sendRejectemail(username, out["groups"], r.RemoteAddr, r.UserAgent())
+	go state.sendRejectemail(username, out["groups"], state.Config.Base.SmtpSenderAddress, r.UserAgent())
 	w.WriteHeader(http.StatusOK)
 }
 

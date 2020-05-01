@@ -200,7 +200,7 @@ func handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 	hasUserFilter := !strings.Contains(r.FilterString(), "uid=*")
 	if !hasUserFilter || strings.Contains(r.FilterString(), "uid=valere.jeantet") {
 		e := ldap.NewSearchResultEntry("cn=Valere JEANTET, " + string(r.BaseObject()))
-		e.AddAttribute("mail", "valere.jeantet@gmail.com", "mail@vjeantet.fr")
+		e.AddAttribute("mail", "valere_jeantet@symantec.com", "mail@vjeantet.fr")
 		e.AddAttribute("company", "SODADI")
 		e.AddAttribute("department", "DSI/SEC")
 		e.AddAttribute("l", "Ferrieres en brie")

@@ -840,13 +840,14 @@ func (u *UserInfoLDAPSource) GetEmailofauser(username string) ([]string, error) 
 	}
 	var emails []string
 	for _, el := range email {
-		if strings.HasSuffix(strings.ToLower(el), "@symantec.com") {
-			emails = append(emails, strings.Join(strings.Split(strings.Split(strings.ToLower(el), "@")[0], "_"), ".")+"@broadcom.com")
-		} else {
-			emails = append(emails, el)
+		if !strings.HasPrefix(strings.ToLower(el), "dl-") {
+			if strings.HasSuffix(strings.ToLower(el), "@symantec.com") {
+				emails = append(emails, strings.Join(strings.Split(strings.Split(strings.ToLower(el), "@")[0], "_"), ".")+"@broadcom.com")
+			} else {
+				emails = append(emails, el)
+			}
 		}
 	}
-
 	return emails, nil
 }
 
